@@ -2,3 +2,6 @@
 name = "pbrt_rust"
 version = "0.1.0"
 authors = ["Pavel Krajcevski <pavel@cs.unc.edu>"]
+
+[dependencies]
+num_cpus = "*"
