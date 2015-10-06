@@ -1,0 +1,51 @@
+use bbox;
+use bbox::union;
+use bbox::HasBounds;
+use intersection;
+use light;
+use primitive;
+use ray;
+use volume_region;
+
+pub struct Scene {
+    aggregate : primitive::Primitive,
+    lights : Vec<light::Light>,
+    volume_region : Option<volume_region::VolumeRegion>,
+
+    world_bound : bbox::BBox,
+    // Scene Public data 23
+}
+
+impl bbox::HasBounds for Scene {
+    fn get_bounds(&self) -> bbox::BBox {
+        if let Some(volume) = self.volume_region {
+            union(&(self.aggregate).get_bounds(), &volume.get_bounds())
+        } else {
+            self.aggregate.get_bounds()
+        }
+    }
+}
+
+impl Scene {
+    pub fn new() -> Scene {
+        let mut scene = Scene {
+            aggregate: primitive::Primitive,
+            lights: vec![],
+            volume_region: None,
+            world_bound: bbox::BBox
+        };
+
+        let world_bound = scene.get_bounds();
+        scene
+    }
+
+    pub fn intersect(&self, ray : &ray::Ray,
+                 isect : &mut intersection::Intersection) -> bool {
+        self.aggregate.intersect(ray, isect)
+    }
+
+    pub fn intersect_p(&self, ray : &ray::Ray) -> bool {
+        self.aggregate.intersect_p(ray)
+    }
+    // Scene Public methods 23
+}
