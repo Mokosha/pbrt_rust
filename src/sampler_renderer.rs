@@ -12,12 +12,13 @@ use scoped_threadpool::Pool;
 use intersection;
 
 use std::ops::BitAnd;
+use std::sync::{Mutex, MutexGuard, Arc};
 
 pub struct SamplerRenderer {
-    sampler : sampler::Sampler,
-    camera : camera::Camera,
-    surface_integrator : integrator::SurfaceIntegrator,
-    volume_integrator : integrator::VolumeIntegrator,
+    sampler: sampler::Sampler,
+    camera: camera::Camera,
+    surface_integrator: integrator::SurfaceIntegrator,
+    volume_integrator: integrator::VolumeIntegrator,
     // SamplerRenderer Private Data
 }
 
@@ -32,19 +33,28 @@ impl SamplerRenderer {
             volume_integrator: vol
         }
     }
+
+    pub fn new_empty() -> SamplerRenderer {
+        SamplerRenderer {
+            sampler: sampler::Sampler,
+            camera: camera::Camera::new(512, 512),
+            surface_integrator: integrator::SurfaceIntegrator,
+            volume_integrator: integrator::VolumeIntegrator,
+        }
+    }
 }
 
-struct SamplerRendererTaskData<'a, 'b> {
+struct SamplerRendererTaskData<'a> {
     scene: &'a scene::Scene,
     renderer: &'a mut SamplerRenderer,
-    sample: &'b mut sampler::Sample
+    sample: &'a mut sampler::Sample
 }
 
-impl<'a, 'b> SamplerRendererTaskData<'a, 'b> {
+impl<'a> SamplerRendererTaskData<'a> {
     fn new(scene: &'a scene::Scene,
            renderer: &'a mut SamplerRenderer,
-           sample: &'b mut sampler::Sample) ->
-        SamplerRendererTaskData<'a, 'b> {
+           sample: &'a mut sampler::Sample) ->
+        SamplerRendererTaskData<'a> {
             SamplerRendererTaskData {
                 scene: scene,
                 renderer: renderer,
@@ -52,23 +62,30 @@ impl<'a, 'b> SamplerRendererTaskData<'a, 'b> {
             }
         }
 
-    fn get_camera(&'a mut self) -> &'a mut camera::Camera { &mut self.renderer.camera }
-    fn get_sampler(&'a mut self) -> &'a mut sampler::Sampler { &mut self.renderer.sampler }
+    fn get_camera(&mut self) -> &mut camera::Camera { &mut self.renderer.camera }
+    fn get_sampler(&mut self) -> &mut sampler::Sampler { &mut self.renderer.sampler }
 }
 
-struct SamplerRendererTask<'a, 'b> {
-    // SamplerRenderTask private data
-    data : ::std::sync::Arc<::std::sync::Mutex<SamplerRendererTaskData<'a, 'b>>>,
-    task_idx : i32,
-    num_tasks : i32
-}
-
-fn run_task(task : SamplerRendererTask) {
+fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a>>>,
+            task_idx: i32, num_tasks: i32) {
     // Get sub-sampler for SamplerRendererTask
+    let sampler = {
+        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> = task_data.lock().unwrap();
+        if let Some(s) = data.get_sampler().get_sub_sampler(task_idx, num_tasks)
+        { s } else { return }
+    };
+    
     // Declare local variables used for rendering loop
     // Allocate space for samples and intersections
     // Get samples from Sampler and update image
     // Clean up after SamplerRendererTask is done with its image region
+
+    // !DEBUG!
+    let sample = {
+        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> = task_data.lock().unwrap();
+        data.sample.idx
+    };
+    println!("Got sample {} fo task {} of {}", sample, task_idx, num_tasks);
 }
 
 impl renderer::Renderer for SamplerRenderer {
@@ -79,7 +96,7 @@ impl renderer::Renderer for SamplerRenderer {
 
         // Allocate and initialize sample
         let mut sample = sampler::Sample::new(&(self.sampler), &(self.surface_integrator),
-                                              &(self.volume_integrator), &scene);
+                                              &(self.volume_integrator), &scene, 1);
 
         // Create and launch SampleRendererTasks for rendering image
         {
@@ -90,23 +107,15 @@ impl renderer::Renderer for SamplerRenderer {
                 31 - (x.leading_zeros() as i32) + (if 0 == x.bitand(x - 1) { 0 } else { 1 })
             }) (::std::cmp::max(32 * num_cpus, num_pixels / (16 * 16)));
 
-            let task_data =
-                ::std::sync::Arc::new(
-                ::std::sync::Mutex::new(
-                    SamplerRendererTaskData::new(&scene, self, &mut sample)));
+            let mut task_data = SamplerRendererTaskData::new(scene, self, &mut sample);
+            let task_data_async = Arc::new(Mutex::new(&mut task_data));
 
+            println!("Running {} tasks on pool with {} cpus", num_tasks, num_cpus);
             Pool::new(num_cpus as u32).scoped(|scope| {
-                (0..num_tasks).map(|i| {
-                    let task = SamplerRendererTask {
-                        data: task_data.clone(),
-                        task_idx: i,
-                        num_tasks: num_tasks
-                    };
-
-                    unsafe {
-                        scope.execute(move || run_task(task));
-                    }
-                });
+                let _ : Vec<_> = (0..num_tasks).map(|i| {
+                    let data = task_data_async.clone();
+                    unsafe { scope.execute(move || run_task(&data, i, num_tasks)); }
+                }).collect();
             });
         }
 

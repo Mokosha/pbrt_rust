@@ -1,6 +1,8 @@
 extern crate pbrt_rust;
 
+use pbrt_rust::renderer::Renderer;
 use pbrt_rust::scene;
+use pbrt_rust::sampler_renderer;
 
 struct Options;
 
@@ -28,4 +30,9 @@ fn main() {
         }
     }
     pbrt_cleanup();
+
+    // !DEBUG!
+    let scene = scene::Scene::new();
+    let mut renderer = sampler_renderer::SamplerRenderer::new_empty();
+    renderer.render(&scene);
 }

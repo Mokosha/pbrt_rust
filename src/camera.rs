@@ -14,5 +14,13 @@ pub struct Camera {
 }
 
 impl Camera {
+    pub fn new(x_res: i32, y_res: i32) -> Camera{
+        Camera {
+            film: Film {
+                x_resolution: x_res,
+                y_resolution: y_res
+            }
+        }
+    }
     pub fn film(&self) -> &Film { &(self.film) }
 }
