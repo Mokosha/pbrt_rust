@@ -5,3 +5,4 @@ authors = ["Pavel Krajcevski <pavel@cs.unc.edu>"]
 
 [dependencies]
 num_cpus = "*"
+scoped_threadpool = "*"

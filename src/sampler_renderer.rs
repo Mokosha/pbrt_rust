@@ -1,3 +1,4 @@
+extern crate scoped_threadpool;
 extern crate num_cpus;
 
 use camera;
@@ -7,6 +8,7 @@ use ray;
 use renderer;
 use sampler;
 use scene;
+use scoped_threadpool::Pool;
 use intersection;
 
 use std::ops::BitAnd;
@@ -32,16 +34,41 @@ impl SamplerRenderer {
     }
 }
 
-struct SamplerRendererTask;
+struct SamplerRendererTaskData<'a, 'b> {
+    scene: &'a scene::Scene,
+    renderer: &'a mut SamplerRenderer,
+    sample: &'b mut sampler::Sample
+}
 
-impl SamplerRendererTask {
-    fn new(scene: &scene::Scene,
-           renderer: &SamplerRenderer,
-           camera: &camera::Camera,
-           sampler: &sampler::Sampler,
-           sample: &sampler::Sample,
-           task_idx: i32,
-           num_tasks: i32) -> SamplerRendererTask { SamplerRendererTask }
+impl<'a, 'b> SamplerRendererTaskData<'a, 'b> {
+    fn new(scene: &'a scene::Scene,
+           renderer: &'a mut SamplerRenderer,
+           sample: &'b mut sampler::Sample) ->
+        SamplerRendererTaskData<'a, 'b> {
+            SamplerRendererTaskData {
+                scene: scene,
+                renderer: renderer,
+                sample: sample
+            }
+        }
+
+    fn get_camera(&'a mut self) -> &'a mut camera::Camera { &mut self.renderer.camera }
+    fn get_sampler(&'a mut self) -> &'a mut sampler::Sampler { &mut self.renderer.sampler }
+}
+
+struct SamplerRendererTask<'a, 'b> {
+    // SamplerRenderTask private data
+    data : ::std::sync::Arc<::std::sync::Mutex<SamplerRendererTaskData<'a, 'b>>>,
+    task_idx : i32,
+    num_tasks : i32
+}
+
+fn run_task(task : SamplerRendererTask) {
+    // Get sub-sampler for SamplerRendererTask
+    // Declare local variables used for rendering loop
+    // Allocate space for samples and intersections
+    // Get samples from Sampler and update image
+    // Clean up after SamplerRendererTask is done with its image region
 }
 
 impl renderer::Renderer for SamplerRenderer {
@@ -51,32 +78,39 @@ impl renderer::Renderer for SamplerRenderer {
         self.volume_integrator.preprocess(scene, &(self.camera));
 
         // Allocate and initialize sample
-        let sample = sampler::Sample::new(&(self.sampler), &(self.surface_integrator),
-                                          &(self.volume_integrator), &scene);
+        let mut sample = sampler::Sample::new(&(self.sampler), &(self.surface_integrator),
+                                              &(self.volume_integrator), &scene);
 
         // Create and launch SampleRendererTasks for rendering image
         {
+            let num_cpus = num_cpus::get() as i32;
             let num_pixels = self.camera.film().num_pixels();
 
             let num_tasks = (|x : i32| {
-                32 - (x.leading_zeros() as i32) + (if 0 == x.bitand(x - 1) { 0 } else { 1 })
-            }) (::std::cmp::max(32 * (num_cpus::get() as i32), num_pixels / (16 * 16)));
+                31 - (x.leading_zeros() as i32) + (if 0 == x.bitand(x - 1) { 0 } else { 1 })
+            }) (::std::cmp::max(32 * num_cpus, num_pixels / (16 * 16)));
 
-            let mut render_tasks = vec![];
-            for i in 0..num_tasks {
-                let task = SamplerRendererTask::new(&scene, &self, &self.camera,
-                                                    &self.sampler, &sample, num_tasks - 1 - i,
-                                                    num_tasks);
-                render_tasks.push(::std::thread::spawn(move || { }));
-            }
+            let task_data =
+                ::std::sync::Arc::new(
+                ::std::sync::Mutex::new(
+                    SamplerRendererTaskData::new(&scene, self, &mut sample)));
 
-            for task in render_tasks {
-                let _ = task.join();
-            }
+            Pool::new(num_cpus as u32).scoped(|scope| {
+                (0..num_tasks).map(|i| {
+                    let task = SamplerRendererTask {
+                        data: task_data.clone(),
+                        task_idx: i,
+                        num_tasks: num_tasks
+                    };
+
+                    unsafe {
+                        scope.execute(move || run_task(task));
+                    }
+                });
+            });
         }
 
-        // Clean up after rendering and store final image
-    
+        // Clean up after rendering and store final image    
     }
 
     fn li<T:renderer::RNG>(

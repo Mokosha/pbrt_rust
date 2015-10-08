@@ -1,3 +1,5 @@
+extern crate scoped_threadpool;
+
 pub mod bbox;
 pub mod camera;
 pub mod intersection;
