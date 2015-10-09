@@ -21,4 +21,6 @@ impl Sampler {
                            -> Option<Sampler> {
         Some(Sampler)
     }
+
+    pub fn maximum_sample_count(&self) -> i32 { 1 } 
 }

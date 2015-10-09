@@ -70,13 +70,27 @@ fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a
             task_idx: i32, num_tasks: i32) {
     // Get sub-sampler for SamplerRendererTask
     let sampler = {
-        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> = task_data.lock().unwrap();
+        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
+            task_data.lock().unwrap();
         if let Some(s) = data.get_sampler().get_sub_sampler(task_idx, num_tasks)
         { s } else { return }
     };
     
     // Declare local variables used for rendering loop
+    let rng = renderer::PseudoRNG::new(task_idx);
+    
     // Allocate space for samples and intersections
+    let max_samples = sampler.maximum_sample_count() as usize;
+    let samples : Vec<sampler::Sample> = {
+        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
+            task_data.lock().unwrap();
+        (0..max_samples).map(|_| data.sample.clone()).collect()
+    };
+    let rays : Vec<ray::RayDifferential> = Vec::with_capacity(max_samples);
+    let l_s : Vec<renderer::Spectrum> = Vec::with_capacity(max_samples);
+    let t_s : Vec<renderer::Spectrum> = Vec::with_capacity(max_samples);
+    let isects : Vec<intersection::Intersection> = Vec::with_capacity(max_samples);
+
     // Get samples from Sampler and update image
     // Clean up after SamplerRendererTask is done with its image region
 
