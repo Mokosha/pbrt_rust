@@ -4,6 +4,8 @@ extern crate num_cpus;
 use camera;
 use integrator;
 use integrator::Integrator;
+use intersection;
+use light::Light;
 use ray;
 use rng::RNG;
 use rng::PseudoRNG;
@@ -13,9 +15,9 @@ use sampler;
 use scene;
 use scoped_threadpool::Pool;
 use spectrum::Spectrum;
-use intersection;
 
 use std::ops::BitAnd;
+use std::iter::Iterator;
 use std::sync::{Mutex, MutexGuard, Arc};
 
 pub struct SamplerRenderer {
@@ -151,8 +153,21 @@ fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a
         }).collect();
 
         // Report sample results to Sampler, add contributions to image
+        if (sampler.report_results(&samples, &rays, &l_s, &isects, sample_count)) {
+            // !FIXME! Again -- super coarse synchronization here...
+            let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
+                task_data.lock().unwrap();
+            for i in 0..sample_count {
+                data.renderer.camera.film.add_sample(&samples[i], &l_s[i]);
+            }
+        }
+
+        samples.clear();
+        rays.clear();
+        l_s.clear();
+        t_s.clear();
+        isects.clear();
     }
-    // Clean up after SamplerRendererTask is done with its image region
 
     // !DEBUG!
     let sample = {
@@ -201,13 +216,29 @@ impl Renderer for SamplerRenderer {
         sample: &sampler::Sample, rng: &mut T,
         isect: &mut Option<intersection::Intersection>,
         spect: &mut Option<Spectrum>) -> Spectrum {
-        Spectrum
+        // Allocate variables for isect and T if needed
+        let mut local_isect = intersection::Intersection;
+        let mut local_trans = Spectrum::from_value(0f32);
+        let li =
+            if scene.intersect(&ray.base_ray(), &mut local_isect) {
+                self.surface_integrator.li(scene, self, ray, &mut local_isect, sample, rng)
+            } else {
+                // Handle ray that doesn't intersect any geometry
+                scene.lights.iter().fold(Spectrum::from_value(0f32), |acc, light| acc + light.le(ray))
+            };
+        let lvi = self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans);
+
+        isect.map(|_| { local_isect });
+        spect.map(|_| { local_trans });
+
+        local_trans * li + lvi
     }
 
     fn transmittance<T:RNG>(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,
         sample: &sampler::Sample, rng: &mut T) -> Spectrum {
-        Spectrum
+        let mut local_trans = Spectrum::from_value(0f32);
+        self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans)
     }
 
     // Rnderer Interface

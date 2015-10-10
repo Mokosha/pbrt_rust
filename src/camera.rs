@@ -1,5 +1,6 @@
 use ray::RayDifferential;
 use sampler::Sample;
+use spectrum::Spectrum;
 
 #[derive(Debug, Clone)]
 pub struct Film {
@@ -11,11 +12,13 @@ impl Film {
     pub fn x_res(&self) -> i32 { self.x_resolution }
     pub fn y_res(&self) -> i32 { self.y_resolution }
     pub fn num_pixels(&self) -> i32 { self.x_res() * self.y_res() }
+    pub fn add_sample(&mut self, sample: &Sample, ls: &Spectrum) {
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Camera {
-    film : Film
+    pub film : Film
 }
 
 impl Camera {

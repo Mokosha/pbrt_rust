@@ -8,11 +8,11 @@ use ray;
 use volume_region;
 
 pub struct Scene {
-    aggregate : primitive::Primitive,
-    lights : Vec<light::Light>,
-    volume_region : Option<volume_region::VolumeRegion>,
+    pub aggregate : primitive::Primitive,
+    pub lights : Vec<light::Light>,
+    pub volume_region : Option<volume_region::VolumeRegion>,
 
-    world_bound : bbox::BBox,
+    pub world_bound : bbox::BBox,
     // Scene Public data 23
 }
 

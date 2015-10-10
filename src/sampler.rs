@@ -1,5 +1,8 @@
 use integrator;
+use intersection::Intersection;
+use ray::RayDifferential;
 use rng::RNG;
+use spectrum::Spectrum;
 use scene;
 
 #[derive(Debug, Copy, Clone)]
@@ -30,4 +33,10 @@ impl Sampler {
     }
 
     pub fn samples_per_pixel(&self) -> f32 { 0.0f32 }
+
+    pub fn report_results(&self, samples: &Vec<Sample>,
+                          rays: &Vec<RayDifferential>,
+                          ls: &Vec<Spectrum>,
+                          isects: &Vec<Intersection>,
+                          sample_count: usize) -> bool { true }
 }
