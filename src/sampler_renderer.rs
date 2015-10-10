@@ -5,10 +5,14 @@ use camera;
 use integrator;
 use integrator::Integrator;
 use ray;
+use rng::RNG;
+use rng::PseudoRNG;
 use renderer;
+use renderer::Renderer;
 use sampler;
 use scene;
 use scoped_threadpool::Pool;
+use spectrum::Spectrum;
 use intersection;
 
 use std::ops::BitAnd;
@@ -61,37 +65,93 @@ impl<'a> SamplerRendererTaskData<'a> {
                 sample: sample
             }
         }
-
-    fn get_camera(&mut self) -> &mut camera::Camera { &mut self.renderer.camera }
-    fn get_sampler(&mut self) -> &mut sampler::Sampler { &mut self.renderer.sampler }
 }
 
 fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a>>>,
             task_idx: i32, num_tasks: i32) {
     // Get sub-sampler for SamplerRendererTask
-    let sampler = {
+    let mut sampler = {
         let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
             task_data.lock().unwrap();
-        if let Some(s) = data.get_sampler().get_sub_sampler(task_idx, num_tasks)
+        if let Some(s) = data.renderer.sampler.get_sub_sampler(task_idx, num_tasks)
         { s } else { return }
     };
     
+    let scene = {
+        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
+            task_data.lock().unwrap();
+        data.scene
+    };
+
     // Declare local variables used for rendering loop
-    let rng = renderer::PseudoRNG::new(task_idx);
+    let mut rng = PseudoRNG::new(task_idx);
     
     // Allocate space for samples and intersections
     let max_samples = sampler.maximum_sample_count() as usize;
-    let samples : Vec<sampler::Sample> = {
+    let mut samples : Vec<sampler::Sample> = {
         let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
             task_data.lock().unwrap();
         (0..max_samples).map(|_| data.sample.clone()).collect()
     };
-    let rays : Vec<ray::RayDifferential> = Vec::with_capacity(max_samples);
-    let l_s : Vec<renderer::Spectrum> = Vec::with_capacity(max_samples);
-    let t_s : Vec<renderer::Spectrum> = Vec::with_capacity(max_samples);
-    let isects : Vec<intersection::Intersection> = Vec::with_capacity(max_samples);
+    let mut rays : Vec<ray::RayDifferential> = Vec::with_capacity(max_samples);
+    let mut l_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
+    let mut t_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
+    let mut isects : Vec<intersection::Intersection> = Vec::with_capacity(max_samples);
 
     // Get samples from Sampler and update image
+    loop {
+        sampler.get_more_samples(&mut samples, &mut rng);
+        let sample_count = samples.len();
+        if (sample_count == 0) { break; }
+
+        // Generate camera rays and compute radiance along rays
+        let _ : Vec<_> = (0..sample_count).map(|i| {
+            // Find camera ray for sample[i]
+            let (ray_weight, mut ray) = {
+                let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
+                    task_data.lock().unwrap();
+                data.renderer.camera.generate_ray_differential(&(samples[i]))
+            };
+
+            ray.scale_differentials(1.0f32 / sampler.samples_per_pixel().sqrt());
+
+            // Evaluate radiance along camera ray
+            if (ray_weight > 0f32) {
+                let mut ts: Option<Spectrum> = None;
+                let mut isect: Option<intersection::Intersection> = None;
+
+                // !FIXME! I think this synchronization is a bit too coarse grained
+                let ls = {
+                    let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
+                        task_data.lock().unwrap();
+                    ray_weight * data.renderer.li(scene, &ray, &(samples[i]), &mut rng, &mut isect, &mut ts)
+                };
+
+                if (!ls.is_valid()) { panic!("Invalid radiance value!"); }
+                l_s.push(ls);
+
+                if let Some(ts_val) = ts {
+                    t_s.push(ts_val);
+                } else {
+                    t_s.push(Spectrum::from_value(0f32));
+                }
+                
+                if let Some(isect_val) = isect {
+                    isects.push(isect_val);
+                } else {
+                    // Empty intersection
+                    isects.push(intersection::Intersection);
+                }
+            } else {
+                l_s.push(Spectrum::from_value(0f32));
+                t_s.push(Spectrum::from_value(0f32));
+                // Empty intersection
+                isects.push(intersection::Intersection);
+            }
+        }).collect();
+
+        // Report sample results to Sampler, add contributions to image
+    }
     // Clean up after SamplerRendererTask is done with its image region
 
     // !DEBUG!
@@ -102,7 +162,7 @@ fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a
     println!("Got sample {} fo task {} of {}", sample, task_idx, num_tasks);
 }
 
-impl renderer::Renderer for SamplerRenderer {
+impl Renderer for SamplerRenderer {
     fn render(&mut self, scene : &scene::Scene) {
         // Allow integrators to do preprocessing for the scene
         self.surface_integrator.preprocess(scene, &(self.camera));
@@ -136,16 +196,18 @@ impl renderer::Renderer for SamplerRenderer {
         // Clean up after rendering and store final image    
     }
 
-    fn li<T:renderer::RNG>(
+    fn li<T:RNG>(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,
         sample: &sampler::Sample, rng: &mut T,
         isect: &mut Option<intersection::Intersection>,
-        spect: &mut Option<renderer::Spectrum>) {
+        spect: &mut Option<Spectrum>) -> Spectrum {
+        Spectrum
     }
 
-    fn transmittance<T:renderer::RNG>(
+    fn transmittance<T:RNG>(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,
-        sample: &sampler::Sample, rng: &mut T) {
+        sample: &sampler::Sample, rng: &mut T) -> Spectrum {
+        Spectrum
     }
 
     // Rnderer Interface

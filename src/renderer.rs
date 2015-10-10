@@ -1,18 +1,9 @@
 use ray;
+use rng::RNG;
 use sampler;
+use spectrum::Spectrum;
 use scene;
 use intersection;
-
-pub struct Spectrum;
-
-pub trait RNG {
-}
-
-pub struct PseudoRNG;
-impl RNG for PseudoRNG { }
-impl PseudoRNG {
-    pub fn new(task_idx: i32) -> PseudoRNG { PseudoRNG }
-}
 
 pub trait Renderer {
     fn render(&mut self, &scene::Scene);
@@ -21,11 +12,11 @@ pub trait Renderer {
         &self, &scene::Scene, &ray::RayDifferential,
         &sampler::Sample, &mut T,
         &mut Option<intersection::Intersection>,
-        &mut Option<Spectrum>);
+        &mut Option<Spectrum>) -> Spectrum;
 
     fn transmittance<T:RNG>(
         &self, &scene::Scene, &ray::RayDifferential,
-        &sampler::Sample, &mut T);
+        &sampler::Sample, &mut T) -> Spectrum;
 
     // Rnderer Interface
 }

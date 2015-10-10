@@ -1,4 +1,5 @@
 use integrator;
+use rng::RNG;
 use scene;
 
 #[derive(Debug, Copy, Clone)]
@@ -22,5 +23,11 @@ impl Sampler {
         Some(Sampler)
     }
 
-    pub fn maximum_sample_count(&self) -> i32 { 1 } 
+    pub fn maximum_sample_count(&self) -> i32 { 1 }
+
+    pub fn get_more_samples<T: RNG>(&mut self, samples: &mut Vec<Sample>, rng: &mut T) {
+
+    }
+
+    pub fn samples_per_pixel(&self) -> f32 { 0.0f32 }
 }
