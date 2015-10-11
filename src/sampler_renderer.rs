@@ -18,7 +18,7 @@ use spectrum::Spectrum;
 
 use std::ops::BitAnd;
 use std::iter::Iterator;
-use std::sync::{Mutex, MutexGuard, Arc};
+use std::sync::{RwLock, Arc};
 
 pub struct SamplerRenderer {
     sampler: sampler::Sampler,
@@ -69,32 +69,22 @@ impl<'a> SamplerRendererTaskData<'a> {
         }
 }
 
-fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a>>>,
-            task_idx: i32, num_tasks: i32) {
+fn run_task<'a>(data : Arc<RwLock<SamplerRendererTaskData<'a>>>,
+                task_idx: i32, num_tasks: i32) {
     // Get sub-sampler for SamplerRendererTask
     let mut sampler = {
-        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
-            task_data.lock().unwrap();
-        if let Some(s) = data.renderer.sampler.get_sub_sampler(task_idx, num_tasks)
+        if let Some(s) = data.read().unwrap().renderer.sampler.get_sub_sampler(task_idx, num_tasks)
         { s } else { return }
     };
     
-    let scene = {
-        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
-            task_data.lock().unwrap();
-        data.scene
-    };
+    let scene = data.read().unwrap().scene;
 
     // Declare local variables used for rendering loop
     let mut rng = PseudoRNG::new(task_idx);
     
     // Allocate space for samples and intersections
     let max_samples = sampler.maximum_sample_count() as usize;
-    let mut samples : Vec<sampler::Sample> = {
-        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
-            task_data.lock().unwrap();
-        (0..max_samples).map(|_| data.sample.clone()).collect()
-    };
+    let mut samples : Vec<sampler::Sample> = (0..max_samples).map(|_| data.read().unwrap().sample.clone()).collect();
     let mut rays : Vec<ray::RayDifferential> = Vec::with_capacity(max_samples);
     let mut l_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
     let mut t_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
@@ -107,13 +97,10 @@ fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a
         if (sample_count == 0) { break; }
 
         // Generate camera rays and compute radiance along rays
-        let _ : Vec<_> = (0..sample_count).map(|i| {
+        for i in (0..sample_count) {
             // Find camera ray for sample[i]
-            let (ray_weight, mut ray) = {
-                let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
-                    task_data.lock().unwrap();
-                data.renderer.camera.generate_ray_differential(&(samples[i]))
-            };
+            let (ray_weight, mut ray) =
+                data.read().unwrap().renderer.camera.generate_ray_differential(&(samples[i]));
 
             ray.scale_differentials(1.0f32 / sampler.samples_per_pixel().sqrt());
 
@@ -123,11 +110,9 @@ fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a
                 let mut isect: Option<intersection::Intersection> = None;
 
                 // !FIXME! I think this synchronization is a bit too coarse grained
-                let ls = {
-                    let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
-                        task_data.lock().unwrap();
-                    ray_weight * data.renderer.li(scene, &ray, &(samples[i]), &mut rng, &mut isect, &mut ts)
-                };
+                let ls =
+                    ray_weight *
+                    data.read().unwrap().renderer.li(scene, &ray, &(samples[i]), &mut rng, &mut isect, &mut ts);
 
                 if (!ls.is_valid()) { panic!("Invalid radiance value!"); }
                 l_s.push(ls);
@@ -150,15 +135,16 @@ fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a
                 // Empty intersection
                 isects.push(intersection::Intersection);
             }
-        }).collect();
+        }
 
         // Report sample results to Sampler, add contributions to image
         if (sampler.report_results(&samples, &rays, &l_s, &isects, sample_count)) {
-            // !FIXME! Again -- super coarse synchronization here...
-            let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> =
-                task_data.lock().unwrap();
             for i in 0..sample_count {
-                data.renderer.camera.film.add_sample(&samples[i], &l_s[i]);
+                // !FIXME! This synchronization is still a bit coarse grained, but
+                // we may be able to move the lock within a few levels to get finer
+                // synchronization. Writing the computed sample is significantly
+                // cheaper than the render step, though
+                data.write().unwrap().renderer.camera.film.add_sample(&samples[i], &l_s[i]);
             }
         }
 
@@ -170,10 +156,7 @@ fn run_task<'a, 'b>(task_data : &'b Arc<Mutex<&'a mut SamplerRendererTaskData<'a
     }
 
     // !DEBUG!
-    let sample = {
-        let mut data : MutexGuard<'b, &'a mut SamplerRendererTaskData<'a>> = task_data.lock().unwrap();
-        data.sample.idx
-    };
+    let sample = data.read().unwrap().sample.idx;
     println!("Got sample {} fo task {} of {}", sample, task_idx, num_tasks);
 }
 
@@ -197,14 +180,14 @@ impl Renderer for SamplerRenderer {
             }) (::std::cmp::max(32 * num_cpus, num_pixels / (16 * 16)));
 
             let mut task_data = SamplerRendererTaskData::new(scene, self, &mut sample);
-            let task_data_async = Arc::new(Mutex::new(&mut task_data));
+            let task_data_shared = Arc::new(RwLock::new(task_data));
 
             println!("Running {} tasks on pool with {} cpus", num_tasks, num_cpus);
             Pool::new(num_cpus as u32).scoped(|scope| {
-                let _ : Vec<_> = (0..num_tasks).map(|i| {
-                    let data = task_data_async.clone();
-                    unsafe { scope.execute(move || run_task(&data, i, num_tasks)); }
-                }).collect();
+                for i in (0..num_tasks) {
+                    let data = task_data_shared.clone();
+                    unsafe { scope.execute(move || run_task(data, i, num_tasks)); }
+                }
             });
         }
 
