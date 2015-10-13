@@ -2,8 +2,10 @@ extern crate scoped_threadpool;
 extern crate num_cpus;
 
 use camera;
-use integrator;
+use integrator::EmptyIntegrator;
 use integrator::Integrator;
+use integrator::VolumeIntegrator;
+use integrator::SurfaceIntegrator;
 use intersection;
 use light::Light;
 use ray;
@@ -20,18 +22,18 @@ use std::ops::BitAnd;
 use std::iter::Iterator;
 use std::sync::{RwLock, Arc};
 
-pub struct SamplerRenderer {
+pub struct SamplerRenderer<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> {
     sampler: sampler::Sampler,
     camera: camera::Camera,
-    surface_integrator: integrator::SurfaceIntegrator,
-    volume_integrator: integrator::VolumeIntegrator,
+    surface_integrator: Surf,
+    volume_integrator: Vol,
     // SamplerRenderer Private Data
 }
 
-impl SamplerRenderer {
-    pub fn new(sampler : sampler::Sampler, cam : camera::Camera,
-               surf: integrator::SurfaceIntegrator,
-               vol: integrator::VolumeIntegrator) -> SamplerRenderer {
+impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> SamplerRenderer<Surf, Vol> {
+    pub fn new(
+        sampler: sampler::Sampler, cam: camera::Camera,
+        surf: Surf, vol: Vol) -> Self {
         SamplerRenderer {
             sampler: sampler,
             camera: cam,
@@ -40,37 +42,38 @@ impl SamplerRenderer {
         }
     }
 
-    pub fn new_empty() -> SamplerRenderer {
+    pub fn new_empty() -> SamplerRenderer<EmptyIntegrator, EmptyIntegrator> {
         SamplerRenderer {
             sampler: sampler::Sampler,
             camera: camera::Camera::new(512, 512),
-            surface_integrator: integrator::SurfaceIntegrator,
-            volume_integrator: integrator::VolumeIntegrator,
+            surface_integrator: EmptyIntegrator::new(),
+            volume_integrator: EmptyIntegrator::new(),
         }
     }
 }
 
-struct SamplerRendererTaskData<'a> {
+struct SamplerRendererTaskData<'a, Surf : SurfaceIntegrator+Send+Sync+'a, Vol : VolumeIntegrator+Send+Sync+'a> {
     scene: &'a scene::Scene,
-    renderer: &'a mut SamplerRenderer,
+    renderer: &'a mut SamplerRenderer<Surf, Vol>,
     sample: &'a mut sampler::Sample
 }
 
-impl<'a> SamplerRendererTaskData<'a> {
-    fn new(scene: &'a scene::Scene,
-           renderer: &'a mut SamplerRenderer,
-           sample: &'a mut sampler::Sample) ->
-        SamplerRendererTaskData<'a> {
-            SamplerRendererTaskData {
-                scene: scene,
-                renderer: renderer,
-                sample: sample
+impl<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync>
+    SamplerRendererTaskData<'a, Surf, Vol> {
+        fn new(scene: &'a scene::Scene,
+               renderer: &'a mut SamplerRenderer<Surf, Vol>,
+               sample: &'a mut sampler::Sample) ->
+            SamplerRendererTaskData<'a, Surf, Vol> {
+                SamplerRendererTaskData {
+                    scene: scene,
+                    renderer: renderer,
+                    sample: sample
+                }
             }
-        }
-}
+    }
 
-fn run_task<'a>(data : Arc<RwLock<SamplerRendererTaskData<'a>>>,
-                task_idx: i32, num_tasks: i32) {
+fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync>(
+    data : Arc<RwLock<SamplerRendererTaskData<'a, Surf, Vol>>>, task_idx: i32, num_tasks: i32) {
     // Get sub-sampler for SamplerRendererTask
     let mut sampler = {
         if let Some(s) = data.read().unwrap().renderer.sampler.get_sub_sampler(task_idx, num_tasks)
@@ -160,7 +163,7 @@ fn run_task<'a>(data : Arc<RwLock<SamplerRendererTaskData<'a>>>,
     println!("Got sample {} fo task {} of {}", sample, task_idx, num_tasks);
 }
 
-impl Renderer for SamplerRenderer {
+impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Renderer for SamplerRenderer<Surf, Vol> {
     fn render(&mut self, scene : &scene::Scene) {
         // Allow integrators to do preprocessing for the scene
         self.surface_integrator.preprocess(scene, &(self.camera));

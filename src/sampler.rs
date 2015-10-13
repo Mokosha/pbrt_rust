@@ -1,4 +1,5 @@
-use integrator;
+use integrator::SurfaceIntegrator;
+use integrator::VolumeIntegrator;
 use intersection::Intersection;
 use ray::RayDifferential;
 use rng::RNG;
@@ -14,10 +15,9 @@ pub struct Sample {
 pub struct Sampler;
 
 impl Sample {
-    pub fn new(sampler: &Sampler,
-               surf: &integrator::SurfaceIntegrator,
-               vol: &integrator::VolumeIntegrator,
-               scene: &scene::Scene, idx: i32) -> Sample { Sample { idx: idx } }
+    pub fn new<Surf : SurfaceIntegrator, Vol : VolumeIntegrator>(
+        sampler: &Sampler, surf: &Surf, vol: &Vol, scene: &scene::Scene, idx: i32)
+        -> Sample { Sample { idx: idx } }
 }
 
 impl Sampler {
