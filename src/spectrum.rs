@@ -1,5 +1,6 @@
-use std::ops::Mul;
 use std::ops::Add;
+use std::ops::Div;
+use std::ops::Mul;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Spectrum;
@@ -8,6 +9,7 @@ impl Spectrum {
     pub fn is_valid(self) -> bool { true }
 
     pub fn from_value(f: f32) -> Spectrum { Spectrum }
+    pub fn is_black(&self) -> bool { true }
 }
 
 fn mul(spect: Spectrum, s: f32) -> Spectrum {
@@ -17,6 +19,11 @@ fn mul(spect: Spectrum, s: f32) -> Spectrum {
 impl Mul<f32> for Spectrum {
     type Output = Spectrum;
     fn mul(self, s: f32) -> Spectrum { mul(self, s) }
+}
+
+impl Div<f32> for Spectrum {
+    type Output = Spectrum;
+    fn div(self, s: f32) -> Spectrum { Spectrum }
 }
 
 impl Mul<Spectrum> for Spectrum {

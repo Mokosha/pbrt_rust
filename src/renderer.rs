@@ -14,6 +14,15 @@ pub trait Renderer {
         &mut Option<intersection::Intersection>,
         &mut Option<Spectrum>) -> Spectrum;
 
+    fn li_simple<T:RNG>(
+        &self, scene: &scene::Scene, ray: &ray::RayDifferential,
+        sample: &sampler::Sample, rng: &mut T,
+        ) -> Spectrum {
+        let mut dummy_isect = None;
+        let mut dummy_spect = None;
+        self.li(scene, ray, sample, rng, &mut dummy_isect, &mut dummy_spect)
+    }
+
     fn transmittance<T:RNG>(
         &self, &scene::Scene, &ray::RayDifferential,
         &sampler::Sample, &mut T) -> Spectrum;

@@ -6,7 +6,7 @@ use integrator::EmptyIntegrator;
 use integrator::Integrator;
 use integrator::VolumeIntegrator;
 use integrator::SurfaceIntegrator;
-use intersection;
+use intersection::Intersection;
 use light::Light;
 use ray;
 use rng::RNG;
@@ -91,7 +91,7 @@ fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+
     let mut rays : Vec<ray::RayDifferential> = Vec::with_capacity(max_samples);
     let mut l_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
     let mut t_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
-    let mut isects : Vec<intersection::Intersection> = Vec::with_capacity(max_samples);
+    let mut isects : Vec<Intersection> = Vec::with_capacity(max_samples);
 
     // Get samples from Sampler and update image
     loop {
@@ -110,7 +110,7 @@ fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+
             // Evaluate radiance along camera ray
             if (ray_weight > 0f32) {
                 let mut ts: Option<Spectrum> = None;
-                let mut isect: Option<intersection::Intersection> = None;
+                let mut isect: Option<Intersection> = None;
 
                 // !FIXME! I think this synchronization is a bit too coarse grained
                 let ls =
@@ -130,13 +130,13 @@ fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+
                     isects.push(isect_val);
                 } else {
                     // Empty intersection
-                    isects.push(intersection::Intersection);
+                    isects.push(Intersection::new());
                 }
             } else {
                 l_s.push(Spectrum::from_value(0f32));
                 t_s.push(Spectrum::from_value(0f32));
                 // Empty intersection
-                isects.push(intersection::Intersection);
+                isects.push(Intersection::new());
             }
         }
 
@@ -200,10 +200,10 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Rende
     fn li<T:RNG>(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,
         sample: &sampler::Sample, rng: &mut T,
-        isect: &mut Option<intersection::Intersection>,
+        isect: &mut Option<Intersection>,
         spect: &mut Option<Spectrum>) -> Spectrum {
         // Allocate variables for isect and T if needed
-        let mut local_isect = intersection::Intersection;
+        let mut local_isect = Intersection::new();
         let mut local_trans = Spectrum::from_value(0f32);
         let li =
             if scene.intersect(&ray.base_ray(), &mut local_isect) {
