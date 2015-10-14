@@ -1,7 +1,9 @@
 extern crate scoped_threadpool;
 
 pub mod bbox;
+pub mod bsdf;
 pub mod camera;
+pub mod diff_geom;
 pub mod intersection;
 pub mod integrator;
 pub mod light;
@@ -13,4 +15,5 @@ pub mod sampler;
 pub mod sampler_renderer;
 pub mod spectrum;
 pub mod scene;
+pub mod vector;
 pub mod volume_region;
