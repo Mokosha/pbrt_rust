@@ -10,15 +10,15 @@ use sampler::Sample;
 use scene::Scene;
 use spectrum::Spectrum;
 
-use vector::abs_dot;
+use geometry::abs_dot;
 
 fn process_specular<T: RNG, R: Renderer>(
     ray: &RayDifferential, bsdf: &BSDF,
     rng: &mut T, isect: &Intersection, renderer: &R,
     scene: &Scene, sample: &Sample, sample_type: u32) -> Spectrum {
     let wo = -ray.dir();
-    let p = bsdf.dg_shading.p;
-    let n = bsdf.dg_shading.nn;
+    let p = &(bsdf.dg_shading.p);
+    let n = &(bsdf.dg_shading.nn);
     let (wi, pdf, f) = bsdf.sample_f(
         &wo, BSDFSample::new(rng), sample_type);
 

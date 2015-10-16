@@ -1,11 +1,11 @@
 use time::Time;
-use vector::Vector;
+use geometry::Vector;
 
 #[derive(Debug, Clone)]
 pub struct Ray;
 impl Ray {
     pub fn depth(&self) -> i32 { 0 }
-    pub fn dir(self) -> Vector { Vector }
+    pub fn dir(self) -> Vector { Vector::new() }
 }
 
 #[derive(Debug, Clone)]

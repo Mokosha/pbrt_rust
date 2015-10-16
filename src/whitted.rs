@@ -12,7 +12,7 @@ use scene::Scene;
 use spectrum::Spectrum;
 use visibility_tester::VisibilityTester;
 
-use vector::abs_dot;
+use geometry::abs_dot;
 
 pub struct WhittedIntegrator {
     // WhittedIntegrator Private Data
@@ -46,8 +46,8 @@ impl SurfaceIntegrator for WhittedIntegrator {
         let bsdf = isect.get_bsdf();
 
         // Initialize common variables for Whitted Integrator
-        let p = bsdf.dg_shading.p;
-        let n = bsdf.dg_shading.nn;
+        let p = &(bsdf.dg_shading.p);
+        let n = &(bsdf.dg_shading.nn);
         let wo = -ray.dir();
 
         // Compute emitted light if ray hit an area light source
@@ -55,11 +55,11 @@ impl SurfaceIntegrator for WhittedIntegrator {
 
             // Add contribution of each light source
             let (li, wi, pdf, visibility) =
-                light.sample_l(&p, isect.ray_epsilon, LightSample::new(rng), ray.time());
+                light.sample_l(p, isect.ray_epsilon, LightSample::new(rng), ray.time());
             if (!li.is_black() && pdf != 0f32) {
                 let f = bsdf.f(&wo, &wi);
                 if (!f.is_black() && visibility.unoccluded(scene)) {
-                    f * li * abs_dot(&wi, &n) *
+                    f * li * abs_dot(&wi, n) *
                         visibility.transmittance(scene, renderer, sample, rng) / pdf
                 } else { Spectrum::from_value(0f32) }
             } else { Spectrum::from_value(0f32) }

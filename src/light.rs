@@ -3,8 +3,8 @@ use rng::RNG;
 use spectrum::Spectrum;
 use time::Time;
 use visibility_tester::VisibilityTester;
-use vector::Point;
-use vector::Vector;
+use geometry::Point;
+use geometry::Vector;
 
 #[derive(PartialOrd,Ord,PartialEq,Eq)]
 pub struct Light;
@@ -22,6 +22,6 @@ impl Light {
     pub fn sample_l(&self, p: &Point, eps: f32,
                     sample: LightSample, time: Time) ->
         (Spectrum, Vector, f32, VisibilityTester) {
-            (Spectrum::from_value(0f32), Vector, 0f32, VisibilityTester)
+            (Spectrum::from_value(0f32), Vector::new(), 0f32, VisibilityTester)
         }
 }

@@ -214,8 +214,8 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Rende
             };
         let lvi = self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans);
 
-        isect.map(|_| { local_isect });
-        spect.map(|_| { local_trans });
+        isect.as_mut().map(|_| { local_isect });
+        spect.as_mut().map(|_| { local_trans });
 
         local_trans * li + lvi
     }
