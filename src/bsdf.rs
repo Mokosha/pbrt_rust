@@ -23,8 +23,8 @@ impl BSDF {
     pub fn new() -> BSDF {
         BSDF {
             dg_shading: DifferentialGeometry {
-                p: Vector::new(),
-                nn: Vector::new()
+                p: Point::new(),
+                nn: Normal::new()
             }
         }
     }

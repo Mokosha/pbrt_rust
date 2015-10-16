@@ -2,6 +2,9 @@ use bsdf;
 use bsdf::BSDF;
 use bsdf::BSDFSample;
 use camera::Camera;
+use geometry::Dot;
+use geometry::Vector;
+use geometry::Normal;
 use intersection::Intersection;
 use ray::RayDifferential;
 use renderer::Renderer;
@@ -9,8 +12,6 @@ use rng::RNG;
 use sampler::Sample;
 use scene::Scene;
 use spectrum::Spectrum;
-
-use geometry::abs_dot;
 
 fn process_specular<T: RNG, R: Renderer>(
     ray: &RayDifferential, bsdf: &BSDF,
@@ -22,7 +23,7 @@ fn process_specular<T: RNG, R: Renderer>(
     let (wi, pdf, f) = bsdf.sample_f(
         &wo, BSDFSample::new(rng), sample_type);
 
-    let win = abs_dot(&wi, &n);
+    let win = wi.abs_dot(n);
     if (pdf > 0f32 && !f.is_black() && win != 0f32) {
         // Cmpute ray differential rd for specular reflection <512>
         let rd = ray.clone(); // !FIXME! just to compile

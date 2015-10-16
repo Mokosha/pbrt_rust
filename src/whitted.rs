@@ -1,3 +1,4 @@
+use geometry::Dot;
 use integrator;
 use integrator::Integrator;
 use integrator::SurfaceIntegrator;
@@ -11,8 +12,6 @@ use sampler::Sample;
 use scene::Scene;
 use spectrum::Spectrum;
 use visibility_tester::VisibilityTester;
-
-use geometry::abs_dot;
 
 pub struct WhittedIntegrator {
     // WhittedIntegrator Private Data
@@ -59,7 +58,7 @@ impl SurfaceIntegrator for WhittedIntegrator {
             if (!li.is_black() && pdf != 0f32) {
                 let f = bsdf.f(&wo, &wi);
                 if (!f.is_black() && visibility.unoccluded(scene)) {
-                    f * li * abs_dot(&wi, n) *
+                    f * li * wi.abs_dot(n) *
                         visibility.transmittance(scene, renderer, sample, rng) / pdf
                 } else { Spectrum::from_value(0f32) }
             } else { Spectrum::from_value(0f32) }
