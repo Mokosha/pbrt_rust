@@ -35,6 +35,6 @@ impl Camera {
 
     pub fn generate_ray_differential(&self, sample: &Sample)
                                      -> (f32, RayDifferential) {
-        (0.0f32, RayDifferential)
+        (0.0f32, RayDifferential::new())
     }
 }

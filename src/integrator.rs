@@ -17,7 +17,7 @@ fn process_specular<T: RNG, R: Renderer>(
     ray: &RayDifferential, bsdf: &BSDF,
     rng: &mut T, isect: &Intersection, renderer: &R,
     scene: &Scene, sample: &Sample, sample_type: u32) -> Spectrum {
-    let wo = -ray.dir();
+    let wo = -(&ray.ray.d);
     let p = &(bsdf.dg_shading.p);
     let n = &(bsdf.dg_shading.nn);
     let (wi, pdf, f) = bsdf.sample_f(

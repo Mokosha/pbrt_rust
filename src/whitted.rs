@@ -36,25 +36,26 @@ impl Integrator for WhittedIntegrator { }
 impl SurfaceIntegrator for WhittedIntegrator {
     fn li<T : RNG, R : Renderer>(&self, scene: &Scene,
                              renderer: &R,
-                             ray: &RayDifferential,
+                             rayd: &RayDifferential,
                              isect: &mut Intersection,
                              sample: &Sample,
                              rng: &mut T) -> Spectrum {
         // Compute emitted and reflected light at ray intersection point
         // Evaluate BSDF at hit point
+        let ray = &rayd.ray;
         let bsdf = isect.get_bsdf();
 
         // Initialize common variables for Whitted Integrator
         let p = &(bsdf.dg_shading.p);
         let n = &(bsdf.dg_shading.nn);
-        let wo = -ray.dir();
+        let wo = -(&ray.d);
 
         // Compute emitted light if ray hit an area light source
         let l = scene.lights.iter().fold(isect.le(&wo), |l_acc, ref light| {
 
             // Add contribution of each light source
             let (li, wi, pdf, visibility) =
-                light.sample_l(p, isect.ray_epsilon, LightSample::new(rng), ray.time());
+                light.sample_l(p, isect.ray_epsilon, LightSample::new(rng), ray.time.clone());
             if (!li.is_black() && pdf != 0f32) {
                 let f = bsdf.f(&wo, &wi);
                 if (!f.is_black() && visibility.unoccluded(scene)) {
@@ -65,12 +66,12 @@ impl SurfaceIntegrator for WhittedIntegrator {
         });
 
         l + (
-            if (ray.base_ray().depth() + 1 < self.max_depth) {
+            if (ray.depth + 1 < self.max_depth) {
                 // Trace rays for specular reflection and refraction
                 let refl = integrator::specular_reflect;
                 let tmit = integrator::specular_transmit;
-                refl(ray, &bsdf, rng, isect, renderer, scene, sample) +
-                    tmit(ray, &bsdf, rng, isect, renderer, scene, sample)
+                refl(rayd, &bsdf, rng, isect, renderer, scene, sample) +
+                    tmit(rayd, &bsdf, rng, isect, renderer, scene, sample)
             } else { Spectrum::from_value(0f32) }
         )
     }

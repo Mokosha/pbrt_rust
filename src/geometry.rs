@@ -50,6 +50,20 @@ impl ::std::ops::Add for Vector {
     }
 }
 
+impl<'a> ::std::ops::Add<Vector> for &'a Vector {
+    type Output = Vector;
+    fn add(self, _rhs: Vector) -> Vector {
+        Vector::new_with(self.x + _rhs.x, self.y + _rhs.y, self.z + _rhs.z)
+    }
+}
+
+impl<'a> ::std::ops::Add<&'a Vector> for Vector {
+    type Output = Vector;
+    fn add(self, _rhs: &'a Vector) -> Vector {
+        Vector::new_with(self.x + _rhs.x, self.y + _rhs.y, self.z + _rhs.z)
+    }
+}
+
 impl<'a, 'b> ::std::ops::Add<&'b Vector> for &'a Vector {
     type Output = Vector;
     fn add(self, _rhs: &'b Vector) -> Vector {
@@ -221,6 +235,13 @@ impl<'a, 'b> ::std::ops::Add<&'b Vector> for &'a Point {
     }
 }
 
+impl<'a> ::std::ops::Add<Vector> for &'a Point {
+    type Output = Point;
+    fn add(self, _rhs: Vector) -> Point {
+        Point::new_with(self.x + _rhs.x, self.y + _rhs.y, self.z + _rhs.z)
+    }
+}
+
 impl ::std::ops::Add<Vector> for Point {
     type Output = Point;
     fn add(self, _rhs: Vector) -> Point {
@@ -233,6 +254,13 @@ impl<'a, 'b> ::std::ops::Add<&'b Point> for &'a Point {
 
     fn add(self, other: &'b Point) -> Point {
         Point::new_with(self.x + other.x, self.y + other.y, self.x + other.x)
+    }
+}
+
+impl<'a> ::std::ops::Add<Point> for &'a Point {
+    type Output = Point;
+    fn add(self, _rhs: Point) -> Point {
+        Point::new_with(self.x + _rhs.x, self.y + _rhs.y, self.z + _rhs.z)
     }
 }
 

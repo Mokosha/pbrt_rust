@@ -206,7 +206,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Rende
         let mut local_isect = Intersection::new();
         let mut local_trans = Spectrum::from_value(0f32);
         let li =
-            if scene.intersect(&ray.base_ray(), &mut local_isect) {
+            if scene.intersect(&ray.ray, &mut local_isect) {
                 self.surface_integrator.li(scene, self, ray, &mut local_isect, sample, rng)
             } else {
                 // Handle ray that doesn't intersect any geometry
