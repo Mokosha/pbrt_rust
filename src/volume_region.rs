@@ -4,5 +4,5 @@ use bbox;
 pub struct VolumeRegion;
 
 impl bbox::HasBounds for VolumeRegion {
-    fn get_bounds(&self) -> bbox::BBox { bbox::BBox }
+    fn get_bounds(&self) -> bbox::BBox { bbox::BBox::new() }
 }

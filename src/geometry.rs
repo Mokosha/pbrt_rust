@@ -7,6 +7,16 @@ pub trait Normalize {
     fn normalize(self) -> Self;
 }
 
+pub trait Lerp {
+    fn lerp(&self, b: &Self, t: f32) -> Self;
+}
+
+impl Lerp for f32 {
+    fn lerp(&self, b: &f32, t: f32) -> f32 {
+        self * (1f32 - t) + b * t
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Vector {
     pub x: f32,
@@ -205,6 +215,14 @@ impl<'a, 'b> ::std::ops::Sub<&'b Vector> for &'a Point {
     }
 }
 
+impl<'a> ::std::ops::Sub<Vector> for &'a Point {
+    type Output = Point;
+
+    fn sub(self, other: Vector) -> Point {
+        Point::new_with(self.x - other.x, self.y - other.y, self.x - other.x)
+    }
+}
+
 impl ::std::ops::Sub<Vector> for Point {
     type Output = Point;
     fn sub(self, _rhs: Vector) -> Point {
@@ -315,6 +333,15 @@ impl ::std::ops::IndexMut<i32> for Point {
             2 => &mut self.z,
             _ => panic!("Error - Point index out of bounds!")
         }
+    }
+}
+
+impl Lerp for Point {
+    fn lerp(&self, p: &Point, t: f32) -> Point {
+        Point::new_with(
+            self.x.lerp(&p.x, t),
+            self.y.lerp(&p.y, t),
+            self.z.lerp(&p.z, t))
     }
 }
 

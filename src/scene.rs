@@ -1,5 +1,5 @@
 use bbox;
-use bbox::union;
+use bbox::Union;
 use bbox::HasBounds;
 use intersection;
 use light;
@@ -19,7 +19,8 @@ pub struct Scene {
 impl bbox::HasBounds for Scene {
     fn get_bounds(&self) -> bbox::BBox {
         if let Some(volume) = self.volume_region {
-            union(&(self.aggregate).get_bounds(), &volume.get_bounds())
+            let agg_box = &(self.aggregate).get_bounds();
+            (&agg_box).union(&volume.get_bounds())
         } else {
             self.aggregate.get_bounds()
         }
@@ -32,7 +33,7 @@ impl Scene {
             aggregate: primitive::Primitive,
             lights: vec![],
             volume_region: None,
-            world_bound: bbox::BBox
+            world_bound: bbox::BBox::new()
         };
 
         let world_bound = scene.get_bounds();

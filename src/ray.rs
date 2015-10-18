@@ -1,6 +1,7 @@
-use time::Time;
 use geometry::Point;
 use geometry::Vector;
+use std::f32;
+use time::Time;
 
 #[derive(Debug, Clone)]
 pub struct Ray {
@@ -18,7 +19,7 @@ impl Ray {
             o: Point::new(),
             d: Vector::new(),
             mint: 0f32,
-            maxt: 1e38f32,
+            maxt: f32::MAX,
             time: Time::from(0f32),
             depth: 0
         }
@@ -29,7 +30,7 @@ impl Ray {
             o: origin.clone(),
             d: dir.clone(),
             mint: start,
-            maxt: 1e38f32,
+            maxt: f32::MAX,
             time: Time::from(0f32),
             depth: 0
         }
