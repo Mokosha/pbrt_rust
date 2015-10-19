@@ -17,6 +17,7 @@ pub mod sampler_renderer;
 pub mod spectrum;
 pub mod scene;
 pub mod time;
+pub mod transform;
 pub mod visibility_tester;
 pub mod volume_region;
 pub mod whitted;
