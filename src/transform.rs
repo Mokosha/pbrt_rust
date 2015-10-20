@@ -1,3 +1,4 @@
+use std::ops::FnOnce;
 use geometry::Vector;
 
 #[derive(Debug, Clone)]
@@ -90,6 +91,31 @@ impl<'a> ::std::ops::Mul<Matrix4x4> for &'a Matrix4x4 {
     }
 }
 
+impl ::std::ops::Index<i32> for Matrix4x4 {
+    type Output = [f32; 4];
+    fn index<'a>(&'a self, index: i32) -> &'a [f32; 4] {
+        match index {
+            0 => &self.m[0],
+            1 => &self.m[1],
+            2 => &self.m[2],
+            3 => &self.m[3],
+            _ => panic!("Error - Matrix4x4 index out of bounds!")
+        }
+    }
+}
+
+impl ::std::ops::IndexMut<i32> for Matrix4x4 {
+    fn index_mut<'a>(&'a mut self, index: i32) -> &'a mut [f32; 4] {
+        match index {
+            0 => &mut self.m[0],
+            1 => &mut self.m[1],
+            2 => &mut self.m[2],
+            3 => &mut self.m[3],
+            _ => panic!("Error - Matrix4x4 index out of bounds!")
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Transform {
     // Transform private data
@@ -127,6 +153,28 @@ impl Transform {
             0f32, 0f32, 1f32, -v.z,
             0f32, 0f32, 0f32, 1f32);
         Transform::new_with(m, m_inv)
+    }
+
+    fn scale(x: f32, y: f32, z: f32) -> Transform {
+        let m = Matrix4x4::new_with(
+            x, 0f32, 0f32, 0f32,
+            0f32, y, 0f32, 0f32,
+            0f32, 0f32, z, 0f32,
+            0f32, 0f32, 0f32, 1f32);
+        let m_inv = Matrix4x4::new_with(
+            (1f32/x), 0f32, 0f32, 0f32,
+            0f32, (1f32/y), 0f32, 0f32,
+            0f32, 0f32, (1f32/z), 0f32,
+            0f32, 0f32, 0f32, 1f32);
+        Transform::new_with(m, m_inv)
+    }
+
+    fn has_scale(&self) -> bool {
+        let la2 = Vector::new_with(self.m[0][0], self.m[1][0], self.m[2][0]).length_squared();
+        let lb2 = Vector::new_with(self.m[0][1], self.m[1][1], self.m[2][1]).length_squared();
+        let lc2 = Vector::new_with(self.m[0][2], self.m[1][2], self.m[2][2]).length_squared();
+        let is_one = |x| x > 0.999 && x < 1.001;
+        is_one(la2) && is_one(lb2) && is_one(lc2)
     }
 }
 
