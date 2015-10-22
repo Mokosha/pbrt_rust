@@ -1,5 +1,6 @@
 use std::ops::FnOnce;
 use geometry::Vector;
+use geometry::Normalize;
 
 #[derive(Debug, Clone)]
 pub struct Matrix4x4 {
@@ -213,6 +214,33 @@ impl Transform {
             sin_t, cos_t, 0f32, 0f32,
             0f32, 0f32, 1f32, 0f32,
             0f32, 0f32, 0f32, 1f32);
+        let m_inv = m.clone().transpose();
+        Transform::new_with(m, m_inv)
+    }
+
+    fn rotate(angle: f32, axis: &Vector) -> Transform {
+        let a: Vector = axis.clone().normalize();
+        let s = to_radians(angle).sin();
+        let c = to_radians(angle).cos();
+
+        let mut m = Matrix4x4::new();
+        m[0][0] = a.x * a.x + (1f32 - a.x * a.x) * c;
+        m[0][1] = a.x * a.y * (1f32 - c) - a.z * s;
+        m[0][2] = a.x * a.z * (1f32 - c) + a.y * s;
+        m[0][3] = 0f32;
+
+        m[1][0] = a.x * a.y * (1f32 - c) + a.z * s;
+        m[1][1] = a.y * a.y + (1f32 - a.y * a.y) * c;
+        m[1][2] = a.y * a.z * (1f32 - c) - a.x * s;
+        m[1][3] = 0f32;
+
+        m[2][0] = a.x * a.z * (1f32 - c) - a.y * s;
+        m[2][1] = a.y * a.z * (1f32 - c) + a.x * s;
+        m[2][2] = a.z * a.z + (1f32 - a.z * a.z) * c;
+        m[2][3] = 0f32;
+
+        m[3] = [0f32, 0f32, 0f32, 1f32];
+
         let m_inv = m.clone().transpose();
         Transform::new_with(m, m_inv)
     }
