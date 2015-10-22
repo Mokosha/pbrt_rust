@@ -123,6 +123,10 @@ pub struct Transform {
     m_inv: Matrix4x4
 }
 
+fn to_radians(a: f32) -> f32 {
+    a * ::std::f32::consts::PI / 180f32
+}
+
 impl Transform {
     // Transform public methods
     fn new() -> Transform {
@@ -175,6 +179,42 @@ impl Transform {
         let lc2 = Vector::new_with(self.m[0][2], self.m[1][2], self.m[2][2]).length_squared();
         let is_one = |x| x > 0.999 && x < 1.001;
         is_one(la2) && is_one(lb2) && is_one(lc2)
+    }
+
+    fn rotate_x(angle: f32) -> Transform {
+        let sin_t = to_radians(angle).sin();
+        let cos_t = to_radians(angle).cos();
+        let m = Matrix4x4::new_with(
+            1f32, 0f32, 0f32, 0f32,
+            0f32, cos_t, -sin_t, 0f32,
+            0f32, sin_t, cos_t, 0f32,
+            0f32, 0f32, 0f32, 1f32);
+        let m_inv = m.clone().transpose();
+        Transform::new_with(m, m_inv)
+    }
+
+    fn rotate_y(angle: f32) -> Transform {
+        let sin_t = to_radians(angle).sin();
+        let cos_t = to_radians(angle).cos();
+        let m = Matrix4x4::new_with(
+            cos_t, 0f32, sin_t, 0f32,
+            0f32, 1f32, 0f32, 0f32,
+            -sin_t, 0f32, cos_t, 0f32,
+            0f32, 0f32, 0f32, 1f32);
+        let m_inv = m.clone().transpose();
+        Transform::new_with(m, m_inv)
+    }
+
+    fn rotate_z(angle: f32) -> Transform {
+        let sin_t = to_radians(angle).sin();
+        let cos_t = to_radians(angle).cos();
+        let m = Matrix4x4::new_with(
+            cos_t, -sin_t, 0f32, 0f32,
+            sin_t, cos_t, 0f32, 0f32,
+            0f32, 0f32, 1f32, 0f32,
+            0f32, 0f32, 0f32, 1f32);
+        let m_inv = m.clone().transpose();
+        Transform::new_with(m, m_inv)
     }
 }
 
