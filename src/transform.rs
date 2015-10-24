@@ -278,9 +278,7 @@ impl Transform {
         m[2][2] = dir.z;
         m[3][2] = 0f32;
 
-        let cam_to_world = m.clone();
-        let cam_inv = (&cam_to_world).inverse();
-        Transform::new_with(cam_inv, cam_to_world)
+        Transform::new_with(m.clone().invert(), m)
     }
 }
 
