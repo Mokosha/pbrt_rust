@@ -1,6 +1,9 @@
 use std::ops::FnOnce;
-use geometry::Vector;
 use geometry::Normalize;
+use geometry::Point;
+use geometry::Vector;
+
+use geometry::cross;
 
 #[derive(Debug, Clone)]
 pub struct Matrix4x4 {
@@ -243,6 +246,41 @@ impl Transform {
 
         let m_inv = m.clone().transpose();
         Transform::new_with(m, m_inv)
+    }
+
+    fn look_at(pos: &Point, look: &Point, up: &Vector) -> Transform {
+        let mut m = Matrix4x4::new();
+
+        // Initialize fourth column of viewing matrix
+        m[0][3] = pos.x;
+        m[1][3] = pos.y;
+        m[2][3] = pos.z;
+        m[3][3] = 1f32;
+
+        // Initialize first three columns of viewing matrix
+        let dir = (look - pos).normalize();
+        let up_norm = up.clone().normalize();
+        let left = cross(&up_norm, &dir).normalize();
+        let new_up = cross(&dir, &left);
+
+        m[0][0] = left.x;
+        m[1][0] = left.y;
+        m[2][0] = left.z;
+        m[3][0] = 0f32;
+
+        m[0][1] = new_up.x;
+        m[1][1] = new_up.y;
+        m[2][1] = new_up.z;
+        m[3][1] = 0f32;
+
+        m[0][2] = dir.x;
+        m[1][2] = dir.y;
+        m[2][2] = dir.z;
+        m[3][2] = 0f32;
+
+        let cam_to_world = m.clone();
+        let cam_inv = (&cam_to_world).inverse();
+        Transform::new_with(cam_inv, cam_to_world)
     }
 }
 
