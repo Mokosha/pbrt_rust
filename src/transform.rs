@@ -1,4 +1,5 @@
 use std::ops::FnOnce;
+use geometry::Normal;
 use geometry::Normalize;
 use geometry::Point;
 use geometry::Vector;
@@ -311,6 +312,16 @@ impl ApplyTransform<Vector> for Transform {
         let yt = self.m[1][0] * x + self.m[1][1] * y + self.m[1][2] * z;
         let zt = self.m[2][0] * x + self.m[2][1] * y + self.m[2][2] * z;
         Vector::new_with(xt, yt, zt)
+    }
+}
+
+impl ApplyTransform<Normal> for Transform {
+    fn xf(&self, n: Normal) -> Normal {
+        let (x, y, z) = (n.x, n.y, n.z);
+        let xt = self.m_inv[0][0] * x + self.m_inv[1][0] * y + self.m_inv[2][0] * z;
+        let yt = self.m_inv[0][1] * x + self.m_inv[1][1] * y + self.m_inv[2][1] * z;
+        let zt = self.m_inv[0][2] * x + self.m_inv[1][2] * y + self.m_inv[2][2] * z;
+        Normal::new_with(xt, yt, zt)
     }
 }
 
