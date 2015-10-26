@@ -5,6 +5,13 @@ use geometry::Vector;
 
 use geometry::cross;
 
+pub trait ApplyTransform<T : Clone> {
+    fn xf(&self, T) -> T;
+    fn t(&self, v: &T) -> T {
+        self.xf(v.clone())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Matrix4x4 {
     m: [[f32; 4]; 4]
@@ -279,6 +286,21 @@ impl Transform {
         m[3][2] = 0f32;
 
         Transform::new_with(m.clone().invert(), m)
+    }
+}
+
+impl ApplyTransform<Point> for Transform {
+    fn xf(&self, p: Point) -> Point {
+        let (x, y, z) = (p.x, p.y, p.z);
+        let xt = self.m[0][0] * x + self.m[0][1] * y + self.m[0][2] * z + self.m[0][3];
+        let yt = self.m[1][0] * x + self.m[1][1] * y + self.m[1][2] * z + self.m[1][3];
+        let zt = self.m[2][0] * x + self.m[2][1] * y + self.m[2][2] * z + self.m[2][3];
+        let w = self.m[3][0] * x + self.m[3][1] * y + self.m[3][2] * z + self.m[3][3];
+        if (w != 1f32) {
+            Point::new_with(xt / w, yt / w, zt / w)
+        } else {
+            Point::new_with(xt, yt, zt)
+        }
     }
 }
 
