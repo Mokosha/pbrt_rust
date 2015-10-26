@@ -3,6 +3,7 @@ use geometry::Normal;
 use geometry::Normalize;
 use geometry::Point;
 use geometry::Vector;
+use ray::Ray;
 
 use geometry::cross;
 
@@ -322,6 +323,14 @@ impl ApplyTransform<Normal> for Transform {
         let yt = self.m_inv[0][1] * x + self.m_inv[1][1] * y + self.m_inv[2][1] * z;
         let zt = self.m_inv[0][2] * x + self.m_inv[1][2] * y + self.m_inv[2][2] * z;
         Normal::new_with(xt, yt, zt)
+    }
+}
+
+impl ApplyTransform<Ray> for Transform {
+    fn xf(&self, r: Ray) -> Ray {
+        let ot = self.xf(r.o);
+        let dt = self.xf(r.d);
+        r.into(ot, dt, r.start)
     }
 }
 
