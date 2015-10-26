@@ -304,6 +304,16 @@ impl ApplyTransform<Point> for Transform {
     }
 }
 
+impl ApplyTransform<Vector> for Transform {
+    fn xf(&self, p: Vector) -> Vector {
+        let (x, y, z) = (p.x, p.y, p.z);
+        let xt = self.m[0][0] * x + self.m[0][1] * y + self.m[0][2] * z;
+        let yt = self.m[1][0] * x + self.m[1][1] * y + self.m[1][2] * z;
+        let zt = self.m[2][0] * x + self.m[2][1] * y + self.m[2][2] * z;
+        Vector::new_with(xt, yt, zt)
+    }
+}
+
 impl ::std::convert::From<Matrix4x4> for Transform {
     fn from(m: Matrix4x4) -> Transform {
         let inv = m.inverse();
