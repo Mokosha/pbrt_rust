@@ -1,4 +1,7 @@
 use std::ops::FnOnce;
+
+use bbox::BBox;
+use bbox::Union;
 use geometry::Normal;
 use geometry::Normalize;
 use geometry::Point;
@@ -342,6 +345,20 @@ impl ApplyTransform<RayDifferential> for Transform {
         ret.ray.o = self.t(&r.ray.o);
         ret.ray.d = self.t(&r.ray.d);
         ret
+    }
+}
+
+impl ApplyTransform<BBox> for Transform {
+    fn xf(&self, b: BBox) -> BBox {
+        BBox::new().unioned_with(
+            &self.xf(Point::new_with(b.p_min.x, b.p_min.y, b.p_min.z))).unioned_with(
+            &self.xf(Point::new_with(b.p_min.x, b.p_min.y, b.p_max.z))).unioned_with(
+            &self.xf(Point::new_with(b.p_min.x, b.p_max.y, b.p_min.z))).unioned_with(
+            &self.xf(Point::new_with(b.p_min.x, b.p_max.y, b.p_max.z))).unioned_with(
+            &self.xf(Point::new_with(b.p_max.x, b.p_min.y, b.p_min.z))).unioned_with(
+            &self.xf(Point::new_with(b.p_max.x, b.p_min.y, b.p_max.z))).unioned_with(
+            &self.xf(Point::new_with(b.p_max.x, b.p_max.y, b.p_min.z))).unioned_with(
+            &self.xf(Point::new_with(b.p_max.x, b.p_max.y, b.p_max.z)))
     }
 }
 

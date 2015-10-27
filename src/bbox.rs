@@ -4,8 +4,11 @@ use geometry::Point;
 use geometry::Vector;
 use std::f32;
 
-pub trait Union<T = Self> {
+pub trait Union<T: ?Sized = Self>: Sized {
     fn union(&self, &T) -> Self;
+    fn unioned_with(self, v: &T) -> Self {
+        self.union(v)
+    }
 }
 
 #[derive(Debug, Clone)]
