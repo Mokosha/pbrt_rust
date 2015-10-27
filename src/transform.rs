@@ -362,6 +362,28 @@ impl ApplyTransform<BBox> for Transform {
     }
 }
 
+impl<'a, 'b> ::std::ops::Mul<&'a Transform> for &'b Transform {
+    type Output = Transform;
+    fn mul(self, t: &'a Transform) -> Transform {
+        Transform::new_with(&self.m * &t.m, &t.m_inv * &self.m_inv)
+    }
+}
+
+impl<'a> ::std::ops::Mul<Transform> for &'a Transform {
+    type Output = Transform;
+    fn mul(self, t: Transform) -> Transform { self * &t }
+}
+
+impl<'a> ::std::ops::Mul<&'a Transform> for Transform {
+    type Output = Transform;
+    fn mul(self, t: &'a Transform) -> Transform { &self * t }
+}
+
+impl ::std::ops::Mul<Transform> for Transform {
+    type Output = Transform;
+    fn mul(self, t: Transform) -> Transform { &self * &t }
+}
+
 impl ::std::convert::From<Matrix4x4> for Transform {
     fn from(m: Matrix4x4) -> Transform {
         let inv = m.inverse();
