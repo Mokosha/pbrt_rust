@@ -56,13 +56,16 @@ impl SurfaceIntegrator for WhittedIntegrator {
             // Add contribution of each light source
             let (li, wi, pdf, visibility) =
                 light.sample_l(p, isect.ray_epsilon, LightSample::new(rng), ray.time.clone());
-            if (!li.is_black() && pdf != 0f32) {
+            if (li.is_black() || pdf == 0f32) { l_acc }
+            else {
                 let f = bsdf.f(&wo, &wi);
-                if (!f.is_black() && visibility.unoccluded(scene)) {
-                    f * li * wi.abs_dot(n) *
+                if (f.is_black() || !visibility.unoccluded(scene)) { l_acc }
+                else {
+                    l_acc +
+                        f * li * wi.abs_dot(n) *
                         visibility.transmittance(scene, renderer, sample, rng) / pdf
-                } else { Spectrum::from_value(0f32) }
-            } else { Spectrum::from_value(0f32) }
+                }
+            }
         });
 
         l + (
