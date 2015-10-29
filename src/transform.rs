@@ -2,6 +2,7 @@ use std::ops::FnOnce;
 
 use bbox::BBox;
 use bbox::Union;
+use geometry::Dot;
 use geometry::Normal;
 use geometry::Normalize;
 use geometry::Point;
@@ -405,6 +406,8 @@ impl ::std::convert::From<Quaternion> for Transform {
         let z = q.v.z;
         let w = q.w;
 
+        debug_assert!((q.dot(&q).sqrt() - 1f32).abs() < 1e-4f32,
+                      "Quaternion must be unit before conversion to Transform");
         Transform::from([
             [1f32 - 2f32*(y*y+z*z), 2f32*(x*y+z*w), 2f32*(x*z-y*w), 0f32],
             [2f32*(x*y-z*w), 1f32 - 2f32*(x*x+z*z), 2f32*(y*z+x*w), 0f32],
