@@ -422,6 +422,37 @@ impl ::std::convert::From<Transform> for Quaternion {
         // with numerical stability problems, can be found in:
         // "Quaternions and 4x4 matrices" By K. Shoemake (1991)
         // Graphics Gems II, pp. 351-54
-        panic!("Not implemented!")
+        let trace = t.m[0][0] + t.m[1][1] + t.m[2][2];
+        if (trace > 0f32) {
+            let s = 0.5f32 / ((trace + 1f32).sqrt());
+            Quaternion::new_with(
+                (t.m[2][1] - t.m[1][2]) * s,
+                (t.m[0][2] - t.m[2][0]) * s,
+                (t.m[1][0] - t.m[0][1]) * s,
+                0.25f32 / s)
+        } else {
+            if (t.m[0][0] > t.m[1][1] && t.m[0][0] > t.m[2][2]) {
+                let s = 0.5f32 / ((1f32 + t.m[0][0] - t.m[1][1] - t.m[2][2]).sqrt());
+                Quaternion::new_with(
+                    0.25f32 / s,
+                    (t.m[0][1] + t.m[1][0]) * s,
+                    (t.m[0][2] + t.m[2][0]) * s,
+                    (t.m[2][1] - t.m[1][2]) * s)
+            } else if (t.m[1][1] > t.m[2][2]) {
+                let s = 0.5f32 / ((1f32 + t.m[1][1] - t.m[0][0] - t.m[2][2]).sqrt());
+                Quaternion::new_with(
+                    (t.m[0][1] + t.m[1][0]) * s,
+                    0.25f32 / s,
+                    (t.m[1][2] + t.m[2][1]) * s,
+                    (t.m[0][2] - t.m[2][0]) * s)
+            } else {
+                let s = 0.5f32 / ((1f32 + t.m[2][2] - t.m[0][0] - t.m[1][1]).sqrt());
+                Quaternion::new_with(
+                    (t.m[0][2] + t.m[2][0]) * s,
+                    (t.m[1][2] + t.m[2][1]) * s,
+                    0.25f32 / s,
+                    (t.m[1][0] - t.m[0][1]) * s)
+            }
+        }
     }
 }
