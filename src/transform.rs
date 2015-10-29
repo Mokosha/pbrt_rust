@@ -6,6 +6,7 @@ use geometry::Normal;
 use geometry::Normalize;
 use geometry::Point;
 use geometry::Vector;
+use quaternion::Quaternion;
 use ray::Ray;
 use ray::RayDifferential;
 
@@ -394,5 +395,30 @@ impl ::std::convert::From<Matrix4x4> for Transform {
 impl ::std::convert::From<[[f32; 4]; 4]> for Transform {
     fn from(mat: [[f32; 4]; 4]) -> Transform {
         Transform::from(Matrix4x4::from(mat))
+    }
+}
+
+impl ::std::convert::From<Quaternion> for Transform {
+    fn from(q: Quaternion) -> Transform {
+        let x = q.v.x;
+        let y = q.v.y;
+        let z = q.v.z;
+        let w = q.w;
+
+        Transform::from([
+            [1f32 - 2f32*(y*y+z*z), 2f32*(x*y+z*w), 2f32*(x*z-y*w), 0f32],
+            [2f32*(x*y-z*w), 1f32 - 2f32*(x*x+z*z), 2f32*(y*z+x*w), 0f32],
+            [2f32*(x*z+y*w), 2f32*(y*z-x*w), 1f32 - 2f32*(x*x+y*y), 0f32],
+            [0f32, 0f32, 0f32, 1f32]])
+    }
+}
+
+impl ::std::convert::From<Transform> for Quaternion {
+    fn from(t: Transform) -> Quaternion {
+        // According to the text, the implementation of this function, along
+        // with numerical stability problems, can be found in:
+        // "Quaternions and 4x4 matrices" By K. Shoemake (1991)
+        // Graphics Gems II, pp. 351-54
+        panic!("Not implemented!")
     }
 }

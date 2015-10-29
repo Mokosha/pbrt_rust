@@ -9,6 +9,7 @@ pub mod intersection;
 pub mod integrator;
 pub mod light;
 pub mod primitive;
+pub mod quaternion;
 pub mod ray;
 pub mod rng;
 pub mod renderer;
