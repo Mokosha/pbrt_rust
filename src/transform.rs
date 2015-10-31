@@ -468,44 +468,51 @@ impl ::std::convert::From<Quaternion> for Transform {
     }
 }
 
-impl ::std::convert::From<Transform> for Quaternion {
-    fn from(t: Transform) -> Quaternion {
+impl ::std::convert::From<Matrix4x4> for Quaternion {
+    fn from(m: Matrix4x4) -> Quaternion {
         // According to the text, the implementation of this function, along
         // with numerical stability problems, can be found in:
         // "Quaternions and 4x4 matrices" By K. Shoemake (1991)
         // Graphics Gems II, pp. 351-54
-        let trace = t.m[0][0] + t.m[1][1] + t.m[2][2];
+        let r = &m;
+        let trace = r[0][0] + r[1][1] + r[2][2];
         if (trace > 0f32) {
             let s = 0.5f32 / ((trace + 1f32).sqrt());
             Quaternion::new_with(
-                (t.m[2][1] - t.m[1][2]) * s,
-                (t.m[0][2] - t.m[2][0]) * s,
-                (t.m[1][0] - t.m[0][1]) * s,
+                (r[2][1] - r[1][2]) * s,
+                (r[0][2] - r[2][0]) * s,
+                (r[1][0] - r[0][1]) * s,
                 0.25f32 / s)
         } else {
-            if (t.m[0][0] > t.m[1][1] && t.m[0][0] > t.m[2][2]) {
-                let s = 0.5f32 / ((1f32 + t.m[0][0] - t.m[1][1] - t.m[2][2]).sqrt());
+            if (r[0][0] > r[1][1] && r[0][0] > r[2][2]) {
+                let s = 0.5f32 / ((1f32 + r[0][0] - r[1][1] - r[2][2]).sqrt());
                 Quaternion::new_with(
                     0.25f32 / s,
-                    (t.m[0][1] + t.m[1][0]) * s,
-                    (t.m[0][2] + t.m[2][0]) * s,
-                    (t.m[2][1] - t.m[1][2]) * s)
-            } else if (t.m[1][1] > t.m[2][2]) {
-                let s = 0.5f32 / ((1f32 + t.m[1][1] - t.m[0][0] - t.m[2][2]).sqrt());
+                    (r[0][1] + r[1][0]) * s,
+                    (r[0][2] + r[2][0]) * s,
+                    (r[2][1] - r[1][2]) * s)
+            } else if (r[1][1] > r[2][2]) {
+                let s = 0.5f32 / ((1f32 + r[1][1] - r[0][0] - r[2][2]).sqrt());
                 Quaternion::new_with(
-                    (t.m[0][1] + t.m[1][0]) * s,
+                    (r[0][1] + r[1][0]) * s,
                     0.25f32 / s,
-                    (t.m[1][2] + t.m[2][1]) * s,
-                    (t.m[0][2] - t.m[2][0]) * s)
+                    (r[1][2] + r[2][1]) * s,
+                    (r[0][2] - r[2][0]) * s)
             } else {
-                let s = 0.5f32 / ((1f32 + t.m[2][2] - t.m[0][0] - t.m[1][1]).sqrt());
+                let s = 0.5f32 / ((1f32 + r[2][2] - r[0][0] - r[1][1]).sqrt());
                 Quaternion::new_with(
-                    (t.m[0][2] + t.m[2][0]) * s,
-                    (t.m[1][2] + t.m[2][1]) * s,
+                    (r[0][2] + r[2][0]) * s,
+                    (r[1][2] + r[2][1]) * s,
                     0.25f32 / s,
-                    (t.m[1][0] - t.m[0][1]) * s)
+                    (r[1][0] - r[0][1]) * s)
             }
         }
+    }
+}
+
+impl ::std::convert::From<Transform> for Quaternion {
+    fn from(t: Transform) -> Quaternion {
+        Quaternion::from(t.m)
     }
 }
 
@@ -578,6 +585,6 @@ impl AnimatedTransform {
 
         // Compute scale S using rotation and original matrix
         let s = r.inverse() * m;
-        (t, Quaternion::from(Transform::from(r)), s)
+        (t, Quaternion::from(r), s)
     }
 }
