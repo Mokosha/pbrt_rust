@@ -15,17 +15,14 @@ impl BSDFSample {
 }
 
 #[derive(Debug, Clone)]
-pub struct BSDF {
-    pub dg_shading: DifferentialGeometry
+pub struct BSDF<'a> {
+    pub dg_shading: DifferentialGeometry<'a>
 }
 
-impl BSDF {
-    pub fn new() -> BSDF {
+impl<'a> BSDF<'a> {
+    pub fn new() -> BSDF<'a> {
         BSDF {
-            dg_shading: DifferentialGeometry {
-                p: Point::new(),
-                nn: Normal::new()
-            }
+            dg_shading: DifferentialGeometry::new()
         }
     }
 

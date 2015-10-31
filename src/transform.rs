@@ -12,8 +12,6 @@ use quaternion::Quaternion;
 use ray::Ray;
 use ray::RayDifferential;
 
-use geometry::cross;
-
 pub trait ApplyTransform<T : Clone> {
     fn xf(&self, T) -> T;
     fn t(&self, v: &T) -> T {
@@ -334,8 +332,8 @@ impl Transform {
         // Initialize first three columns of viewing matrix
         let dir = (look - pos).normalize();
         let up_norm = up.clone().normalize();
-        let left = cross(&up_norm, &dir).normalize();
-        let new_up = cross(&dir, &left);
+        let left = up_norm.cross(&dir).normalize();
+        let new_up = dir.clone().cross(&left);
 
         m[0][0] = left.x;
         m[1][0] = left.y;

@@ -3,16 +3,16 @@ use spectrum::Spectrum;
 use geometry::Vector;
 
 #[derive(Debug, Clone)]
-pub struct Intersection {
+pub struct Intersection<'a> {
     pub ray_epsilon: f32,
-    bsdf: BSDF
+    bsdf: BSDF<'a>
 }
 
-impl Intersection {
-    pub fn new() -> Intersection { Intersection {
+impl<'a> Intersection<'a> {
+    pub fn new() -> Intersection<'a> { Intersection {
         ray_epsilon: 0f32,
         bsdf: BSDF::new()
     } }
-    pub fn get_bsdf(&self) -> &BSDF { &self.bsdf }
+    pub fn get_bsdf(&self) -> &BSDF<'a> { &self.bsdf }
     pub fn le(&self, dir: &Vector) -> Spectrum { Spectrum::from_value(0f32) }
 }

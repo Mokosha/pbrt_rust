@@ -37,6 +37,13 @@ impl Vector {
     pub fn length(&self) -> f32 {
         self.length_squared().sqrt()
     }
+
+    pub fn cross(self, v2: &Vector) -> Vector {
+        Vector::new_with(
+            (self.y * v2.z) - (self.z * v2.y),
+            (self.z * v2.x) - (self.x * v2.z),
+            (self.x * v2.y) - (self.y * v2.x))
+    }
 }
 
 impl ::std::ops::Sub for Vector {
@@ -177,13 +184,6 @@ impl Lerp for Vector {
     }
 }
 
-pub fn cross(v1: &Vector, v2: &Vector) -> Vector {
-    Vector::new_with(
-        (v1.y * v2.z) - (v1.z * v2.y),
-        (v1.z * v2.x) - (v1.x * v2.z),
-        (v1.x * v2.y) - (v1.y * v2.x))
-}
-
 pub fn coordinate_system(v1: &Vector) -> (Vector, Vector) {
     let v2 =
         if (v1.x.abs() > v1.y.abs()) {
@@ -193,7 +193,7 @@ pub fn coordinate_system(v1: &Vector) -> (Vector, Vector) {
             let inv_len = 1f32 / ((v1.y * v1.y + v1.z * v1.z).sqrt());
             Vector::new_with(0f32, v1.z * inv_len, -v1.y * inv_len)
         };
-    let v3 = cross(v1, &v2);
+    let v3 = v1.clone().cross(&v2);
     (v2, v3)
 }
 

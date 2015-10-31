@@ -15,6 +15,7 @@ pub mod rng;
 pub mod renderer;
 pub mod sampler;
 pub mod sampler_renderer;
+pub mod shape;
 pub mod spectrum;
 pub mod scene;
 pub mod time;
