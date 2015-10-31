@@ -171,6 +171,12 @@ impl Normalize for Vector {
     }
 }
 
+impl Lerp for Vector {
+    fn lerp(&self, b: &Vector, t: f32) -> Vector {
+        (1f32 - t) * self + t * b
+    }
+}
+
 pub fn cross(v1: &Vector, v2: &Vector) -> Vector {
     Vector::new_with(
         (v1.y * v2.z) - (v1.z * v2.y),

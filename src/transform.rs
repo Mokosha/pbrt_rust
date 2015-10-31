@@ -3,6 +3,7 @@ use std::ops::FnOnce;
 use bbox::BBox;
 use bbox::Union;
 use geometry::Dot;
+use geometry::Lerp;
 use geometry::Normal;
 use geometry::Normalize;
 use geometry::Point;
@@ -184,6 +185,12 @@ impl ::std::ops::IndexMut<i32> for Matrix4x4 {
             3 => &mut self.m[3],
             _ => panic!("Error - Matrix4x4 index out of bounds!")
         }
+    }
+}
+
+impl Lerp for Matrix4x4 {
+    fn lerp(&self, b: &Matrix4x4, t: f32) -> Matrix4x4 {
+        (1f32 - t) * self + t * b
     }
 }
 
@@ -545,6 +552,31 @@ impl AnimatedTransform {
         }
     }
 
+    fn interpolate(&self, time: f32) -> Transform {
+        // Handle boundary conditions for matrix interpolation
+        if (!self.actually_animated || time <= self.start_time) {
+            return self.start_transform.clone();
+        }
+
+        if (time >= self.end_time) {
+            return self.end_transform.clone();
+        }
+
+        let dt = (time - self.start_time) / (self.end_time - self.start_time);
+
+        // Interpolate translation at dt
+        let trans = self.t[0].lerp(&self.t[1], dt);
+
+        // Interpolate rotation at dt
+        let rotate = self.r[0].lerp(&self.r[1], dt);
+
+        // Interpolate scale at dt
+        let scale = self.s[0].lerp(&self.s[1], dt);
+
+        // Compute interpolated matrix as product of interpolated components
+        Transform::translate(&trans) * Transform::from(rotate) * Transform::from(scale)
+    }
+
     fn decompose(transform: &Transform) -> (Vector, Quaternion, Matrix4x4) {
         // Extract translation T from the transformation matrix
         let t = Vector::new_with(transform.m[0][3], transform.m[1][3], transform.m[2][3]);
@@ -586,5 +618,41 @@ impl AnimatedTransform {
         // Compute scale S using rotation and original matrix
         let s = r.inverse() * m;
         (t, Quaternion::from(r), s)
+    }
+
+    pub fn xfpt(&self, time: f32, p: Point) -> Point {
+        self.interpolate(time).xf(p)
+    }
+
+    pub fn tpt(&self, time: f32, p: &Point) -> Point {
+        self.xfpt(time, p.clone())
+    }
+
+    pub fn xfvec(&self, time: f32, v: Vector) -> Vector {
+        self.interpolate(time).xf(v)
+    }
+
+    pub fn tvec(&self, time: f32, v: &Vector) -> Vector {
+        self.xfvec(time, v.clone())
+    }
+}
+
+impl ApplyTransform<Ray> for AnimatedTransform {
+    fn xf(&self, r: Ray) -> Ray {
+        let mut ret = r.clone();
+        let t = f32::from(r.time);
+        ret.o = self.tpt(t, &ret.o);
+        ret.d = self.tvec(t, &ret.d);
+        ret
+    }
+}
+
+impl ApplyTransform<RayDifferential> for AnimatedTransform {
+    fn xf(&self, r: RayDifferential) -> RayDifferential {
+        let mut ret = r.clone();
+        let t = f32::from(r.ray.time);
+        ret.ray.o = self.tpt(t, &ret.ray.o);
+        ret.ray.d = self.tvec(t, &ret.ray.d);
+        ret
     }
 }
