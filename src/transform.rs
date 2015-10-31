@@ -20,7 +20,7 @@ pub trait ApplyTransform<T : Clone> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct Matrix4x4 {
     m: [[f32; 4]; 4]
 }
@@ -110,6 +110,58 @@ impl<'a> ::std::ops::Mul<Matrix4x4> for &'a Matrix4x4 {
     }
 }
 
+impl<'a, 'b> ::std::ops::Add<&'b Matrix4x4> for &'a Matrix4x4 {
+    type Output = Matrix4x4;
+    fn add(self, m: &'b Matrix4x4) -> Matrix4x4 {
+        Matrix4x4::new_with(
+            &self[0][0] + m[0][0], &self[0][1] + m[0][1], &self[0][2] + m[0][2], &self[0][3] + m[0][3],
+            &self[1][0] + m[1][0], &self[1][1] + m[1][1], &self[1][2] + m[1][2], &self[1][3] + m[1][3],
+            &self[2][0] + m[2][0], &self[2][1] + m[2][1], &self[2][2] + m[2][2], &self[2][3] + m[2][3],
+            &self[3][0] + m[3][0], &self[3][1] + m[3][1], &self[3][2] + m[3][2], &self[3][3] + m[3][3])
+    }
+}
+
+impl<'a> ::std::ops::Add<Matrix4x4> for &'a Matrix4x4 {
+    type Output = Matrix4x4;
+    fn add(self, m: Matrix4x4) -> Matrix4x4 { self + &m }
+}
+
+impl<'a> ::std::ops::Add<&'a Matrix4x4> for Matrix4x4 {
+    type Output = Matrix4x4;
+    fn add(self, m: &'a Matrix4x4) -> Matrix4x4 { &self + m }
+}
+
+impl ::std::ops::Add for Matrix4x4 {
+    type Output = Matrix4x4;
+    fn add(self, m: Matrix4x4) -> Matrix4x4 { &self + &m }
+}
+
+impl<'a> ::std::ops::Mul<f32> for &'a Matrix4x4 {
+    type Output = Matrix4x4;
+    fn mul(self, s: f32) -> Matrix4x4 {
+        Matrix4x4::new_with(
+            &self[0][0] * s, &self[0][1] * s, &self[0][2] * s, &self[0][3] * s,
+            &self[1][0] * s, &self[1][1] * s, &self[1][2] * s, &self[1][3] * s,
+            &self[2][0] * s, &self[2][1] * s, &self[2][2] * s, &self[2][3] * s,
+            &self[3][0] * s, &self[3][1] * s, &self[3][2] * s, &self[3][3] * s)
+    }
+}
+
+impl<'a> ::std::ops::Mul<&'a Matrix4x4> for f32 {
+    type Output = Matrix4x4;
+    fn mul(self, m: &'a Matrix4x4) -> Matrix4x4 { m * self }
+}
+
+impl ::std::ops::Mul<f32> for Matrix4x4 {
+    type Output = Matrix4x4;
+    fn mul(self, s: f32) -> Matrix4x4 { &self * s }
+}
+
+impl ::std::ops::Mul<Matrix4x4> for f32 {
+    type Output = Matrix4x4;
+    fn mul(self, m: Matrix4x4) -> Matrix4x4 { &m * self }
+}
+
 impl ::std::ops::Index<i32> for Matrix4x4 {
     type Output = [f32; 4];
     fn index<'a>(&'a self, index: i32) -> &'a [f32; 4] {
@@ -135,7 +187,7 @@ impl ::std::ops::IndexMut<i32> for Matrix4x4 {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct Transform {
     // Transform private data
     m: Matrix4x4,
@@ -454,5 +506,78 @@ impl ::std::convert::From<Transform> for Quaternion {
                     (t.m[1][0] - t.m[0][1]) * s)
             }
         }
+    }
+}
+
+
+pub struct AnimatedTransform {
+    start_time: f32,
+    end_time: f32,
+    start_transform: Transform,
+    end_transform: Transform,
+    actually_animated: bool,
+    t: [Vector; 2],
+    r: [Quaternion; 2],
+    s: [Matrix4x4; 2]
+}
+
+impl AnimatedTransform {
+    pub fn new(transform1: &Transform, time1: f32,
+               transform2: &Transform, time2: f32) -> AnimatedTransform {
+        let (t1, r1, s1) = AnimatedTransform::decompose(transform1);
+        let (t2, r2, s2) = AnimatedTransform::decompose(transform2);
+        AnimatedTransform {
+            start_time: time1,
+            end_time: time2,
+            start_transform: transform1.clone(),
+            end_transform: transform2.clone(),
+            actually_animated: transform1 != transform2,
+            t: [t1, t2],
+            r: [r1, r2],
+            s: [s1, s2]
+        }
+    }
+
+    fn decompose(transform: &Transform) -> (Vector, Quaternion, Matrix4x4) {
+        // Extract translation T from the transformation matrix
+        let t = Vector::new_with(transform.m[0][3], transform.m[1][3], transform.m[2][3]);
+
+        // Compute new transformation matrix M without translation
+        let mut m = transform.m.clone();
+        {
+            // Scope the borrow of m...
+            let m_ref = &mut m;
+            for i in 0..3 {
+                m_ref[i][3] = 0f32;
+            }
+            m_ref[3] = [0f32, 0f32, 0f32, 1f32];
+        };
+
+        // Extract rotation R from transformation matrix
+        let mut r = m.clone();
+        for _ in 0..100 {
+            // Compute next matrix r_next in series
+            let r_next = {
+                let r_it = r.clone().invert().transpose();
+                0.5 * (&r + r_it)
+            };
+
+            // Compute norm of difference between r and r_next
+            let norm = (0..3).fold(0f32, |acc, i| {
+                let r_ref = &r;
+                let r_next_ref = &r_next;
+                acc.max((r_ref[i][0] - r_next_ref[i][0]).abs() +
+                        (r_ref[i][1] - r_next_ref[i][1]).abs() +
+                        (r_ref[i][2] - r_next_ref[i][2]).abs())
+            });
+
+            if (norm < 0.0001f32) {
+                break;
+            }
+        }
+
+        // Compute scale S using rotation and original matrix
+        let s = r.inverse() * m;
+        (t, Quaternion::from(Transform::from(r)), s)
     }
 }
