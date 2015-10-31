@@ -620,6 +620,23 @@ impl AnimatedTransform {
         (t, Quaternion::from(r), s)
     }
 
+    pub fn motion_bounds(&self, b: &BBox, use_inverse: bool) -> BBox {
+        if (!self.actually_animated) {
+            return self.start_transform.inverse().t(b);
+        }
+
+        let num_steps = 128;
+        (0..num_steps).fold(BBox::new(), |bbox, i| {
+            let t = self.start_time.lerp(&self.end_time, ((i as f32) / (num_steps as f32)));
+            bbox.unioned_with(&(
+                if (use_inverse) {
+                    self.interpolate(t).invert().t(b)
+                } else {
+                    self.interpolate(t).t(b)
+                }))
+        })
+    }
+
     pub fn xfpt(&self, time: f32, p: Point) -> Point {
         self.interpolate(time).xf(p)
     }
