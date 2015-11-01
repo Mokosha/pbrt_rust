@@ -352,6 +352,15 @@ impl Transform {
 
         Transform::new_with(m.clone().invert(), m)
     }
+
+    pub fn swaps_handedness(&self) -> bool {
+        0f32 > (self.m[0][0] * (self.m[1][1] * self.m[2][2] -
+                                self.m[1][2] * self.m[2][1]) -
+                self.m[0][1] * (self.m[1][0] * self.m[2][2] -
+                                self.m[1][2] * self.m[2][0]) +
+                self.m[0][2] * (self.m[1][0] * self.m[2][1] -
+                                self.m[1][1] * self.m[2][0]))
+    }
 }
 
 impl ApplyTransform<Point> for Transform {
