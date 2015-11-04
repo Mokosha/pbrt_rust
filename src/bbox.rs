@@ -25,10 +25,10 @@ impl BBox {
         }
     }
 
-    pub fn new_with(pmin: &Point, pmax: &Point) -> BBox {
+    pub fn new_with(pmin: Point, pmax: Point) -> BBox {
         BBox {
-            p_min: pmin.clone(),
-            p_max: pmax.clone()
+            p_min: pmin,
+            p_max: pmax
         }
     }
 
@@ -119,7 +119,11 @@ impl ::std::ops::IndexMut<i32> for BBox {
 }
 
 impl<'a> ::std::convert::From<&'a Point> for BBox {
-    fn from(pt: &'a Point) -> BBox { BBox::new_with(pt, pt) }
+    fn from(pt: &'a Point) -> BBox { BBox::new_with(pt.clone(), pt.clone()) }
+}
+
+impl ::std::convert::From<Point> for BBox {
+    fn from(pt: Point) -> BBox { BBox::new_with(pt.clone(), pt) }
 }
 
 impl Union<Point> for BBox {
@@ -133,7 +137,7 @@ impl Union<Point> for BBox {
             self.p_max.y.max(pt.y),
             self.p_max.z.max(pt.z));
 
-        BBox::new_with(&p_min, &p_max)
+        BBox::new_with(p_min, p_max)
     }
 }
 
@@ -148,7 +152,7 @@ impl Union for BBox {
             self.p_max.y.max(bbox.p_max.y),
             self.p_max.z.max(bbox.p_max.z));
 
-        BBox::new_with(&p_min, &p_max)
+        BBox::new_with(p_min, p_max)
     }
 }
 
