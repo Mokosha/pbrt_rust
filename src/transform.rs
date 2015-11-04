@@ -12,6 +12,8 @@ use quaternion::Quaternion;
 use ray::Ray;
 use ray::RayDifferential;
 
+use utils::Degrees;
+
 pub trait ApplyTransform<T : Clone> {
     fn xf(&self, T) -> T;
     fn t(&self, v: &T) -> T {
@@ -199,10 +201,6 @@ pub struct Transform {
     m_inv: Matrix4x4
 }
 
-fn to_radians(a: f32) -> f32 {
-    a * ::std::f32::consts::PI / 180f32
-}
-
 impl Transform {
     // Transform public methods
     fn new() -> Transform {
@@ -258,8 +256,8 @@ impl Transform {
     }
 
     fn rotate_x(angle: f32) -> Transform {
-        let sin_t = to_radians(angle).sin();
-        let cos_t = to_radians(angle).cos();
+        let sin_t = angle.as_radians().sin();
+        let cos_t = angle.as_radians().cos();
         let m = Matrix4x4::new_with(
             1f32, 0f32, 0f32, 0f32,
             0f32, cos_t, -sin_t, 0f32,
@@ -270,8 +268,8 @@ impl Transform {
     }
 
     fn rotate_y(angle: f32) -> Transform {
-        let sin_t = to_radians(angle).sin();
-        let cos_t = to_radians(angle).cos();
+        let sin_t = angle.as_radians().sin();
+        let cos_t = angle.as_radians().cos();
         let m = Matrix4x4::new_with(
             cos_t, 0f32, sin_t, 0f32,
             0f32, 1f32, 0f32, 0f32,
@@ -282,8 +280,8 @@ impl Transform {
     }
 
     fn rotate_z(angle: f32) -> Transform {
-        let sin_t = to_radians(angle).sin();
-        let cos_t = to_radians(angle).cos();
+        let sin_t = angle.as_radians().sin();
+        let cos_t = angle.as_radians().cos();
         let m = Matrix4x4::new_with(
             cos_t, -sin_t, 0f32, 0f32,
             sin_t, cos_t, 0f32, 0f32,
@@ -295,8 +293,8 @@ impl Transform {
 
     fn rotate(angle: f32, axis: &Vector) -> Transform {
         let a: Vector = axis.clone().normalize();
-        let s = to_radians(angle).sin();
-        let c = to_radians(angle).cos();
+        let s = angle.as_radians().sin();
+        let c = angle.as_radians().cos();
 
         let mut m = Matrix4x4::new();
         m[0][0] = a.x * a.x + (1f32 - a.x * a.x) * c;

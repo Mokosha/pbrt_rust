@@ -3,6 +3,8 @@ use geometry::Lerp;
 use geometry::Normalize;
 use geometry::Vector;
 
+use utils::Clamp;
+
 pub struct Quaternion {
     pub v: Vector,
     pub w: f32
@@ -123,8 +125,7 @@ impl Lerp for Quaternion {
         if (cos_theta > 0.9995f32) {
             ((1f32 - t) * self + t * q).normalize()
         } else {
-            let clamp = |x: f32, a: f32, b: f32| { x.max(a).min(b) };
-            let thetap = clamp(cos_theta, -1f32, 1f32).acos() * t;
+            let thetap = cos_theta.clamp(-1f32, 1f32).acos() * t;
             let qperp = (q - self * cos_theta).normalize();
             self * thetap.cos() + qperp * thetap.sin()
         }
