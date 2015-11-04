@@ -11,7 +11,7 @@ pub trait Union<T: ?Sized = Self>: Sized {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BBox {
     pub p_min: Point,
     pub p_max: Point
@@ -30,6 +30,11 @@ impl BBox {
             p_min: pmin,
             p_max: pmax
         }
+    }
+
+    pub fn empty(&self) -> bool {
+        let d = &self.p_max - &self.p_min;
+        d.x <= 0f32 || d.y <= 0f32 || d.z <= 0f32
     }
 
     pub fn overlaps(&self, b: &BBox) -> bool {
@@ -51,13 +56,17 @@ impl BBox {
     }
 
     pub fn surface_area(&self) -> f32 {
-        let d = &(self.p_max) - &(self.p_min);
-        2f32 * (d.x * d.y + d.x * d.z + d.y * d.z)
+        let dx = (self.p_max.x - self.p_min.x).max(0f32);
+        let dy = (self.p_max.y - self.p_min.y).max(0f32);
+        let dz = (self.p_max.z - self.p_min.z).max(0f32);
+        2f32 * (dx * dy + dx * dz + dy * dz)
     }
 
     pub fn volume(&self) -> f32 {
-        let d = &(self.p_max) - &(self.p_min);
-        d.x * d.y * d.z
+        let dx = (self.p_max.x - self.p_min.x).max(0f32);
+        let dy = (self.p_max.y - self.p_min.y).max(0f32);
+        let dz = (self.p_max.z - self.p_min.z).max(0f32);
+        dx * dy * dz
     }
 
     pub fn max_extent(&self) -> i32 {
@@ -79,10 +88,14 @@ impl BBox {
     }
 
     pub fn offset(&self, p: &Point) -> Vector {
-        Vector::new_with(
-            (p.x - self.p_min.x) / (self.p_max.x - self.p_min.x),
-            (p.y - self.p_min.y) / (self.p_max.y - self.p_min.y),
-            (p.z - self.p_min.z) / (self.p_max.z - self.p_min.z))
+        if self.empty() {
+            Vector::new_with(f32::INFINITY, f32::INFINITY, f32::INFINITY)
+        } else {
+            Vector::new_with(
+                (p.x - self.p_min.x) / (self.p_max.x - self.p_min.x),
+                (p.y - self.p_min.y) / (self.p_max.y - self.p_min.y),
+                (p.z - self.p_min.z) / (self.p_max.z - self.p_min.z))
+        }
     }
 
     pub fn bounding_sphere(&self) -> (Point, f32) {
@@ -162,4 +175,251 @@ pub trait HasBounds {
 
 impl HasBounds for BBox {
     fn get_bounds(&self) -> BBox { self.clone() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use geometry::Point;
+    use geometry::Vector;
+    use std::f32;
+
+    #[test]
+    fn it_creates_empty_bbox() {
+        let bbox = BBox {
+            p_min: Point::new_with(f32::MAX, f32::MAX, f32::MAX),
+            p_max: Point::new_with(-f32::MAX, -f32::MAX, -f32::MAX)
+        };
+        assert_eq!(bbox, BBox::new());
+    }
+
+    #[test]
+    fn it_creates_a_box_with_specified_points() {
+        let pmin = Point::new_with(1f32, 2f32, 4f32);
+        let pmax = Point::new_with(2f32, 3f32, 5f32);
+        let bbox = BBox {
+            p_min: pmin.clone(),
+            p_max: pmax.clone()
+        };
+        assert_eq!(bbox, BBox::new_with(pmin.clone(), pmax.clone()));
+
+        // Test to see if bbox constructor does any checking to see whether
+        // min and max are properly opposed. This lets us supply bounded
+        // empty bounding boxes.
+        assert!(BBox::new_with(pmax, pmin).ne(&bbox))
+    }
+
+    #[test]
+    fn it_knows_when_its_empty() {
+        assert!(BBox::new().empty());
+
+        assert!(BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(0f32, 0f32, 0f32)).empty());
+
+        assert!(BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(1f32, 0f32, 4f32)).empty());
+
+        assert!(BBox::new_with(
+            Point::new_with(2f32, 0f32, 0f32),
+            Point::new_with(1f32, 3f32, 4f32)).empty());
+
+        assert!(BBox::new_with(
+            Point::new_with(-2f32, 0f32, 0f32),
+            Point::new_with(1f32, -3f32, 4f32)).empty());
+
+        assert!(!(BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(1f32, 3f32, 4f32)).empty()));
+    }
+
+    #[test]
+    fn it_properly_overlaps_with_others() {
+        // Empty bboxes don't overlap
+        assert!(!(BBox::new().overlaps(&BBox::new())));
+
+        let bbox_1 = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        let bbox_2 = BBox::new_with(
+            Point::new_with(0.5f32, 0.5f32, 0.5f32),
+            Point::new_with(1.5f32, 1.5f32, 1.5f32));
+        assert!(bbox_1.overlaps(&bbox_2));
+
+        // Only overlap at a point
+        let bbox_3 = BBox::new_with(
+            Point::new_with(1f32, 1f32, 1f32),
+            Point::new_with(2f32, 2f32, 2f32));
+        assert!(bbox_1.overlaps(&bbox_3));
+        assert!(bbox_2.overlaps(&bbox_3));
+
+        // Don't overlap
+        let bbox_4 = BBox::new_with(
+            Point::new_with(1.5f32, 1.5f32, 1.5f32),
+            Point::new_with(2.5f32, 2.5f32, 2.5f32));
+        assert!(!(bbox_1.overlaps(&bbox_4)));
+        assert!(bbox_2.overlaps(&bbox_4));
+        assert!(bbox_3.overlaps(&bbox_4));
+    }
+
+    #[test]
+    fn it_knows_when_points_are_inside() {
+        let bbox = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        let p1 = Point::new_with(0f32, 0f32, 0f32);
+        let p2 = Point::new_with(0f32, 1f32, 0f32);
+        let p3 = Point::new_with(0f32, 0.1f32, 0.5f32);
+        let p4 = Point::new_with(0.2f32, 0.6f32, 0.1289736f32);
+        let p5 = Point::new_with(1.2f32, 0.6f32, 0.1289736f32);
+        let p6 = Point::new_with(-1.2f32, 2.6f32, 16f32);
+
+        assert!(bbox.inside(&p1));
+        assert!(bbox.inside(&p2));
+        assert!(bbox.inside(&p3));
+        assert!(bbox.inside(&p4));
+        assert!(!(bbox.inside(&p5)));
+        assert!(!(bbox.inside(&p6)));
+
+        assert!(!(BBox::new().inside(&p1)));
+        assert!(!(BBox::new().inside(&p2)));
+        assert!(!(BBox::new().inside(&p3)));
+        assert!(!(BBox::new().inside(&p4)));
+        assert!(!(BBox::new().inside(&p5)));
+        assert!(!(BBox::new().inside(&p6)));
+    }
+
+    #[test]
+    fn it_can_expand() {
+        let mut bbox = BBox::new_with(
+            Point::new_with(2f32, 3f32, 4f32),
+            Point::new_with(5f32, 5f32, 4f32));
+        let expanded = BBox::new_with(
+            Point::new_with(1.5f32, 2.5f32, 3.5f32),
+            Point::new_with(5.5f32, 5.5f32, 4.5f32));
+        bbox.expand(0.5f32);
+        assert_eq!(expanded, bbox);
+        bbox.expand(0f32);
+        assert_eq!(expanded, bbox);
+    }
+
+    #[test]
+    fn it_has_a_surface_area() {
+        let bbox = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        assert_eq!(bbox.surface_area(), 6f32);
+
+        assert_eq!(BBox::new().surface_area(), 0f32);
+
+        let bbox_2 = BBox::new_with(
+            Point::new_with(1f32, 0f32, 0f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        assert_eq!(bbox_2.surface_area(), 2f32);
+
+        let bbox_3 = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(2f32, 3f32, 4f32));
+        assert_eq!(bbox_3.surface_area(), 52f32);
+    }
+
+    #[test]
+    fn it_has_a_volume() {
+
+        let bbox_2 = BBox::new_with(
+            Point::new_with(1f32, 0f32, 0f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        assert_eq!(bbox_2.volume(), 0f32);
+
+        let bbox_3 = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(2f32, 3f32, 4f32));
+        assert_eq!(bbox_3.volume(), 24f32);
+    }
+
+    #[test]
+    fn it_has_a_maximum_extent() {
+        let bbox = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        assert!(bbox.max_extent() == 2);
+        assert!(BBox::new().max_extent() == 2);
+
+        let bbox_2 = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(2f32, 3f32, 4f32));
+        assert_eq!(bbox_2.max_extent(), 2);
+
+        let bbox_3 = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(4f32, 5f32, 4f32));
+        assert_eq!(bbox_3.max_extent(), 1);
+
+        let bbox_4 = BBox::new_with(
+            Point::new_with(0f32, 10f32, 0f32),
+            Point::new_with(4f32, 5f32, 4f32));
+        assert_eq!(bbox_4.max_extent(), 2);
+    }
+
+    #[test]
+    fn it_can_lerp_points() {
+        let bbox = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        assert_eq!(bbox.lerp_point(0.2f32, 0.3f32, 0.4f32),
+                   Point::new_with(0.2f32, 0.3f32, 0.4f32));
+
+        let bbox_2 = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(0f32, 0f32, 0f32));
+        assert_eq!(bbox_2.lerp_point(0.2f32, 0.3f32, 0.4f32),
+                   Point::new_with(0f32, 0f32, 0f32));
+        assert_eq!(bbox_2.lerp_point(-0.2f32, 3f32, 4f32),
+                   Point::new_with(0f32, 0f32, 0f32));
+        assert_eq!(bbox_2.lerp_point(0f32, 0f32, 0f32),
+                   Point::new_with(0f32, 0f32, 0f32));
+        assert_eq!(bbox_2.lerp_point(32f32, -3f32, 1e6f32),
+                   Point::new_with(0f32, 0f32, 0f32));
+    }
+
+    #[test]
+    fn it_can_determine_the_offset_for_points() {
+        let bbox = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        assert_eq!(bbox.offset(&Point::new_with(0.2f32, 0.3f32, 0.4f32)),
+                   Vector::new_with(0.2f32, 0.3f32, 0.4f32));
+
+        let bbox_2 = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(0f32, 0f32, 0f32));
+        assert_eq!(bbox_2.offset(&Point::new_with(0.2f32, 0.3f32, 0.4f32)),
+                   Vector::new_with(f32::INFINITY, f32::INFINITY, f32::INFINITY));
+        assert_eq!(bbox_2.offset(&Point::new_with(-0.2f32, 3f32, 4f32)),
+                   Vector::new_with(f32::INFINITY, f32::INFINITY, f32::INFINITY));
+        assert_eq!(bbox_2.offset(&Point::new_with(0f32, 0f32, 0f32)),
+                   Vector::new_with(f32::INFINITY, f32::INFINITY, f32::INFINITY));
+        assert_eq!(bbox_2.offset(&Point::new_with(32f32, -3f32, 1e6f32)),
+                   Vector::new_with(f32::INFINITY, f32::INFINITY, f32::INFINITY));
+
+        assert_eq!(BBox::new().offset(&Point::new_with(0.2f32, 0.3f32, 0.4f32)),
+                   Vector::new_with(f32::INFINITY, f32::INFINITY, f32::INFINITY));
+        assert_eq!(BBox::new().offset(&Point::new_with(-0.2f32, 3f32, 4f32)),
+                   Vector::new_with(f32::INFINITY, f32::INFINITY, f32::INFINITY));
+    }
+
+    #[test]
+    fn it_has_a_bounding_sphere() {
+        assert_eq!(BBox::new().bounding_sphere(), (Point::new(), 0f32));
+        let bbox = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(0f32, 0f32, 0f32));
+        assert_eq!(bbox.bounding_sphere(), (Point::new(), 0f32));
+
+        let bbox_2 = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        assert_eq!(bbox_2.bounding_sphere(), (Point::new_with(0.5f32, 0.5f32, 0.5f32), 0.75f32.sqrt()));
+    }
 }

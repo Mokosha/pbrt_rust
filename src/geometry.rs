@@ -17,7 +17,7 @@ impl Lerp for f32 {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Vector {
     pub x: f32,
     pub y: f32,
@@ -199,7 +199,7 @@ pub fn coordinate_system(v1: &Vector) -> (Vector, Vector) {
 
 ////////////////////////////////////////////////////////////////////////////////
     
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -215,40 +215,41 @@ impl Point {
 
 impl<'a, 'b> ::std::ops::Sub<&'b Vector> for &'a Point {
     type Output = Point;
-
     fn sub(self, other: &'b Vector) -> Point {
-        Point::new_with(self.x - other.x, self.y - other.y, self.x - other.x)
+        Point::new_with(self.x - other.x, self.y - other.y, self.z - other.z)
     }
 }
 
 impl<'a> ::std::ops::Sub<Vector> for &'a Point {
     type Output = Point;
-
-    fn sub(self, other: Vector) -> Point {
-        Point::new_with(self.x - other.x, self.y - other.y, self.x - other.x)
-    }
+    fn sub(self, other: Vector) -> Point { self - &other }
 }
 
 impl ::std::ops::Sub<Vector> for Point {
     type Output = Point;
-    fn sub(self, _rhs: Vector) -> Point {
-        Point::new_with(self.x - _rhs.x, self.y - _rhs.y, self.z - _rhs.z)
-    }
+    fn sub(self, _rhs: Vector) -> Point { &self - &_rhs }
 }
 
 impl<'a, 'b> ::std::ops::Sub<&'b Point> for &'a Point {
     type Output = Vector;
-
     fn sub(self, other: &'b Point) -> Vector {
-        Vector::new_with(self.x - other.x, self.y - other.y, self.x - other.x)
+        Vector::new_with(self.x - other.x, self.y - other.y, self.z - other.z)
     }
+}
+
+impl<'a> ::std::ops::Sub<&'a Point> for Point {
+    type Output = Vector;
+    fn sub(self, other: &'a Point) -> Vector { &self - other }
+}
+
+impl<'a> ::std::ops::Sub<Point> for &'a Point {
+    type Output = Vector;
+    fn sub(self, other: Point) -> Vector { self - &other }
 }
 
 impl ::std::ops::Sub for Point {
     type Output = Vector;
-    fn sub(self, _rhs: Point) -> Vector {
-        Vector::new_with(self.x - _rhs.x, self.y - _rhs.y, self.z - _rhs.z)
-    }
+    fn sub(self, other: Point) -> Vector { &self - &other}
 }
 
 impl<'a, 'b> ::std::ops::Add<&'b Vector> for &'a Point {
@@ -356,7 +357,7 @@ pub fn distance_squared(p1: &Point, p2: &Point) -> f32 { (p1 - p2).length_square
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Normal {
     pub x: f32,
     pub y: f32,
