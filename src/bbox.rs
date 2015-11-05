@@ -422,4 +422,91 @@ mod tests {
             Point::new_with(1f32, 1f32, 1f32));
         assert_eq!(bbox_2.bounding_sphere(), (Point::new_with(0.5f32, 0.5f32, 0.5f32), 0.75f32.sqrt()));
     }
+
+    #[test]
+    fn it_can_be_constructed_from_a_point() {
+        let origin = Point::new_with(0f32, 0f32, 0f32);
+        let empty_bbox = BBox::new_with(origin.clone(), origin.clone());
+        assert_eq!(BBox::from(&origin), empty_bbox);
+        assert_eq!(BBox::from(origin), empty_bbox);
+
+        let p = Point::new_with(3f32, 2f32, -1f32);
+        let still_empty_bbox = BBox::new_with(p.clone(), p.clone());
+        assert_eq!(BBox::from(&p), still_empty_bbox);
+        assert_eq!(BBox::from(p), still_empty_bbox);
+    }
+
+    #[test]
+    fn it_can_be_unioned_with_a_point() {
+        let origin = Point::new_with(0f32, 0f32, 0f32);
+        let p = Point::new_with(3f32, 2f32, -1f32);
+        let empty_bbox = BBox::new_with(origin.clone(), origin.clone());
+        let still_empty_bbox = BBox::new_with(p.clone(), p.clone());
+        assert_eq!(empty_bbox.union(&p), still_empty_bbox.union(&origin));
+
+        let p2 = Point::new_with(3f32, 0f32, 0f32);
+        let bbox = BBox::new_with(
+            Point::new_with(-1f32, -1f32, -1f32),
+            Point::new_with(1f32, 1f32, 1f32));
+
+        let unioned = BBox::new_with(
+            Point::new_with(-1f32, -1f32, -1f32),
+            Point::new_with(3f32, 1f32, 1f32));
+        assert_eq!(bbox.unioned_with(&p2), unioned);
+    }
+
+    #[test]
+    fn it_can_be_unioned_with_another_bbox() {
+        let bbox = BBox::new_with(
+            Point::new_with(-1f32, -1f32, -1f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        let bbox2 = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(3f32, 2f32, -1f32));
+
+        let bbox_unioned = BBox::new_with(
+            Point::new_with(-1f32, -1f32, -1f32),
+            Point::new_with(3f32, 2f32, 1f32));
+        assert_eq!(bbox.union(&bbox2), bbox_unioned);
+
+        let bbox3 = BBox::from(Point::new_with(3f32, 0f32, 0f32));
+        let unioned = BBox::new_with(
+            Point::new_with(-1f32, -1f32, -1f32),
+            Point::new_with(3f32, 1f32, 1f32));
+        assert_eq!(bbox.union(&bbox3), unioned);
+
+        assert_eq!(BBox::new().unioned_with(&bbox3), bbox3);
+    }
+
+    #[test]
+    fn it_can_be_indexed() {
+        let mut bbox = BBox::new_with(
+            Point::new_with(-1f32, -1f32, -1f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        let ibbox = BBox::new_with(
+            Point::new_with(0f32, 0f32, 0f32),
+            Point::new_with(3f32, 2f32, -1f32));
+
+        bbox[0] = ibbox[0].clone();
+        bbox[1] = ibbox[1].clone();
+        assert_eq!(bbox, ibbox);
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_cant_be_indexed_too_much() {
+        let bbox = BBox::new_with(
+            Point::new_with(-1f32, -1f32, -1f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        println!("This should never appear: {:?}", bbox[2]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_cant_be_mutably_indexed_too_much_either() {
+        let mut bbox = BBox::new_with(
+            Point::new_with(-1f32, -1f32, -1f32),
+            Point::new_with(1f32, 1f32, 1f32));
+        println!("This should never appear: {:?}", bbox[14]);
+    }
 }
