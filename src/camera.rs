@@ -38,3 +38,8 @@ impl Camera {
         (0.0f32, RayDifferential::new())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+}

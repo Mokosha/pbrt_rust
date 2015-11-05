@@ -35,3 +35,8 @@ impl<'a> BSDF<'a> {
             (Vector::new(), 0f32, Spectrum::from_value(0f32))
         }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+}
