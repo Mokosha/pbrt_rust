@@ -71,9 +71,9 @@ impl BBox {
 
     pub fn max_extent(&self) -> i32 {
         let d = &(self.p_max) - &(self.p_min);
-        if (d.x > d.y && d.x > d.z) {
+        if d.x > d.y && d.x > d.z {
             0
-        } else if (d.y > d.z) {
+        } else if d.y > d.z {
             1
         } else {
             2
@@ -101,7 +101,7 @@ impl BBox {
     pub fn bounding_sphere(&self) -> (Point, f32) {
         let c = 0.5f32 * (&self.p_min + &self.p_max);
         let r =
-            if (self.inside(&c)) {
+            if self.inside(&c) {
                 distance(&c, &self.p_max)
             } else {
                 0f32
@@ -507,6 +507,7 @@ mod tests {
         let mut bbox = BBox::new_with(
             Point::new_with(-1f32, -1f32, -1f32),
             Point::new_with(1f32, 1f32, 1f32));
+        bbox[0] = Point::new();
         println!("This should never appear: {:?}", bbox[14]);
     }
 }
