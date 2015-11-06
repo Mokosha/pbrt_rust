@@ -55,3 +55,8 @@ impl<'a> DifferentialGeometry<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+}
