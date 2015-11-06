@@ -3,7 +3,6 @@ use std::ops::FnOnce;
 use bbox::BBox;
 use bbox::Union;
 use geometry::Dot;
-use geometry::Lerp;
 use geometry::Normal;
 use geometry::Normalize;
 use geometry::Point;
@@ -11,8 +10,8 @@ use geometry::Vector;
 use quaternion::Quaternion;
 use ray::Ray;
 use ray::RayDifferential;
-
 use utils::Degrees;
+use utils::Lerp;
 
 pub trait ApplyTransform<T : Clone> {
     fn xf(&self, T) -> T;
@@ -188,7 +187,7 @@ impl ::std::ops::IndexMut<i32> for Matrix4x4 {
     }
 }
 
-impl Lerp for Matrix4x4 {
+impl Lerp<f32> for Matrix4x4 {
     fn lerp(&self, b: &Matrix4x4, t: f32) -> Matrix4x4 {
         (1f32 - t) * self + t * b
     }

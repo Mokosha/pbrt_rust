@@ -1,8 +1,8 @@
-use geometry::Lerp;
 use geometry::distance;
 use geometry::Point;
 use geometry::Vector;
 use std::f32;
+use utils::Lerp;
 
 pub trait Union<T: ?Sized = Self>: Sized {
     fn union(&self, &T) -> Self;

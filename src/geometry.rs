@@ -1,3 +1,5 @@
+use utils::Lerp;
+
 pub trait Dot<T = Self> {
     fn dot(&self, v2: &T) -> f32;
     fn abs_dot(&self, b: &T) -> f32 { self.dot(b).abs() }
@@ -5,16 +7,6 @@ pub trait Dot<T = Self> {
 
 pub trait Normalize {
     fn normalize(self) -> Self;
-}
-
-pub trait Lerp {
-    fn lerp(&self, b: &Self, t: f32) -> Self;
-}
-
-impl Lerp for f32 {
-    fn lerp(&self, b: &f32, t: f32) -> f32 {
-        self * (1f32 - t) + b * t
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -178,7 +170,7 @@ impl Normalize for Vector {
     }
 }
 
-impl Lerp for Vector {
+impl Lerp<f32> for Vector {
     fn lerp(&self, b: &Vector, t: f32) -> Vector {
         (1f32 - t) * self + t * b
     }
@@ -343,7 +335,7 @@ impl ::std::ops::IndexMut<i32> for Point {
     }
 }
 
-impl Lerp for Point {
+impl Lerp<f32> for Point {
     fn lerp(&self, p: &Point, t: f32) -> Point {
         Point::new_with(
             self.x.lerp(&p.x, t),

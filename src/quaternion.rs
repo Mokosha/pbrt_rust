@@ -1,9 +1,8 @@
 use geometry::Dot;
-use geometry::Lerp;
 use geometry::Normalize;
 use geometry::Vector;
-
 use utils::Clamp;
+use utils::Lerp;
 
 pub struct Quaternion {
     pub v: Vector,
@@ -119,7 +118,7 @@ impl Normalize for Quaternion {
     }
 }
 
-impl Lerp for Quaternion {
+impl Lerp<f32> for Quaternion {
     fn lerp(&self, q: &Quaternion, t: f32) -> Quaternion {
         let cos_theta = self.dot(q);
         if (cos_theta > 0.9995f32) {
