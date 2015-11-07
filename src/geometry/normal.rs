@@ -166,6 +166,13 @@ impl Dot<Normal> for Vector {
     }
 }
 
+impl Normalize for Vector {
+    fn normalize(self) -> Vector {
+        let l = self.length();
+        self / l
+    }
+}
+
 impl Normalize for Normal {
     fn normalize(self) -> Normal {
         let v = Vector::from(self);

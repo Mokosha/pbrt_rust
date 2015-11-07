@@ -1,5 +1,4 @@
 use utils::Lerp;
-use geometry::normal::Normalize;
 
 pub trait Dot<T = Self> {
     fn dot(&self, v2: &T) -> f32;
@@ -157,13 +156,6 @@ impl ::std::ops::IndexMut<i32> for Vector {
 impl Dot for Vector {
     fn dot(&self, v: &Vector) -> f32 {
         self.x * v.x + self.y * v.y + self.z * v.z
-    }
-}
-
-impl Normalize for Vector {
-    fn normalize(self) -> Vector {
-        let l = self.length();
-        self / l
     }
 }
 
