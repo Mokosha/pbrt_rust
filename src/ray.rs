@@ -1,5 +1,5 @@
-use geometry::Point;
-use geometry::Vector;
+use geometry::point::Point;
+use geometry::vector::Vector;
 use std::f32;
 use time::Time;
 

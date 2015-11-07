@@ -1,12 +1,10 @@
-use std::ops::FnOnce;
-
 use bbox::BBox;
 use bbox::Union;
-use geometry::Dot;
-use geometry::Normal;
-use geometry::Normalize;
-use geometry::Point;
-use geometry::Vector;
+use geometry::vector::Dot;
+use geometry::vector::Vector;
+use geometry::normal::Normal;
+use geometry::normal::Normalize;
+use geometry::point::Point;
 use quaternion::Quaternion;
 use ray::Ray;
 use ray::RayDifferential;

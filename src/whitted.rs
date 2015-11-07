@@ -1,4 +1,4 @@
-use geometry::Dot;
+use geometry::vector::Dot;
 use integrator;
 use integrator::Integrator;
 use integrator::SurfaceIntegrator;

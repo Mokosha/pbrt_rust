@@ -1,6 +1,6 @@
 use bbox::BBox;
 use diff_geom::DifferentialGeometry;
-use geometry::Point;
+use geometry::point::Point;
 use ray::Ray;
 use transform::ApplyTransform;
 use transform::Transform;

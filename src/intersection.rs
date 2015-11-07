@@ -1,6 +1,6 @@
 use bsdf::BSDF;
 use spectrum::Spectrum;
-use geometry::Vector;
+use geometry::vector::Vector;
 
 #[derive(Debug, Clone)]
 pub struct Intersection<'a> {

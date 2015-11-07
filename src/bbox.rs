@@ -1,6 +1,6 @@
-use geometry::distance;
-use geometry::Point;
-use geometry::Vector;
+use geometry::point::distance;
+use geometry::point::Point;
+use geometry::vector::Vector;
 use std::f32;
 use utils::Lerp;
 
@@ -180,8 +180,8 @@ impl HasBounds for BBox {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use geometry::Point;
-    use geometry::Vector;
+    use geometry::point::Point;
+    use geometry::vector::Vector;
     use std::f32;
 
     #[test]

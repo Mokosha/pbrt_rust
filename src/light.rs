@@ -3,8 +3,8 @@ use rng::RNG;
 use spectrum::Spectrum;
 use time::Time;
 use visibility_tester::VisibilityTester;
-use geometry::Point;
-use geometry::Vector;
+use geometry::point::Point;
+use geometry::vector::Vector;
 
 #[derive(PartialOrd,Ord,PartialEq,Eq)]
 pub struct Light;

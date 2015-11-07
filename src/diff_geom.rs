@@ -1,7 +1,7 @@
-use geometry::Normal;
-use geometry::Normalize;
-use geometry::Point;
-use geometry::Vector;
+use geometry::normal::Normal;
+use geometry::normal::Normalize;
+use geometry::point::Point;
+use geometry::vector::Vector;
 use shape::Shape;
 
 #[derive(Debug, Clone)]

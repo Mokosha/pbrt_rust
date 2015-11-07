@@ -1,6 +1,6 @@
-use geometry::Dot;
-use geometry::Normalize;
-use geometry::Vector;
+use geometry::normal::Normalize;
+use geometry::vector::Dot;
+use geometry::vector::Vector;
 use utils::Clamp;
 use utils::Lerp;
 
