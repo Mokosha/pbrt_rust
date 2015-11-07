@@ -3,8 +3,6 @@ use bsdf::BSDF;
 use bsdf::BSDFSample;
 use camera::Camera;
 use geometry::vector::Dot;
-use geometry::vector::Vector;
-use geometry::normal::Normal;
 use intersection::Intersection;
 use ray::RayDifferential;
 use renderer::Renderer;
