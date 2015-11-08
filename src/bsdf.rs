@@ -1,6 +1,4 @@
 use diff_geom::DifferentialGeometry;
-use geometry::normal::Normal;
-use geometry::point::Point;
 use geometry::vector::Vector;
 use rng::RNG;
 use spectrum::Spectrum;
