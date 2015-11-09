@@ -1,4 +1,3 @@
-use geometry::point::distance;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use std::f32;
@@ -101,10 +100,8 @@ impl BBox {
     pub fn bounding_sphere(&self) -> (Point, f32) {
         let c = 0.5f32 * (&self.p_min + &self.p_max);
         let r =
-            if self.inside(&c) {
-                distance(&c, &self.p_max)
-            } else {
-                0f32
+            if !self.inside(&c) { 0f32 } else {
+                c.distance(&self.p_max)
             };
         (c, r)
     }
