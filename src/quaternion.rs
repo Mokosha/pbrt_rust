@@ -117,11 +117,11 @@ impl Normalize for Quaternion {
 impl Lerp<f32> for Quaternion {
     fn lerp(&self, q: &Quaternion, t: f32) -> Quaternion {
         let cos_theta = self.dot(q);
-        if (cos_theta < 0f32) {
+        if cos_theta < 0f32 {
             self.lerp(&(-q), t)
-        } else if (cos_theta > 0.9995f32) {
+        } else if cos_theta > 0.9995 {
             ((1f32 - t) * self + t * q).normalize()
-        } else if (cos_theta < 1e-6) {
+        } else if cos_theta < 1e-6 {
             // In this case the quaternions are perpendicular
             // in rotational space, so we don't need to do an expensive
             // acos...
@@ -181,7 +181,6 @@ mod tests {
     use geometry::vector::Dot;
     use std::f32;
     use utils::Lerp;
-    use utils::Clamp;
 
     #[test]
     fn it_can_be_created() {
