@@ -413,18 +413,33 @@ mod tests {
 
         // Testing non 0.5 slerp
         {
+            // This represents a 180 degree rotation about Y
             let q1 = Quaternion::new_with(0.0, 1.0, 0.0, 0.0);
+            // This represents a 0 degree rotation about whatever you want
             let q2 = Quaternion::new_with(0.0, 0.0, 0.0, 1.0);
-            let pi_8 = f32::consts::PI / 8.0;
-            let result = Quaternion::new_with(0.0, 1.0 * pi_8.sin(), 0.0,
-                                              pi_8.cos());
-            let result_a = Quaternion::new_with(0.0, -1.0 * pi_8.sin(), 0.0,
-                                                pi_8.cos());
 
-            check_quat!(q2.lerp(&q1, 0.25), result);
-            check_quat!(q2.lerp(&(-(&q1)), 0.25), result_a);
-            check_quat!(-(&q2).lerp(&q1, 0.25), result);
-            check_quat!(-(&q2).lerp(&(-(&q1)), 0.25), result_a);
+            // These represent a PI/4 and -PI/4 rotation about Y
+            let pi_8 = f32::consts::PI / 8.0;
+
+            // Since q2 is zero in either case, rotating to q1 should give
+            // the positive PI/4 rotation
+            {
+                let result = Quaternion::new_with(0.0, 1.0 * pi_8.sin(), 0.0,
+                                                  pi_8.cos());
+                check_quat!(q2.lerp(&q1, 0.25), result);
+                check_quat!(-(&q2).lerp(&q1, 0.25), result);
+            }
+
+            // If we rotate around -q1, then we're rotating in the other
+            // direction starting from zero, and the resulting quaternion
+            // should be -pi/4...
+            {
+                let result = Quaternion::new_with(0.0, -1.0 * pi_8.sin(), 0.0,
+                                                  pi_8.cos());
+
+                check_quat!(q2.lerp(&(-(&q1)), 0.25), result);
+                check_quat!(-(&q2).lerp(&(-(&q1)), 0.25), result);
+            }
         }
     }
 }
