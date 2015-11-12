@@ -2,8 +2,8 @@ use bbox::BBox;
 use diff_geom::DifferentialGeometry;
 use geometry::point::Point;
 use ray::Ray;
-use transform::ApplyTransform;
-use transform::Transform;
+use transform::transform::ApplyTransform;
+use transform::transform::Transform;
 use utils::Degrees;
 use utils::Clamp;
 
