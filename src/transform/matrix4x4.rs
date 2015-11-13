@@ -6,6 +6,23 @@ pub struct Matrix4x4 {
     pub m: [[f32; 4]; 4]
 }
 
+struct Matrix4x4Iterator<'a> {
+    matrix: &'a Matrix4x4,
+    idx: i32
+}
+
+impl<'a> ::std::iter::Iterator for Matrix4x4Iterator<'a> {
+    type Item = [f32; 4];
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.idx;
+        self.idx += 1;
+        match index {
+            x if x < 4 => Some(self.matrix[x]),
+            _ => None
+        }
+    }
+}
+
 impl Matrix4x4 {
     pub fn new() -> Matrix4x4 {
         Matrix4x4 {
@@ -35,6 +52,78 @@ impl Matrix4x4 {
             self.m[0][1], self.m[1][1], self.m[2][1], self.m[3][1],
             self.m[0][2], self.m[1][2], self.m[2][2], self.m[3][2],
             self.m[0][3], self.m[1][3], self.m[2][3], self.m[3][3])        
+    }
+
+    fn iter<'a>(&'a self) -> Matrix4x4Iterator<'a> {
+        Matrix4x4Iterator {
+            matrix: self,
+            idx: 0
+        }
+    }
+
+    // Using GE with partial pivoting from Atkinson's Intro to Numerical Analysis
+    fn lu_decompose(self) -> Option<(Matrix4x4, [i32; 4], f32)> {
+        let mut det = 1.0;
+        let s: Vec<f32> = self.iter().map(|row| {
+            row.iter().fold(0f32, |acc, &a_j| { a_j.abs().max(acc) })
+        }).collect();
+
+        let mut result = self.clone();
+        let mut pivot = [0, 1, 2, 3];
+        for k in 0..3 {
+            let (c_k, p_k) = (k..4).fold((0.0, k), |(c, p), i| {
+                let x = result[i].get(k as usize).unwrap();
+                let cc = s.get(i as usize).map(|a| { x / a }).unwrap();
+                if cc > c { (cc, i) } else { (c, k) }
+            });
+
+            pivot.swap(k as usize, p_k as usize);
+
+            if (c_k == 0.0) {
+                return None;
+            }
+
+            if p_k != k {
+                det = -det;
+                for j in k..4 {
+                    let r_kj = *({ result[k].get(j as usize).unwrap() });
+                    let r_pj = *({ result[p_k].get(j as usize).unwrap() });
+                    *(result[k].get_mut(j as usize).unwrap()) = r_pj;
+                    *(result[p_k].get_mut(j as usize).unwrap()) = r_kj;
+                }
+            }
+
+            let r_kk = *(result[k].get(k as usize).unwrap());
+            for i in (k+1)..4 {
+                let m_i = {
+                    let r_ik = result[i].get_mut(k as usize).unwrap();
+                    *r_ik = *r_ik / r_kk;
+                    *r_ik
+                };
+
+                for j in (k+1)..4 {
+                    let r_kj = *(result[k].get(j as usize).unwrap());
+                    let r_ij = result[i].get_mut(j as usize).unwrap();
+                    *r_ij = *r_ij -  m_i * r_kj;
+                }
+            }
+
+            det = det * r_kk;
+        }
+
+        // Last row of U may be zero -- no good...
+        if result[3][3].abs() < 1.0e-6 {
+            None
+        } else {
+
+            debug_assert_eq!([0, 1, 2, 3], {
+                let mut pc = pivot.clone();
+                pc.sort();
+                pc
+            });
+
+            Some((result, pivot, det))
+        }
     }
 
     pub fn invert(self) -> Matrix4x4 {
@@ -320,5 +409,33 @@ mod tests {
         assert_eq!(m1.clone() * m2.clone(), result);
 
         assert!((m2 * m1).ne(&result));
+    }
+
+    #[test]
+    fn it_can_be_LU_decomposed() {
+        match Matrix4x4::new().lu_decompose() {
+            Some((lu, _, _)) => assert_eq!(lu, Matrix4x4::new()),
+            _ => assert!(false)
+        };
+
+        let m = Matrix4x4::new_with(1.0, -2.0,   3.0, 0.0,
+                                    2.0, -5.0,  12.0, 0.0,
+                                    0.0,  2.0, -10.0, 0.0,
+                                    0.0,  0.0,   0.0, 1.0);
+
+        match m.lu_decompose() {
+            Some((lu, _, _)) =>
+                assert_eq!(lu, Matrix4x4::new_with(1.0, -2.0, 3.0, 0.0,
+                                                   2.0, -1.0, 6.0, 0.0,
+                                                   0.0, -2.0, 2.0, 0.0,
+                                                   0.0,  0.0, 0.0, 1.0)),
+            _ => assert!(false)
+        };
+
+        assert_eq!(Matrix4x4::new_with(32.0,  8.0, 11.0, 17.0,
+                                        8.0, 20.0, 17.0, 23.0,
+                                       11.0, 17.0, 14.0, 26.0,
+                                       17.0, 23.0, 26.0,  2.0).lu_decompose(),
+                   None);
     }
 }
