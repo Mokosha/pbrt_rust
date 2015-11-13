@@ -6,12 +6,6 @@ pub struct Matrix4x4 {
     pub m: [[f32; 4]; 4]
 }
 
-impl ::std::convert::From<[[f32; 4]; 4]> for Matrix4x4 {
-    fn from(mat: [[f32; 4]; 4]) -> Matrix4x4 {
-        Matrix4x4 { m: mat }
-    }
-}
-
 impl Matrix4x4 {
     pub fn new() -> Matrix4x4 {
         Matrix4x4 {
@@ -45,7 +39,7 @@ impl Matrix4x4 {
 
     pub fn invert(self) -> Matrix4x4 {
         // Book says to use a numerically stable Gauss-Jordan elimination routine
-        panic!("Not implemented!")
+        unimplemented!()
     }
 
     pub fn inverse(&self) -> Matrix4x4 {
@@ -174,6 +168,11 @@ impl Lerp<f32> for Matrix4x4 {
     }
 }
 
+impl ::std::convert::From<[[f32; 4]; 4]> for Matrix4x4 {
+    fn from(mat: [[f32; 4]; 4]) -> Matrix4x4 {
+        Matrix4x4 { m: mat }
+    }
+}
 
 impl ::std::convert::From<Matrix4x4> for Quaternion {
     fn from(m: Matrix4x4) -> Quaternion {
@@ -214,5 +213,112 @@ impl ::std::convert::From<Matrix4x4> for Quaternion {
                     (r[1][0] - r[0][1]) * s)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_can_be_created() {
+        assert_eq!(Matrix4x4::new(),
+                   Matrix4x4 {
+                       m: [[1.0, 0.0, 0.0, 0.0],
+                           [0.0, 1.0, 0.0, 0.0],
+                           [0.0, 0.0, 1.0, 0.0],
+                           [0.0, 0.0, 0.0, 1.0]]});
+    }
+
+    #[test]
+    fn it_can_be_created_with_values() {
+        assert_eq!(Matrix4x4::new(),
+                   Matrix4x4::new_with(
+                       1.0, 0.0, 0.0, 0.0,
+                       0.0, 1.0, 0.0, 0.0,
+                       0.0, 0.0, 1.0, 0.0,
+                       0.0, 0.0, 0.0, 1.0));
+
+        assert_eq!(Matrix4x4::new_with(1.0, 2.0, 3.0, 4.0,
+                                       4.0, 3.0, 2.0, 1.0,
+                                       -1.0, 2.0, -3.0, 4.0,
+                                       0.0, 0.0, 0.0, 0.0),
+                   Matrix4x4 { m: [[1.0, 2.0, 3.0, 4.0],
+                                   [4.0, 3.0, 2.0, 1.0],
+                                   [-1.0, 2.0, -3.0, 4.0],
+                                   [0.0, 0.0, 0.0, 0.0]]});
+    }
+
+    #[test]
+    fn it_can_be_created_from_arrays() {
+        assert_eq!(Matrix4x4::new(),
+                   Matrix4x4::from(
+                       [[1.0, 0.0, 0.0, 0.0],
+                        [0.0, 1.0, 0.0, 0.0],
+                        [0.0, 0.0, 1.0, 0.0],
+                        [0.0, 0.0, 0.0, 1.0]]));
+
+        assert_eq!(Matrix4x4::new_with(1.0, 2.0, 3.0, 4.0,
+                                       4.0, 3.0, 2.0, 1.0,
+                                       -1.0, 2.0, -3.0, 4.0,
+                                       0.0, 0.0, 0.0, 0.0),
+                   Matrix4x4::from([[1.0, 2.0, 3.0, 4.0],
+                                    [4.0, 3.0, 2.0, 1.0],
+                                    [-1.0, 2.0, -3.0, 4.0],
+                                    [0.0, 0.0, 0.0, 0.0]]));
+    }
+
+    #[test]
+    fn it_can_be_transposed() {
+        assert_eq!(Matrix4x4::new().transpose(), Matrix4x4::new());
+        assert_eq!(Matrix4x4::new_with(1.0, 2.0, 3.0, 4.0,
+                                       4.0, 3.0, 2.0, 1.0,
+                                       -1.0, 2.0, -3.0, 4.0,
+                                       0.0, 0.0, 0.0, 0.0).transpose(),
+                   Matrix4x4::new_with(1.0, 4.0, -1.0, 0.0,
+                                       2.0, 3.0, 2.0, 0.0,
+                                       3.0, 2.0, -3.0, 0.0,
+                                       4.0, 1.0, 4.0, 0.0));
+    }
+
+    #[test]
+    fn they_can_be_multiplied() {
+        let id = Matrix4x4::new();
+        assert_eq!(&id * &id, id);
+        assert_eq!(id.clone() * &id, id);
+        assert_eq!(&id * id.clone(), id);
+        assert_eq!(id.clone() * id.clone(), id);
+
+        let m1 = Matrix4x4::new_with(1.0, 4.0, -1.0, 0.0,
+                                     2.0, 3.0, 2.0, 0.0,
+                                     3.0, 2.0, -3.0, 0.0,
+                                     4.0, 1.0, 4.0, 0.0);
+
+        let m2 = Matrix4x4::new_with(3.0, -2.0, -1.0, 0.0,
+                                     0.0, 0.1, -2.0, 3.0,
+                                     2.0, 6.0, 3.0, 0.0,
+                                     6.0, 6.0, 1.0, 1.0);
+
+        assert_eq!(&m1 * &id, m1);
+        assert_eq!(m1.clone() * &id, m1);
+        assert_eq!(&m1 * id.clone(), m1);
+        assert_eq!(m1.clone() * id.clone(), m1);
+
+        assert_eq!(&id * &m2, m2);
+        assert_eq!(id.clone() * &m2, m2);
+        assert_eq!(&id * m2.clone(), m2);
+        assert_eq!(id.clone() * m2.clone(), m2);
+
+        let result = Matrix4x4::new_with(1.0, -7.6, -12.0, 12.0,
+                                         10.0, 8.3, -2.0, 9.0,
+                                         3.0, -23.8, -16.0, 6.0,
+                                         20.0, 16.1, 6.0, 3.0);
+
+        assert_eq!(&m1 * &m2, result);
+        assert_eq!(m1.clone() * &m2, result);
+        assert_eq!(&m1 * m2.clone(), result);
+        assert_eq!(m1.clone() * m2.clone(), result);
+
+        assert!((m2 * m1).ne(&result));
     }
 }
