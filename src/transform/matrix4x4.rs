@@ -116,7 +116,7 @@ impl Matrix4x4 {
     }
 
     fn solve_ax_b(lu: &Matrix4x4, pivot: &[usize; 4], b: [f32; 4]) -> [f32; 4] {
-        let mut result: Vec<f32> = b.to_vec();
+        let mut result = b;
 
         for k in 0..3 {
             if pivot[k] != k {
@@ -137,8 +137,7 @@ impl Matrix4x4 {
             result[i] = (result[i] - sum) / lu[i][i];
         }
 
-        debug_assert_eq!(result.len(), 4);
-        [result[0], result[1], result[2], result[3]]
+        result
     }
 
     // !SPEED! We can probably use some of the structure here to speed this up,
