@@ -120,9 +120,44 @@ impl Matrix4x4 {
         }
     }
 
+    fn solve_ax_b(lu: &Matrix4x4, pivot: &[i32; 4], b: [f32; 4]) -> [f32; 4] {
+        let mut result: Vec<f32> = (0..4).map(|k| { b[pivot[k] as usize] }).collect();
+
+        for k in 0..3 {
+            for i in (k+1)..4 {
+                result[i] = result[i] - lu[i][k] * result[k];
+            }
+        }
+        result[3] = result[3] / lu[3][3];
+
+        for i in (0..3).rev() {
+            let sum = ((i+1)..4).fold(0.0, |acc, j| {
+                acc + lu[i][j] * result[j]
+            });
+
+            result[i] = (result[i] - sum) / lu[i][i];
+        }
+
+        debug_assert_eq!(result.len(), 4);
+        [result[0], result[1], result[2], result[3]]
+    }
+
+    // !SPEED! We can probably use some of the structure here to speed this up,
+    // but that complicates the code and the perf win for 4x4 matrices is likely
+    // insignificant in the long run....
+    fn invert_with(lu: Matrix4x4, pivot: [i32; 4]) -> Matrix4x4 {
+        Matrix4x4::from([
+            Matrix4x4::solve_ax_b(&lu, &pivot, [1.0, 0.0, 0.0, 0.0]),
+            Matrix4x4::solve_ax_b(&lu, &pivot, [0.0, 1.0, 0.0, 0.0]),
+            Matrix4x4::solve_ax_b(&lu, &pivot, [0.0, 0.0, 1.0, 0.0]),
+            Matrix4x4::solve_ax_b(&lu, &pivot, [0.0, 0.0, 0.0, 1.0])]).transpose()
+    }
+
     pub fn invert(self) -> Matrix4x4 {
-        // Book says to use a numerically stable Gauss-Jordan elimination routine
-        unimplemented!()
+        match self.lu_decompose() {
+            None => panic!("Singular matrix!"),
+            Some((lu, pivot, _)) => Matrix4x4::invert_with(lu, pivot)
+        }
     }
 
     pub fn inverse(&self) -> Matrix4x4 {
@@ -303,6 +338,25 @@ impl ::std::convert::From<Matrix4x4> for Quaternion {
 mod tests {
     use super::*;
 
+    macro_rules! check_mat {
+        ($m1: expr, $m2: expr) => {{
+            let x = ($m1).clone();
+            let y = ($m2).clone();
+            for i in 0..4 {
+                for j in 0..4 {
+                    let diff = (x[i][j] - y[i][j]).abs();
+                    if diff >= 5e-5 {
+                        println!("");
+                        println!("m1: {:?}", x);
+                        println!("m2: {:?}", y);
+                        println!("Matrices differ at {:?} by {:?}", (i, j), diff);
+                        panic!();
+                    }
+                }
+            }
+        }}
+    }
+
     #[test]
     fn it_can_be_created() {
         assert_eq!(Matrix4x4::new(),
@@ -431,5 +485,37 @@ mod tests {
                                        11.0, 17.0, 14.0, 26.0,
                                        17.0, 23.0, 26.0,  2.0).lu_decompose(),
                    None);
+    }
+
+    #[test]
+    fn it_can_be_inverted() {
+        let m = Matrix4x4::new_with(1.0, -2.0,   3.0, 0.0,
+                                    2.0, -5.0,  12.0, 0.0,
+                                    0.0,  2.0, -10.0, 0.0,
+                                    0.0,  0.0,   0.0, 1.0);
+
+        check_mat!(Matrix4x4::new(), Matrix4x4::new().invert());
+        check_mat!(m.clone() * m.inverse(), Matrix4x4::new());
+        check_mat!(m.inverse() * m.clone(), Matrix4x4::new());
+
+        let n = Matrix4x4::new_with(2.0, 3.0,  1.0, 5.0,
+                                    1.0, 0.0,  3.0, 1.0,
+                                    0.0, 2.0, -3.0, 2.0,
+                                    0.0, 2.0,  3.0, 1.0);
+        let n_inv = Matrix4x4::new_with( 18.0, -35.0, -28.0, 1.0,
+                                         9.0, -18.0, -14.0, 1.0,
+                                         -2.0, 4.0, 3.0, 0.0,
+                                         -12.0, 24.0, 19.0, -1.0);
+        check_mat!(n.invert(), n_inv);
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_cant_invert_singular_matrices() {
+        let m = Matrix4x4::new_with(32.0,  8.0, 11.0, 17.0,
+                                    8.0, 20.0, 17.0, 23.0,
+                                    11.0, 17.0, 14.0, 26.0,
+                                    17.0, 23.0, 26.0,  2.0);
+        check_mat!(m.clone() * m.inverse(), Matrix4x4::new());
     }
 }
