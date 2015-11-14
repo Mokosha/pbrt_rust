@@ -8,7 +8,7 @@ pub struct Matrix4x4 {
 
 struct Matrix4x4Iterator<'a> {
     matrix: &'a Matrix4x4,
-    idx: i32
+    idx: usize
 }
 
 impl<'a> ::std::iter::Iterator for Matrix4x4Iterator<'a> {
@@ -72,12 +72,11 @@ impl Matrix4x4 {
         let mut pivot = [0, 1, 2, 3];
         for k in 0..3 {
             let (c_k, p_k) = (k..4).fold((0.0, k), |(c, p), i| {
-                let x = result[i].get(k as usize).unwrap();
-                let cc = s.get(i as usize).map(|a| { x / a }).unwrap();
+                let cc = result[i][k] / s[i];
                 if cc > c { (cc, i) } else { (c, k) }
             });
 
-            pivot.swap(k as usize, p_k as usize);
+            pivot.swap(k, p_k);
 
             if (c_k == 0.0) {
                 return None;
@@ -86,25 +85,20 @@ impl Matrix4x4 {
             if p_k != k {
                 det = -det;
                 for j in k..4 {
-                    let r_kj = *({ result[k].get(j as usize).unwrap() });
-                    let r_pj = *({ result[p_k].get(j as usize).unwrap() });
+                    let r_kj = result[k][j];
+                    let r_pj = result[p_k][j];
                     *(result[k].get_mut(j as usize).unwrap()) = r_pj;
                     *(result[p_k].get_mut(j as usize).unwrap()) = r_kj;
                 }
             }
 
-            let r_kk = *(result[k].get(k as usize).unwrap());
+            let r_kk = result[k][k];
             for i in (k+1)..4 {
-                let m_i = {
-                    let r_ik = result[i].get_mut(k as usize).unwrap();
-                    *r_ik = *r_ik / r_kk;
-                    *r_ik
-                };
+                let m_i = result[i][k] / result[k][k];
+                result[i][k] = m_i;
 
                 for j in (k+1)..4 {
-                    let r_kj = *(result[k].get(j as usize).unwrap());
-                    let r_ij = result[i].get_mut(j as usize).unwrap();
-                    *r_ij = *r_ij -  m_i * r_kj;
+                    result[i][j] = result[i][j] -  m_i * result[k][j];
                 }
             }
 
@@ -226,9 +220,9 @@ impl ::std::ops::Mul<Matrix4x4> for f32 {
     fn mul(self, m: Matrix4x4) -> Matrix4x4 { &m * self }
 }
 
-impl ::std::ops::Index<i32> for Matrix4x4 {
+impl ::std::ops::Index<usize> for Matrix4x4 {
     type Output = [f32; 4];
-    fn index<'a>(&'a self, index: i32) -> &'a [f32; 4] {
+    fn index<'a>(&'a self, index: usize) -> &'a [f32; 4] {
         match index {
             0 => &self.m[0],
             1 => &self.m[1],
@@ -239,8 +233,8 @@ impl ::std::ops::Index<i32> for Matrix4x4 {
     }
 }
 
-impl ::std::ops::IndexMut<i32> for Matrix4x4 {
-    fn index_mut<'a>(&'a mut self, index: i32) -> &'a mut [f32; 4] {
+impl ::std::ops::IndexMut<usize> for Matrix4x4 {
+    fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut [f32; 4] {
         match index {
             0 => &mut self.m[0],
             1 => &mut self.m[1],
