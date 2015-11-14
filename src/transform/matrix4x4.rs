@@ -300,7 +300,7 @@ impl ::std::convert::From<Matrix4x4> for Quaternion {
         let r = &m;
         let trace = r[0][0] + r[1][1] + r[2][2];
         debug_assert_eq!(r[3][3], 1.0);
-        if (trace > 0f32) {
+        if trace > 0.0 {
             let s = 0.5f32 / ((trace + 1f32).sqrt());
             Quaternion::new_with(
                 (r[2][1] - r[1][2]) * s,
@@ -308,16 +308,14 @@ impl ::std::convert::From<Matrix4x4> for Quaternion {
                 (r[1][0] - r[0][1]) * s,
                 0.25f32 / s)
         } else {
-            debug_assert!(false);
-            println!("Quaternion::from(Matrix4x4) -- Untested control path taken");
-            if (r[0][0] > r[1][1] && r[0][0] > r[2][2]) {
+            if r[0][0] > r[1][1] && r[0][0] > r[2][2] {
                 let s = 0.5f32 / ((1f32 + r[0][0] - r[1][1] - r[2][2]).sqrt());
                 Quaternion::new_with(
                     0.25f32 / s,
                     (r[0][1] + r[1][0]) * s,
                     (r[0][2] + r[2][0]) * s,
                     (r[2][1] - r[1][2]) * s)
-            } else if (r[1][1] > r[2][2]) {
+            } else if r[1][1] > r[2][2] {
                 let s = 0.5f32 / ((1f32 + r[1][1] - r[0][0] - r[2][2]).sqrt());
                 Quaternion::new_with(
                     (r[0][1] + r[1][0]) * s,
@@ -625,31 +623,6 @@ mod tests {
 
     #[test]
     fn it_can_be_converted_to_a_quaternion() {
-        // I think that this is a fairly rare use case...
-        let c = (::std::f32::consts::PI / 4.0).cos();
-        let s = (::std::f32::consts::PI / 4.0).sin();
-
-        let m_rot_x = Matrix4x4::new_with(1.0, 0.0, 0.0, 0.0,
-                                          0.0, c, -s, 0.0,
-                                          0.0, s, c, 0.0,
-                                          0.0, 0.0, 0.0, 1.0);
-
-        let m_rot_y = Matrix4x4::new_with(c, 0.0, s, 0.0,
-                                          0.0, 1.0, 0.0, 0.0,
-                                          -s, 0.0, c, 0.0,
-                                          0.0, 0.0, 0.0, 1.0);
-
-        let m_rot_z = Matrix4x4::new_with(c, -s, 0.0, 0.0,
-                                          s, c, 0.0, 0.0,
-                                          0.0, 0.0, 1.0, 0.0,
-                                          0.0, 0.0, 0.0, 1.0);
-
-        let cq = (::std::f32::consts::PI / 8.0).cos();
-        let sq = (::std::f32::consts::PI / 8.0).sin();
-        let q_x = Quaternion::new_with(sq, 0.0, 0.0, cq);
-        let q_y = Quaternion::new_with(0.0, sq, 0.0, cq);
-        let q_z = Quaternion::new_with(0.0, 0.0, sq, cq);
-
         macro_rules! check_quat {
             ($q1: expr, $q2: expr) => {{
                 let u = ($q1).clone();
@@ -663,8 +636,39 @@ mod tests {
             }}
         };
 
-        check_quat!(Quaternion::from(m_rot_x), q_x);
-        check_quat!(Quaternion::from(m_rot_y), q_y);
-        check_quat!(Quaternion::from(m_rot_z), q_z);
+        let check_rotation = |angle: f32| {
+            // I think that this is a fairly rare use case...
+            let c = angle.cos();
+            let s = angle.sin();
+
+            let m_rot_x = Matrix4x4::new_with(1.0, 0.0, 0.0, 0.0,
+                                              0.0, c, -s, 0.0,
+                                              0.0, s, c, 0.0,
+                                              0.0, 0.0, 0.0, 1.0);
+
+            let m_rot_y = Matrix4x4::new_with(c, 0.0, s, 0.0,
+                                              0.0, 1.0, 0.0, 0.0,
+                                              -s, 0.0, c, 0.0,
+                                              0.0, 0.0, 0.0, 1.0);
+
+            let m_rot_z = Matrix4x4::new_with(c, -s, 0.0, 0.0,
+                                              s, c, 0.0, 0.0,
+                                              0.0, 0.0, 1.0, 0.0,
+                                              0.0, 0.0, 0.0, 1.0);
+
+            let cq = (0.5 * angle).cos();
+            let sq = (0.5 * angle).sin();
+            let q_x = Quaternion::new_with(sq, 0.0, 0.0, cq);
+            let q_y = Quaternion::new_with(0.0, sq, 0.0, cq);
+            let q_z = Quaternion::new_with(0.0, 0.0, sq, cq);
+
+            check_quat!(Quaternion::from(m_rot_x), q_x);
+            check_quat!(Quaternion::from(m_rot_y), q_y);
+            check_quat!(Quaternion::from(m_rot_z), q_z);
+        };
+
+        for i in 0..16 {
+            check_rotation((i as f32) * ::std::f32::consts::PI / 8.0);
+        }
     }
 }
