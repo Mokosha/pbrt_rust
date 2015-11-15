@@ -318,3 +318,60 @@ impl ::std::convert::From<Transform> for Quaternion {
         Quaternion::from(t.m)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use transform::matrix4x4::Matrix4x4;
+    use geometry::vector::Vector;
+    use geometry::normal::Normalize;
+    use utils::Degrees;
+
+    #[test]
+    fn it_can_be_created() {
+        assert_eq!(Transform::new(),
+                   Transform {
+                       m: Matrix4x4::new(),
+                       m_inv: Matrix4x4::new()
+                   });
+    }
+
+    #[test]
+    fn it_can_be_created_with_matrices() {
+        assert_eq!(Transform::new_with(Matrix4x4::new(), Matrix4x4::new()),
+                   Transform::new());
+
+        let m_ = Matrix4x4::new_with(2.0, 3.0,  1.0, 5.0,
+                                     1.0, 0.0,  3.0, 1.0,
+                                     0.0, 2.0, -3.0, 2.0,
+                                     0.0, 2.0,  3.0, 1.0);
+        let m_inv_ = m_.inverse();
+        assert_eq!(Transform::new_with(m_.clone(), m_inv_.clone()),
+                   Transform { m: m_, m_inv: m_inv_ });
+    }
+
+    #[test]
+    fn it_can_transform_vectors() {
+        let c = (45f32).as_radians().cos();
+        let s = (45f32).as_radians().sin();
+
+        let m_rot_x = Matrix4x4::new_with(1.0, 0.0, 0.0, 0.0,
+                                          0.0, c, -s, 0.0,
+                                          0.0, s, c, 0.0,
+                                          0.0, 0.0, 0.0, 1.0);
+        let v = Vector::new_with(1.0, 1.0, 0.0).normalize();
+        let xform = Transform::new_with(m_rot_x.clone(), m_rot_x.inverse());
+
+        let vt = Vector::new_with(2f32.sqrt() / 2.0, 0.5, 0.5);
+        assert!((xform.t(&v) - &vt).length_squared() < 1e-6);
+        assert!((xform.xf(v) - &vt).length_squared() < 1e-6);
+        assert_eq!(vt, Transform::new().t(&vt));
+    }
+
+    #[test]
+    fn it_cannot_translate_vectors() {
+        let v = Vector::new_with(1.0, 1.0, 1.0);
+        let xform = Transform::translate(&Vector::new_with(1.0, 4.0, -300.0));
+        assert_eq!(xform.t(&v), v);
+    }
+}
