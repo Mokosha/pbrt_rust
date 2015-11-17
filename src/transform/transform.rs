@@ -75,7 +75,7 @@ impl Transform {
                                    self.m[1][2],
                                    self.m[2][2]).length_squared();
         let is_one = |x| x > 0.999 && x < 1.001;
-        is_one(la2) && is_one(lb2) && is_one(lc2)
+        !(is_one(la2) && is_one(lb2) && is_one(lc2))
     }
 
     pub fn rotate_x(angle: f32) -> Transform {
@@ -196,8 +196,7 @@ pub trait ApplyTransform<T : Clone> {
 impl ApplyTransform<Point> for Transform {
     fn xf(&self, p: Point) -> Point {
         let (x, y, z) = (p.x, p.y, p.z);
-        let xt = self.m[0][0] * x + self.m[0][1] * y +
-            self.m[0][2] * z + self.m[0][3];
+        let xt = self.m[0][0] * x + self.m[0][1] * y + self.m[0][2] * z + self.m[0][3];
         let yt = self.m[1][0] * x + self.m[1][1] * y + self.m[1][2] * z + self.m[1][3];
         let zt = self.m[2][0] * x + self.m[2][1] * y + self.m[2][2] * z + self.m[2][3];
         let w = self.m[3][0] * x + self.m[3][1] * y + self.m[3][2] * z + self.m[3][3];
@@ -323,6 +322,7 @@ impl ::std::convert::From<Transform> for Quaternion {
 mod tests {
     use super::*;
     use transform::matrix4x4::Matrix4x4;
+    use geometry::point::Point;
     use geometry::vector::Vector;
     use geometry::normal::Normalize;
     use utils::Degrees;
@@ -373,5 +373,94 @@ mod tests {
         let v = Vector::new_with(1.0, 1.0, 1.0);
         let xform = Transform::translate(&Vector::new_with(1.0, 4.0, -300.0));
         assert_eq!(xform.t(&v), v);
+    }
+
+    #[test]
+    fn it_can_be_inverted() {
+        let p = Point::new_with(1.0, 2.0, 3.0);
+        let m = Matrix4x4::new_with(2.0, 3.0,  1.0, 5.0,
+                                    1.0, 0.0,  3.0, 1.0,
+                                    0.0, 2.0, -3.0, 2.0,
+                                    0.0, 2.0,  3.0, 1.0);
+        let xform = Transform::new_with(m.clone(), m.invert());
+        let xform_inv = xform.inverse();
+
+        assert!((xform_inv.xf(xform.t(&p)) - p).length_squared() < 1e-6);
+        assert_eq!(Transform::new(), Transform::new().invert());
+    }
+
+    #[test]
+    fn it_can_translate_points() {
+        let p = Point::new_with(1.0, 1.0, 1.0);
+        let v = Vector::new_with(1.0, 2.0, 3.0);
+        let xform = Transform::translate(&v);
+        assert_eq!(xform.xf(p), Point::new_with(2.0, 3.0, 4.0));
+    }
+
+    #[test]
+    fn it_can_scale_vectors() {
+        let xform = Transform::scale(2.0, 0.5, 100.0);
+        assert_eq!(xform.xf(Vector::new_with(1.0, 2.0, 0.0)), Vector::new_with(2.0, 1.0, 0.0));
+        assert_eq!(xform.xf(Vector::new_with(-1.0, 0.0, -0.01)), Vector::new_with(-2.0, 0.0, -1.0));
+    }
+
+    #[test]
+    fn it_knows_if_it_has_scale() {
+        assert!(!Transform::new().has_scale());
+        assert!(!Transform::rotate_x(3.0).has_scale());
+        assert!(Transform::scale(2.0, 0.5, 100.0).has_scale());
+        assert!(Transform::scale(2.0, 1.0, 100.0).has_scale());
+        assert!(Transform::scale(2.0, 0.5, 1.0).has_scale());
+        assert!(Transform::scale(1.0, 0.5, 100.0).has_scale());
+        assert!(Transform::scale(0.0, 0.0, 0.0).has_scale());
+    }
+
+    #[test]
+    fn it_can_rotate_about_x() {
+        let xform = Transform::rotate_x(45.0);
+        assert_eq!(xform.xf(Vector::new_with(1.0, 0.0, 0.0)),
+                   Vector::new_with(1.0, 0.0, 0.0));
+        assert_eq!(xform.xf(Vector::new()), Vector::new());
+        assert!((xform.xf(Vector::new_with(1.0, 1.0, 0.0).normalize()) -
+                 Vector::new_with(2f32.sqrt() / 2.0, 0.5, 0.5)).length_squared() < 1e-6);
+    }
+
+    #[test]
+    fn it_can_rotate_about_y() {
+        let xform = Transform::rotate_y(45.0);
+        assert_eq!(xform.xf(Vector::new_with(0.0, 1.0, 0.0)),
+                   Vector::new_with(0.0, 1.0, 0.0));
+        assert_eq!(xform.xf(Vector::new()), Vector::new());
+        assert!((xform.xf(Vector::new_with(1.0, 1.0, 0.0).normalize()) -
+                 Vector::new_with(0.5, 2f32.sqrt() / 2.0, -0.5)).length_squared() < 1e-6);
+    }
+
+    #[test]
+    fn it_can_rotate_about_z() {
+        let xform = Transform::rotate_z(45.0);
+        assert_eq!(xform.xf(Vector::new_with(0.0, 0.0, 1.0)),
+                   Vector::new_with(0.0, 0.0, 1.0));
+        assert_eq!(xform.xf(Vector::new()), Vector::new());
+        assert!((xform.xf(Vector::new_with(0.0, 1.0, 1.0).normalize()) -
+                 Vector::new_with(-0.5, 0.5, 2f32.sqrt() / 2.0)).length_squared() < 1e-6);
+    }
+
+    #[test]
+    fn it_can_rotate_about_arbitrary_axes() {
+        let x_axis = Vector::new_with(1.0, 0.0, 0.0);
+        let xform = Transform::rotate(45.0, &x_axis);
+
+        assert_eq!(xform.t(&x_axis), x_axis);
+        assert_eq!(xform.xf(Vector::new()), Vector::new());
+        assert!((xform.xf(Vector::new_with(1.0, 1.0, 0.0).normalize()) -
+                 Vector::new_with(2f32.sqrt() / 2.0, 0.5, 0.5)).length_squared() < 1e-6);
+
+        let xform2 = Transform::rotate(120.0, &Vector::new_with(1.0, 1.0, 1.0));
+        assert!((xform2.xf(Vector::new_with(1.0, 0.0, 0.0)) -
+                 Vector::new_with(0.0, 1.0, 0.0)).length_squared() < 1e-6);
+        assert!((xform2.xf(Vector::new_with(0.0, 1.0, 0.0)) -
+                 Vector::new_with(0.0, 0.0, 1.0)).length_squared() < 1e-6);
+        assert!((xform2.xf(Vector::new_with(0.0, 0.0, 1.0)) -
+                 Vector::new_with(1.0, 0.0, 0.0)).length_squared() < 1e-6);
     }
 }
