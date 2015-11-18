@@ -152,24 +152,23 @@ impl Transform {
 
         // Initialize first three columns of viewing matrix
         let dir = (look - pos).normalize();
-        let up_norm = up.clone().normalize();
-        let left = up_norm.cross(&dir).normalize();
+        let left = up.clone().normalize().cross(&dir).normalize();
         let new_up = dir.clone().cross(&left);
 
         m[0][0] = left.x;
         m[1][0] = left.y;
         m[2][0] = left.z;
-        m[3][0] = 0f32;
+        m[3][0] = 0.0;
 
         m[0][1] = new_up.x;
         m[1][1] = new_up.y;
         m[2][1] = new_up.z;
-        m[3][1] = 0f32;
+        m[3][1] = 0.0;
 
         m[0][2] = dir.x;
         m[1][2] = dir.y;
         m[2][2] = dir.z;
-        m[3][2] = 0f32;
+        m[3][2] = 0.0;
 
         Transform::new_with(m.clone().invert(), m)
     }
@@ -462,5 +461,43 @@ mod tests {
                  Vector::new_with(0.0, 0.0, 1.0)).length_squared() < 1e-6);
         assert!((xform2.xf(Vector::new_with(0.0, 0.0, 1.0)) -
                  Vector::new_with(1.0, 0.0, 0.0)).length_squared() < 1e-6);
+    }
+
+    #[test]
+    fn it_can_look_at_a_point() {
+        let origin = Point::new();
+        let pos = Point::new_with(1.0, 1.0, 1.0);
+        let up = Vector::new_with(0.0, 1.0, 0.0);
+
+        let xform = Transform::look_at(&pos, &origin, &up);
+        assert!(xform.t(&origin).x.abs() < 1e-6);
+        assert!(xform.t(&origin).y.abs() < 1e-6);
+        assert!(xform.t(&origin).z > 1.0);
+
+        assert!(xform.xf(Point::new_with(-1.0, -1.0, -1.0)).x.abs() < 1e-6);
+        assert!(xform.xf(Point::new_with(-1.0, -1.0, -1.0)).y.abs() < 1e-6);
+        assert!(xform.xf(Point::new_with(-1.0, -1.0, -1.0)).z > 2.0);
+
+        let pos2 = Point::new_with(1.0, 2.0, 3.0);
+        let look = Point::new_with(-1.0, 0.0, 4.0);
+
+        let xform2 = Transform::look_at(&pos2, &look, &up);
+
+        // The x-y plane for this transform should have the plane equation:
+        // (-2/3)A + (-2/3)B + (1/3)C + 1 = 0
+        // We want the intersection with the Z-axis, this should be whatever
+        // C value satisfies the plane for (0, 0, C), so C = -3.
+        assert_eq!(xform2.xf(Point::new_with(0.0, 0.0, -3.0)).z, 0.0);
+
+        // Because the direction of the camera should be in the negative x
+        // and y direction, the resulting point should have a positive x/y
+        // coordinate...
+        assert!(xform2.xf(Point::new_with(0.0, 0.0, -3.0)).x.abs() > 0.1);
+        assert!(xform2.xf(Point::new_with(0.0, 0.0, -3.0)).y.abs() > 0.1);
+
+        // The midpoint between the two points should also be along the z axis.
+        assert!(xform2.xf(Point::new_with(0.0, 1.0, 3.5)).z > 1.0);
+        assert!(xform2.xf(Point::new_with(0.0, 1.0, 3.5)).x.abs() < 1e-6);
+        assert!(xform2.xf(Point::new_with(0.0, 1.0, 3.5)).y.abs() < 1e-6);
     }
 }
