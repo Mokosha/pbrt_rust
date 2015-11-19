@@ -500,4 +500,39 @@ mod tests {
         assert!(xform2.xf(Point::new_with(0.0, 1.0, 3.5)).x.abs() < 1e-6);
         assert!(xform2.xf(Point::new_with(0.0, 1.0, 3.5)).y.abs() < 1e-6);
     }
+
+    #[test]
+    fn it_can_detect_handedness_swap() {
+        let m = Matrix4x4::new();
+
+        // If any of the axes are swapped, then this matrix should "swap handedness"
+        assert!(!Transform::new_with(m.clone(), m.clone()).swaps_handedness());
+
+        let mut m2 = m.clone();
+
+        m2[0][0] = -1.0;
+        assert!(Transform::new_with(m2.clone(), m2.inverse()).swaps_handedness());
+        m2[0][0] = 1.0;
+        m2[1][1] = -1.0;
+        assert!(Transform::new_with(m2.clone(), m2.inverse()).swaps_handedness());
+        m2[1][1] = 1.0;
+        m2[2][2] = -1.0;
+        assert!(Transform::new_with(m2.clone(), m2.inverse()).swaps_handedness());
+
+        let xform = Transform::new_with(m2.clone(), m2.inverse()) * Transform::rotate_x(34.0);
+        let xform2 = &xform * Transform::translate(&Vector::new_with(1.0, -2.0, 4.0));
+        let xform3 = &xform * Transform::look_at((&Point::new_with(1.0, 0.0, -3.0)),
+                                                 (&Point::new_with(15.0, 12.0, -0.0)),
+                                                 (&Vector::new_with(0.0, 1.0, 0.0)));
+
+        // If one matrix swaps handedness, it infects all of the subsequent ones...
+        assert!(xform.swaps_handedness());
+        assert!(xform2.swaps_handedness());
+        assert!(xform3.swaps_handedness());
+
+        // But we can swap it back...
+        assert!(!(xform3 * Transform::new_with(m2.clone(), m2.inverse()).swaps_handedness()));
+    }
+
+        
 }
