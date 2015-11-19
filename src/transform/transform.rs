@@ -521,9 +521,9 @@ mod tests {
 
         let xform = Transform::new_with(m2.clone(), m2.inverse()) * Transform::rotate_x(34.0);
         let xform2 = &xform * Transform::translate(&Vector::new_with(1.0, -2.0, 4.0));
-        let xform3 = &xform * Transform::look_at((&Point::new_with(1.0, 0.0, -3.0)),
-                                                 (&Point::new_with(15.0, 12.0, -0.0)),
-                                                 (&Vector::new_with(0.0, 1.0, 0.0)));
+        let xform3 = &xform2 * Transform::look_at((&Point::new_with(1.0, 0.0, -3.0)),
+                                                  (&Point::new_with(15.0, 12.0, -0.0)),
+                                                  (&Vector::new_with(0.0, 1.0, 0.0)));
 
         // If one matrix swaps handedness, it infects all of the subsequent ones...
         assert!(xform.swaps_handedness());
@@ -531,8 +531,6 @@ mod tests {
         assert!(xform3.swaps_handedness());
 
         // But we can swap it back...
-        assert!(!(xform3 * Transform::new_with(m2.clone(), m2.inverse()).swaps_handedness()));
+        assert!(!(xform3 * Transform::new_with(m2.clone(), m2.inverse())).swaps_handedness());
     }
-
-        
 }
