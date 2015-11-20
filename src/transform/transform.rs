@@ -323,6 +323,7 @@ mod tests {
     use transform::matrix4x4::Matrix4x4;
     use geometry::point::Point;
     use geometry::vector::Vector;
+    use geometry::normal::Normal;
     use geometry::normal::Normalize;
     use utils::Degrees;
 
@@ -365,6 +366,16 @@ mod tests {
         assert!((xform.t(&v) - &vt).length_squared() < 1e-6);
         assert!((xform.xf(v) - &vt).length_squared() < 1e-6);
         assert_eq!(vt, Transform::new().t(&vt));
+
+        let xform2 = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
+            * Transform::rotate_y(90.0);
+
+        assert!((xform2.xf(Vector::new_with(1.0, 1.0, 1.0)) -
+                Vector::new_with(1.0, 1.0, -1.0)).length_squared() < 1e-6);
+        assert_eq!(xform2.xf(Vector::new()), Vector::new());
+        assert_eq!(Transform::new().xf(Vector::new()), Vector::new());
+        assert_eq!(Transform::new().xf(Vector::new_with(1.0, 5.0, -13.0)),
+                   Vector::new_with(1.0, 5.0, -13.0));
     }
 
     #[test]
@@ -519,7 +530,8 @@ mod tests {
         m2[2][2] = -1.0;
         assert!(Transform::new_with(m2.clone(), m2.inverse()).swaps_handedness());
 
-        let xform = Transform::new_with(m2.clone(), m2.inverse()) * Transform::rotate_x(34.0);
+        let xform = Transform::new_with(m2.clone(), m2.inverse()) *
+            Transform::rotate_x(34.0);
         let xform2 = &xform * Transform::translate(&Vector::new_with(1.0, -2.0, 4.0));
         let xform3 = &xform2 * Transform::look_at((&Point::new_with(1.0, 0.0, -3.0)),
                                                   (&Point::new_with(15.0, 12.0, -0.0)),
@@ -531,6 +543,35 @@ mod tests {
         assert!(xform3.swaps_handedness());
 
         // But we can swap it back...
-        assert!(!(xform3 * Transform::new_with(m2.clone(), m2.inverse())).swaps_handedness());
+        assert!(!(xform3 * Transform::new_with(m2.clone(), m2.inverse()))
+                .swaps_handedness());
+    }
+
+    #[test]
+    fn it_can_transform_points() {
+        let xform = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
+            * Transform::rotate_y(90.0);
+
+        assert_eq!(xform.xf(Point::new_with(1.0, 1.0, 1.0)),
+                   Point::new_with(2.0, 3.0, 2.0));
+        assert_eq!(xform.xf(Point::new()), Point::new_with(1.0, 2.0, 3.0));
+        assert_eq!(Transform::new().xf(Point::new()), Point::new());
+        assert_eq!(Transform::new().xf(Point::new_with(1.0, 5.0, -13.0)),
+                   Point::new_with(1.0, 5.0, -13.0));
+    }
+
+    #[test]
+    fn it_can_transform_normals() {
+        let xform = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
+            * Transform::rotate_y(90.0);
+        assert_eq!(xform.xf(Normal::new_with(1.0, 1.0, 1.0).normalize()),
+                   Normal::new_with(1.0, 1.0, -1.0).normalize());
+        assert_eq!(Transform::scale(2.0, 2.0, 2.0).xf(
+            Normal::new_with(1.0, 0.0, 0.0)).normalize(),
+                   Normal::new_with(1.0, 0.0, 0.0));
+
+        assert_eq!(Transform::rotate_y(45.0).xf(
+            Normal::new_with(1.0, 1.0, 1.0).normalize()).normalize(),
+                   Normal::new_with(0.8164967, 0.5773503, 0.0));
     }
 }
