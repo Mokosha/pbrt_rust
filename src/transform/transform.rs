@@ -3,7 +3,6 @@ use bbox::Union;
 use geometry::normal::Normal;
 use geometry::normal::Normalize;
 use geometry::point::Point;
-use geometry::vector::Dot;
 use geometry::vector::Vector;
 use quaternion::Quaternion;
 use ray::Ray;
@@ -296,18 +295,7 @@ impl ::std::convert::From<[[f32; 4]; 4]> for Transform {
 
 impl ::std::convert::From<Quaternion> for Transform {
     fn from(q: Quaternion) -> Transform {
-        let x = q.v.x;
-        let y = q.v.y;
-        let z = q.v.z;
-        let w = q.w;
-
-        debug_assert!((q.dot(&q).sqrt() - 1f32).abs() < 1e-4f32,
-                      "Quaternion must be unit before conversion to Transform");
-        Transform::from([
-            [1f32 - 2f32*(y*y+z*z), 2f32*(x*y+z*w), 2f32*(x*z-y*w), 0f32],
-            [2f32*(x*y-z*w), 1f32 - 2f32*(x*x+z*z), 2f32*(y*z+x*w), 0f32],
-            [2f32*(x*z+y*w), 2f32*(y*z-x*w), 1f32 - 2f32*(x*x+y*y), 0f32],
-            [0f32, 0f32, 0f32, 1f32]])
+        Transform::from(Matrix4x4::from(q))
     }
 }
 
@@ -325,6 +313,7 @@ mod tests {
     use geometry::vector::Vector;
     use geometry::normal::Normal;
     use geometry::normal::Normalize;
+    use quaternion::Quaternion;
     use ray::Ray;
     use ray::RayDifferential;
     use transform::matrix4x4::Matrix4x4;
@@ -641,5 +630,15 @@ mod tests {
         let expected_bbox = BBox::new_with(expected_bbox_min, expected_bbox_max);
 
         assert_eq!(xform.t(&bbox), expected_bbox);
+    }
+
+    #[test]
+    fn it_can_transform_to_and_from_quaternions() {
+        let id = Quaternion::new();
+        assert_eq!(id, Quaternion::from(Transform::from(id.clone())));
+
+        // Random-ish quaternion?
+        let q = Quaternion::new_with(1.0, 4.0, 16.0, 2.0).normalize();
+        assert_eq!(q, Quaternion::from(Transform::from(q.clone())));
     }
 }

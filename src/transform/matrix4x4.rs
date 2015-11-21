@@ -1,3 +1,4 @@
+use geometry::vector::Dot;
 use quaternion::Quaternion;
 use utils::Lerp;
 
@@ -290,44 +291,60 @@ impl ::std::convert::From<[[f32; 4]; 4]> for Matrix4x4 {
     }
 }
 
+impl ::std::convert::From<Quaternion> for Matrix4x4 {
+    fn from(q: Quaternion) -> Matrix4x4 {
+        let x = q.v.x;
+        let y = q.v.y;
+        let z = q.v.z;
+        let w = q.w;
+
+        debug_assert!((q.dot(&q).sqrt() - 1f32).abs() < 1e-4f32,
+                      "Quaternion must be unit before conversion to Transform");
+        Matrix4x4::from([
+            [1f32 - 2f32*(y*y+z*z), 2f32*(x*y-z*w), 2f32*(x*z+y*w), 0f32],
+            [2f32*(x*y+z*w), 1f32 - 2f32*(x*x+z*z), 2f32*(y*z-x*w), 0f32],
+            [2f32*(x*z-y*w), 2f32*(y*z+x*w), 1f32 - 2f32*(x*x+y*y), 0f32],
+            [0f32, 0f32, 0f32, 1f32]])
+    }
+}
+
 impl ::std::convert::From<Matrix4x4> for Quaternion {
     fn from(m: Matrix4x4) -> Quaternion {
         // According to the text, the implementation of this function, along
         // with numerical stability problems, can be found in:
         // "Quaternions and 4x4 matrices" By K. Shoemake (1991)
         // Graphics Gems II, pp. 351-54
-        let r = &m;
-        let trace = r[0][0] + r[1][1] + r[2][2];
-        debug_assert_eq!(r[3][3], 1.0);
+        let trace = m[0][0] + m[1][1] + m[2][2];
+        debug_assert_eq!(m[3][3], 1.0);
         if trace > 0.0 {
             let s = 0.5f32 / ((trace + 1f32).sqrt());
             Quaternion::new_with(
-                (r[2][1] - r[1][2]) * s,
-                (r[0][2] - r[2][0]) * s,
-                (r[1][0] - r[0][1]) * s,
+                (m[2][1] - m[1][2]) * s,
+                (m[0][2] - m[2][0]) * s,
+                (m[1][0] - m[0][1]) * s,
                 0.25f32 / s)
         } else {
-            if r[0][0] > r[1][1] && r[0][0] > r[2][2] {
-                let s = 0.5f32 / ((1f32 + r[0][0] - r[1][1] - r[2][2]).sqrt());
+            if m[0][0] > m[1][1] && m[0][0] > m[2][2] {
+                let s = 0.5f32 / ((1f32 + m[0][0] - m[1][1] - m[2][2]).sqrt());
                 Quaternion::new_with(
                     0.25f32 / s,
-                    (r[0][1] + r[1][0]) * s,
-                    (r[0][2] + r[2][0]) * s,
-                    (r[2][1] - r[1][2]) * s)
-            } else if r[1][1] > r[2][2] {
-                let s = 0.5f32 / ((1f32 + r[1][1] - r[0][0] - r[2][2]).sqrt());
+                    (m[0][1] + m[1][0]) * s,
+                    (m[0][2] + m[2][0]) * s,
+                    (m[2][1] - m[1][2]) * s)
+            } else if m[1][1] > m[2][2] {
+                let s = 0.5f32 / ((1f32 + m[1][1] - m[0][0] - m[2][2]).sqrt());
                 Quaternion::new_with(
-                    (r[0][1] + r[1][0]) * s,
+                    (m[0][1] + m[1][0]) * s,
                     0.25f32 / s,
-                    (r[1][2] + r[2][1]) * s,
-                    (r[0][2] - r[2][0]) * s)
+                    (m[1][2] + m[2][1]) * s,
+                    (m[0][2] - m[2][0]) * s)
             } else {
-                let s = 0.5f32 / ((1f32 + r[2][2] - r[0][0] - r[1][1]).sqrt());
+                let s = 0.5f32 / ((1f32 + m[2][2] - m[0][0] - m[1][1]).sqrt());
                 Quaternion::new_with(
-                    (r[0][2] + r[2][0]) * s,
-                    (r[1][2] + r[2][1]) * s,
+                    (m[0][2] + m[2][0]) * s,
+                    (m[1][2] + m[2][1]) * s,
                     0.25f32 / s,
-                    (r[1][0] - r[0][1]) * s)
+                    (m[1][0] - m[0][1]) * s)
             }
         }
     }
@@ -337,8 +354,9 @@ impl ::std::convert::From<Matrix4x4> for Quaternion {
 mod tests {
     use super::*;
     use utils::Lerp;
-    use quaternion::Quaternion;
+    use geometry::normal::Normalize;
     use geometry::vector::Dot;
+    use quaternion::Quaternion;
 
     macro_rules! check_mat {
         ($m1: expr, $m2: expr) => {{
@@ -680,5 +698,9 @@ mod tests {
         for i in 0..16 {
             check_rotation((i as f32) * ::std::f32::consts::PI / 8.0);
         }
+
+        // Random-ish quaternion?
+        let q = Quaternion::new_with(1.0, 4.0, 16.0, 2.0).normalize();
+        check_quat!(q, Quaternion::from(Matrix4x4::from(q.clone())));
     }
 }
