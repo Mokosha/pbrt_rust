@@ -349,8 +349,13 @@ mod tests {
                                      0.0, 2.0, -3.0, 2.0,
                                      0.0, 2.0,  3.0, 1.0);
         let m_inv_ = m_.inverse();
-        assert_eq!(Transform::new_with(m_.clone(), m_inv_.clone()),
-                   Transform { m: m_, m_inv: m_inv_ });
+        let xform = Transform::new_with(m_.clone(), m_inv_.clone());
+        assert_eq!(xform, Transform { m: m_.clone(), m_inv: m_inv_ });
+        assert_eq!(xform, Transform::from(m_));
+        assert_eq!(xform, Transform::from([[2.0, 3.0,  1.0, 5.0],
+                                           [1.0, 0.0,  3.0, 1.0],
+                                           [0.0, 2.0, -3.0, 2.0],
+                                           [0.0, 2.0,  3.0, 1.0]]));
     }
 
     #[test]
