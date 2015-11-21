@@ -320,6 +320,7 @@ impl ::std::convert::From<Transform> for Quaternion {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbox::BBox;
     use geometry::point::Point;
     use geometry::vector::Vector;
     use geometry::normal::Normal;
@@ -586,7 +587,8 @@ mod tests {
         assert_eq!(r, Transform::new().t(&r));
         assert_eq!(rd, Transform::new().t(&rd));
 
-        let xform = Transform::translate(&Vector::new_with(1.0, 1.0, 1.0)) *
+        let xform =
+            Transform::translate(&Vector::new_with(1.0, 1.0, 1.0)) *
             Transform::rotate_y(90.0);
 
         let tr = xform.t(&r);
@@ -609,5 +611,30 @@ mod tests {
         assert_eq!(trd.ray.maxt, trd_expected.ray.maxt);
         assert_eq!(trd.ray.time, trd_expected.ray.time);
         assert_eq!(trd.ray.depth, trd_expected.ray.depth);
+    }
+
+    #[test]
+    fn it_can_transform_bboxes() {
+        let bbox = BBox::new_with(Point::new_with(-1.0, -1.0, -1.0),
+                                  Point::new_with(1.0, 1.0, 1.0));
+
+        assert_eq!(bbox, Transform::new().t(&bbox));
+
+        let xform =
+            Transform::translate(&Vector::new_with(-3.0, 0.0, 1.0)) *
+            Transform::rotate_x(45.0);
+
+        // If you rotate (1, 1, 1) 45 degrees about X, you get a
+        // vector of the same length in the X-Z plane with x = 1:
+        // sqrt(3) = sqrt(1 + z^2) sooo.. z = sqrt(2)
+        // This means our extents are sqrt(2) along y and z, but not X...
+
+        let expected_bbox_max =
+            Point::new_with(-2.0, 2f32.sqrt(), 2f32.sqrt() + 1.0);
+        let expected_bbox_min =
+            Point::new_with(-4.0, -(2f32.sqrt()), -(2f32.sqrt()) + 1.0);
+        let expected_bbox = BBox::new_with(expected_bbox_min, expected_bbox_max);
+
+        assert_eq!(xform.t(&bbox), expected_bbox);
     }
 }
