@@ -320,11 +320,13 @@ impl ::std::convert::From<Transform> for Quaternion {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use transform::matrix4x4::Matrix4x4;
     use geometry::point::Point;
     use geometry::vector::Vector;
     use geometry::normal::Normal;
     use geometry::normal::Normalize;
+    use ray::Ray;
+    use ray::RayDifferential;
+    use transform::matrix4x4::Matrix4x4;
     use utils::Degrees;
 
     #[test]
@@ -383,6 +385,34 @@ mod tests {
         let v = Vector::new_with(1.0, 1.0, 1.0);
         let xform = Transform::translate(&Vector::new_with(1.0, 4.0, -300.0));
         assert_eq!(xform.t(&v), v);
+    }
+
+
+    #[test]
+    fn it_can_transform_points() {
+        let xform = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
+            * Transform::rotate_y(90.0);
+
+        assert_eq!(xform.xf(Point::new_with(1.0, 1.0, 1.0)),
+                   Point::new_with(2.0, 3.0, 2.0));
+        assert_eq!(xform.xf(Point::new()), Point::new_with(1.0, 2.0, 3.0));
+        assert_eq!(Transform::new().xf(Point::new()), Point::new());
+        assert_eq!(Transform::new().xf(Point::new_with(1.0, 5.0, -13.0)),
+                   Point::new_with(1.0, 5.0, -13.0));
+    }
+
+    #[test]
+    fn it_can_transform_normals() {
+        let xform = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
+            * Transform::rotate_y(90.0);
+        assert_eq!(xform.xf(Normal::new_with(1.0, 1.0, 1.0).normalize()),
+                   Normal::new_with(1.0, 1.0, -1.0).normalize());
+        assert_eq!(Transform::scale(2.0, 2.0, 2.0).xf(
+            Normal::new_with(1.0, 0.0, 0.0)).normalize(),
+                   Normal::new_with(1.0, 0.0, 0.0));
+        assert_eq!(Transform::rotate_y(45.0).xf(
+            Normal::new_with(1.0, 1.0, 1.0).normalize()).normalize(),
+                   Normal::new_with(0.8164967, 0.5773503, 0.0));
     }
 
     #[test]
@@ -548,30 +578,36 @@ mod tests {
     }
 
     #[test]
-    fn it_can_transform_points() {
-        let xform = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
-            * Transform::rotate_y(90.0);
+    fn it_can_transform_rays() {
+        let r = Ray::new_with(Point::new_with(0.0, 0.0, 0.0),
+                              Vector::new_with(1.0, 0.0, 0.0), 0.0);
+        let rd = RayDifferential::new_with(Point::new_with(0.0, 0.0, 0.0),
+                                           Vector::new_with(1.0, 0.0, 0.0), 0.0);
+        assert_eq!(r, Transform::new().t(&r));
+        assert_eq!(rd, Transform::new().t(&rd));
 
-        assert_eq!(xform.xf(Point::new_with(1.0, 1.0, 1.0)),
-                   Point::new_with(2.0, 3.0, 2.0));
-        assert_eq!(xform.xf(Point::new()), Point::new_with(1.0, 2.0, 3.0));
-        assert_eq!(Transform::new().xf(Point::new()), Point::new());
-        assert_eq!(Transform::new().xf(Point::new_with(1.0, 5.0, -13.0)),
-                   Point::new_with(1.0, 5.0, -13.0));
-    }
+        let xform = Transform::translate(&Vector::new_with(1.0, 1.0, 1.0)) *
+            Transform::rotate_y(90.0);
 
-    #[test]
-    fn it_can_transform_normals() {
-        let xform = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
-            * Transform::rotate_y(90.0);
-        assert_eq!(xform.xf(Normal::new_with(1.0, 1.0, 1.0).normalize()),
-                   Normal::new_with(1.0, 1.0, -1.0).normalize());
-        assert_eq!(Transform::scale(2.0, 2.0, 2.0).xf(
-            Normal::new_with(1.0, 0.0, 0.0)).normalize(),
-                   Normal::new_with(1.0, 0.0, 0.0));
+        let tr = xform.t(&r);
+        let trd = xform.t(&rd);
+        let tr_expected = Ray::new_with(
+            Point::new_with(1.0, 1.0, 1.0), Vector::new_with(0.0, 0.0, -1.0), 0.0);
+        let trd_expected = RayDifferential::new_with(
+            Point::new_with(1.0, 1.0, 1.0), Vector::new_with(0.0, 0.0, -1.0), 0.0);
 
-        assert_eq!(Transform::rotate_y(45.0).xf(
-            Normal::new_with(1.0, 1.0, 1.0).normalize()).normalize(),
-                   Normal::new_with(0.8164967, 0.5773503, 0.0));
+        assert_eq!(tr.o, tr_expected.o);
+        assert!((tr.d - tr_expected.d).length_squared() < 1e-6);
+        assert_eq!(tr.mint, tr_expected.mint);
+        assert_eq!(tr.maxt, tr_expected.maxt);
+        assert_eq!(tr.time, tr_expected.time);
+        assert_eq!(tr.depth, tr_expected.depth);
+
+        assert_eq!(trd.ray.o, trd_expected.ray.o);
+        assert!((trd.ray.d - trd_expected.ray.d).length_squared() < 1e-6);
+        assert_eq!(trd.ray.mint, trd_expected.ray.mint);
+        assert_eq!(trd.ray.maxt, trd_expected.ray.maxt);
+        assert_eq!(trd.ray.time, trd_expected.ray.time);
+        assert_eq!(trd.ray.depth, trd_expected.ray.depth);
     }
 }

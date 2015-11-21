@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Time {
     t: f32
 }

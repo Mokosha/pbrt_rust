@@ -3,7 +3,7 @@ use geometry::vector::Vector;
 use std::f32;
 use time::Time;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Ray {
     pub o: Point,
     pub d: Vector,
@@ -25,10 +25,10 @@ impl Ray {
         }
     }
 
-    pub fn new_with(origin: &Point, dir: &Vector, start: f32) -> Ray {
+    pub fn new_with(origin: Point, dir: Vector, start: f32) -> Ray {
         Ray {
-            o: origin.clone(),
-            d: dir.clone(),
+            o: origin,
+            d: dir,
             mint: start,
             maxt: f32::MAX,
             time: Time::from(0f32),
@@ -36,10 +36,10 @@ impl Ray {
         }
     }
 
-    pub fn into(self, origin: &Point, dir: &Vector, start: f32) -> Ray {
+    pub fn into(self, origin: Point, dir: Vector, start: f32) -> Ray {
         Ray {
-            o: origin.clone(),
-            d: dir.clone(),
+            o: origin,
+            d: dir,
             mint: start,
             maxt: self.maxt,
             time: self.time,
@@ -53,7 +53,7 @@ impl Ray {
     pub fn set_depth(&mut self, d: i32) { self.depth = d }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct RayDifferential {
     pub ray: Ray,
     has_differentials: bool,
@@ -75,7 +75,7 @@ impl RayDifferential {
         }
     }
 
-    pub fn new_with(origin: &Point, dir: &Vector, start: f32) -> RayDifferential {
+    pub fn new_with(origin: Point, dir: Vector, start: f32) -> RayDifferential {
         RayDifferential {
             ray: Ray::new_with(origin, dir, start),
             has_differentials: false,
@@ -86,7 +86,7 @@ impl RayDifferential {
         }
     }
 
-    pub fn into(self, origin: &Point, dir: &Vector, start: f32) -> RayDifferential {
+    pub fn into(self, origin: Point, dir: Vector, start: f32) -> RayDifferential {
         RayDifferential {
             ray: self.ray.clone().into(origin, dir, start),
             has_differentials: false,
