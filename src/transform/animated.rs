@@ -10,31 +10,110 @@ use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 use utils::Lerp;
 
+macro_rules! check_mat {
+    ($m1: expr, $m2: expr) => {{
+        let x = ($m1).clone();
+        let y = ($m2).clone();
+        for i in 0..4 {
+            for j in 0..4 {
+                let diff = (x[i][j] - y[i][j]).abs();
+                if diff >= 5e-5 {
+                    println!("m1: {:?}", x);
+                    println!("m2: {:?}", y);
+                    println!("Matrices differ at {:?} by {:?}", (i, j), diff);
+                    panic!();
+                }
+            }
+        }
+    }}
+}
+
+macro_rules! check_animated_xform {
+    ($q1: expr, $q2: expr) => {{
+        let xf1 = &(($q1).clone());
+        let xf2 = &(($q2).clone());
+
+        if (xf1.start_time - xf2.start_time).abs() >= 1e-6 {
+            println!("Animated transforms differ on start_time");
+            println!("xform1: {:?}", xf1.start_time);
+            println!("xform2: {:?}", xf2.start_time);
+            panic!();
+        }
+
+        if (xf1.end_time - xf2.end_time).abs() >= 1e-6 {
+            println!("Animated transforms differ on end_time");
+            println!("xform1: {:?}", xf1.end_time);
+            println!("xform2: {:?}", xf2.end_time);
+            panic!();
+        }
+
+        if xf1.actually_animated != xf2.actually_animated {
+            println!("Animated transforms differ on actually_animated");
+            println!("xform1: {:?}", xf1.actually_animated);
+            println!("xform2: {:?}", xf2.actually_animated);
+            panic!();
+        }
+
+        if (xf1.t1.clone() - xf2.t1.clone()).length_squared() >= 1e-6 {
+            println!("Animated transforms differ on t1");
+            println!("xform1: {:?}", xf1.t1);
+            println!("xform2: {:?}", xf2.t1);
+            panic!();
+        }
+
+        if (xf1.t2.clone() - xf2.t2.clone()).length_squared() >= 1e-6 {
+            println!("Animated transforms differ on t2");
+            println!("xform1: {:?}", xf1.t2);
+            println!("xform2: {:?}", xf2.t2);
+            panic!();
+        }
+
+        if (xf1.r1.dot(&xf2.r1).powi(2) - 1.0).abs() >= 1e-6 {
+            println!("Animated transforms differ on r1");
+            println!("xform1: {:?}", xf1.r1);
+            println!("xform2: {:?}", xf2.r1);
+            panic!();
+        }
+
+        if (xf1.r2.dot(&xf2.r2).powi(2) - 1.0).abs() >= 1e-6 {
+            println!("Animated transforms differ on r2");
+            println!("xform1: {:?}", xf1.r2);
+            println!("xform2: {:?}", xf2.r2);
+            panic!();
+        }
+
+        check_mat!(xf1.s1, xf2.s1);
+        check_mat!(xf1.s2, xf2.s2);
+    }}
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct AnimatedTransform {
     start_time: f32,
     end_time: f32,
     start_transform: Transform,
     end_transform: Transform,
     actually_animated: bool,
-    t: [Vector; 2],
-    r: [Quaternion; 2],
-    s: [Matrix4x4; 2]
+    t1: Vector, t2: Vector,
+    r1: Quaternion, r2: Quaternion,
+    s1: Matrix4x4, s2: Matrix4x4
 }
 
 impl AnimatedTransform {
-    pub fn new(transform1: &Transform, time1: f32,
-               transform2: &Transform, time2: f32) -> AnimatedTransform {
-        let (t1, r1, s1) = AnimatedTransform::decompose(transform1);
-        let (t2, r2, s2) = AnimatedTransform::decompose(transform2);
+    pub fn new(transform1: Transform, time1: f32,
+               transform2: Transform, time2: f32) -> AnimatedTransform {
+        let (t1, r1, s1) = AnimatedTransform::decompose(&transform1);
+        let (t2, r2, s2) = AnimatedTransform::decompose(&transform2);
+        let animated = transform1.ne(&transform2);
         AnimatedTransform {
             start_time: time1,
             end_time: time2,
-            start_transform: transform1.clone(),
-            end_transform: transform2.clone(),
-            actually_animated: transform1 != transform2,
-            t: [t1, t2],
-            r: [r1, r2],
-            s: [s1, s2]
+            start_transform: transform1,
+            end_transform: transform2,
+            actually_animated: animated,
+            t1: t1, t2: t2,
+            r1: r1, r2: r2,
+            s1: s1, s2: s2
         }
     }
 
@@ -51,13 +130,13 @@ impl AnimatedTransform {
         let dt = (time - self.start_time) / (self.end_time - self.start_time);
 
         // Interpolate translation at dt
-        let trans = self.t[0].lerp(&self.t[1], dt);
+        let trans = self.t1.lerp(&self.t2, dt);
 
         // Interpolate rotation at dt
-        let rotate = self.r[0].lerp(&self.r[1], dt);
+        let rotate = self.r1.lerp(&self.r2, dt);
 
         // Interpolate scale at dt
-        let scale = self.s[0].lerp(&self.s[1], dt);
+        let scale = self.s1.lerp(&self.s2, dt);
 
         // Compute interpolated matrix as product of interpolated components
         Transform::translate(&trans) *
@@ -162,5 +241,66 @@ impl ApplyTransform<RayDifferential> for AnimatedTransform {
         ret.ray.o = self.tpt(t, &ret.ray.o);
         ret.ray.d = self.tvec(t, &ret.ray.d);
         ret
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use geometry::vector::Dot;
+    use geometry::vector::Vector;
+    use quaternion::Quaternion;
+    use transform::matrix4x4::Matrix4x4;
+    use transform::transform::Transform;
+
+    #[test]
+    fn it_can_be_created() {
+        let from = Transform::new();
+        let mut expected_anim = AnimatedTransform {
+            start_time: 0.0,
+            end_time: 0.0,
+            start_transform: from.clone(),
+            end_transform: from.clone(),
+            actually_animated: false,
+            t1: Vector::new(), t2: Vector::new(),
+            r1: Quaternion::new(), r2: Quaternion::new(),
+            s1: Matrix4x4::new(), s2: Matrix4x4::new()
+        };
+
+        assert_eq!(expected_anim,
+                   AnimatedTransform::new(from.clone(), 0.0, from.clone(), 0.0));
+
+         expected_anim = AnimatedTransform {
+            start_time: 0.0,
+            end_time: 1.0,
+            start_transform: from.clone(),
+            end_transform: from.clone(),
+            actually_animated: false,
+            t1: Vector::new(), t2: Vector::new(),
+            r1: Quaternion::new(), r2: Quaternion::new(),
+            s1: Matrix4x4::new(), s2: Matrix4x4::new()
+        };
+
+        assert_eq!(expected_anim,
+                   AnimatedTransform::new(from.clone(), 0.0, from.clone(), 1.0));
+
+        let to = Transform::translate(&Vector::new_with(1.0, 1.0, 1.0)) *
+            Transform::rotate_y(45.0);
+
+         expected_anim = AnimatedTransform {
+             start_time: 0.0,
+             end_time: 1.0,
+             start_transform: from.clone(),
+             end_transform: to.clone(),
+             actually_animated: true,
+             t1: Vector::new(), t2: Vector::new_with(1.0, 1.0, 1.0),
+             r1: Quaternion::new(),
+             r2: Quaternion::new_with(0.0, 0.38268343236, 0.0, 0.92387953251),
+             s1: Matrix4x4::new(), s2: Matrix4x4::new()
+        };
+
+        check_animated_xform!(
+            expected_anim,
+            AnimatedTransform::new(from.clone(), 0.0, to.clone(), 1.0));
     }
 }
