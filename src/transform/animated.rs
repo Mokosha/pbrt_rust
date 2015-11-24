@@ -197,7 +197,7 @@ impl AnimatedTransform {
         let num_steps = 128;
         (0..num_steps).fold(BBox::new(), |bbox, i| {
             let t = self.start_time.lerp(&self.end_time,
-                                         ((i as f32) / (num_steps as f32)));
+                                         ((i as f32) / ((num_steps - 1) as f32)));
             bbox.unioned_with(&(
                 if (use_inverse) {
                     self.interpolate(t).invert().t(b)
@@ -247,11 +247,14 @@ impl ApplyTransform<RayDifferential> for AnimatedTransform {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbox::BBox;
+    use geometry::point::Point;
     use geometry::vector::Dot;
     use geometry::vector::Vector;
     use quaternion::Quaternion;
     use transform::matrix4x4::Matrix4x4;
     use transform::transform::Transform;
+    use transform::transform::ApplyTransform;
 
     #[test]
     fn it_can_be_created() {
@@ -302,5 +305,33 @@ mod tests {
         check_animated_xform!(
             expected_anim,
             AnimatedTransform::new(from.clone(), 0.0, to.clone(), 1.0));
+    }
+
+    #[test]
+    fn it_can_bound_motion() {
+        let to = Transform::translate(&Vector::new_with(1.0, 1.0, 1.0)) *
+            Transform::rotate_y(45.0);
+        let anim_xform = AnimatedTransform::new(
+            Transform::new(), 1.0, to.clone(), 2.0);
+        let simple_box = BBox::new_with(Point::new_with(-1.0, -1.0, -1.0),
+                                        Point::new_with(1.0, 1.0, 1.0));
+        assert_eq!(anim_xform.motion_bounds(&simple_box, false),
+                   BBox::new_with(Point::new_with(-1.0, -1.0, -1.0),
+                                  Point::new_with(1.0 + 2f32.sqrt(),
+                                                  2.0,
+                                                  1.0 + 2f32.sqrt())));
+
+        assert_eq!(anim_xform.motion_bounds(&simple_box, true),
+                   BBox::new_with(Point::new_with(-1.6106478, -2.0,
+                                                  -2.0*2f32.sqrt()),
+                                  Point::new_with(2f32.sqrt(), 1.0, 1.0)));
+
+        assert_eq!(AnimatedTransform::new(
+            Transform::new(), 0.0, Transform::new(), 1.0).
+                   motion_bounds(&simple_box, false), simple_box);
+
+        assert_eq!(AnimatedTransform::new(
+            Transform::new(), 0.0, to, 0.0).
+                   motion_bounds(&simple_box, false), simple_box);
     }
 }
