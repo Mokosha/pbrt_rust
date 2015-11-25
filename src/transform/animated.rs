@@ -165,10 +165,7 @@ impl AnimatedTransform {
         let mut r = m.clone();
         for _ in 0..100 {
             // Compute next matrix r_next in series
-            let r_next = {
-                let r_it = r.clone().invert().transpose();
-                0.5 * (&r + r_it)
-            };
+            let r_next = 0.5 * (&r + r.clone().invert().transpose());
 
             // Compute norm of difference between r and r_next
             let norm = (0..3).fold(0f32, |acc, i| {
@@ -333,5 +330,38 @@ mod tests {
         assert_eq!(AnimatedTransform::new(
             Transform::new(), 0.0, to, 0.0).
                    motion_bounds(&simple_box, false), simple_box);
+    }
+
+    #[test]
+    fn it_can_transform_points() {
+        let from = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0));
+        let to = Transform::translate(&Vector::new_with(-3.0, 0.0, -14.0));
+        let mut xform = AnimatedTransform::new(from, 0.0, to, 1.0);
+        assert_eq!(xform.xfpt(0.0, Point::new()), Point::new_with(1.0, 2.0, 3.0));
+        assert_eq!(xform.xfpt(1.0, Point::new()), Point::new_with(-3.0, 0.0, -14.0));
+        assert_eq!(xform.xfpt(0.5, Point::new()), Point::new_with(-1.0, 1.0, -5.5));
+
+        assert_eq!(xform.tpt(0.0, &Point::new()), Point::new_with(1.0, 2.0, 3.0));
+        assert_eq!(xform.tpt(1.0, &Point::new()), Point::new_with(-3.0, 0.0, -14.0));
+        assert_eq!(xform.tpt(0.5, &Point::new()), Point::new_with(-1.0, 1.0, -5.5));
+
+        let from2 = Transform::new();
+        let to2 = Transform::translate(&Vector::new_with(1.0, 1.0, 1.0)) *
+            Transform::scale(2.0, 1.5, 0.5) *
+            Transform::rotate_x(45.0);
+        xform = AnimatedTransform::new(from2, 0.0, to2, 10.0);
+        let pt = Point::new_with(1.0, 1.0, 1.0);
+        let expected = Point::new_with(3.0, 1.0, 1.0 + 0.5*2f32.sqrt());
+
+        assert_eq!(xform.xfpt(0.0, pt.clone()), pt);
+        assert_eq!(xform.xfpt(10.0, pt.clone()), expected);
+        //assert_eq!(xform.xfpt(5.0, pt.clone()), Point::new_with(1.0, 2.0, 3.0));
+
+        let xfpt = xform.xfpt(9.99999, pt.clone());
+        let expected = Point::new_with(3.0, 1.0, 1.0 + 0.5*2f32.sqrt());
+        assert_eq!(xfpt, expected);
+        // assert!((xfpt.x - expected.x).abs() < 1e-6);
+        assert!((xfpt.y - expected.y).abs() < 1e-6);
+        assert!((xfpt.z - expected.z).abs() < 1e-6);
     }
 }
