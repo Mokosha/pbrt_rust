@@ -362,12 +362,50 @@ mod tests {
         assert_eq!(xform.xfpt(10.0, pt.clone()), expected);
 
         // !KLUDGE! These numbers look right -- but they might not *be* right....
-        assert_eq!(xform.xfpt(5.0, pt.clone()), Point::new_with(2.0, 0.90589696, 1.4799222));
+        assert_eq!(xform.xfpt(5.0, pt.clone()),
+                   Point::new_with(2.0, 0.90589696, 1.4799222));
 
         let xfpt = xform.xfpt(9.99999, pt.clone());
-        let expected = Point::new_with(3.0, 1.0, 1.0 + 0.5*2f32.sqrt());
         assert!((xfpt.x - expected.x).abs() < 1e-5);
         assert!((xfpt.y - expected.y).abs() < 1e-5);
         assert!((xfpt.z - expected.z).abs() < 1e-5);
+    }
+
+    #[test]
+    fn it_can_transform_vectors() {
+        let from = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0));
+        let to = Transform::translate(&Vector::new_with(-3.0, 0.0, -14.0));
+        let mut xform = AnimatedTransform::new(from, 0.0, to, 1.0);
+
+        // No matter what, just translated transforms shouldn't change
+        // vectors...
+        let random_vector = Vector::new_with(1.0, -10.3, 16.2);
+        assert_eq!(xform.xfvec(0.0, random_vector.clone()), random_vector);
+        assert_eq!(xform.xfvec(1.0, random_vector.clone()), random_vector);
+        assert_eq!(xform.xfvec(0.5, random_vector.clone()), random_vector);
+
+        assert_eq!(xform.tvec(0.0, &random_vector), random_vector);
+        assert_eq!(xform.tvec(1.0, &random_vector), random_vector);
+        assert_eq!(xform.tvec(0.5, &random_vector), random_vector);
+
+        let from2 = Transform::new();
+        let to2 = Transform::translate(&Vector::new_with(1.0, 1.0, 1.0)) *
+            Transform::scale(2.0, 1.5, 0.5) *
+            Transform::rotate_x(45.0);
+        xform = AnimatedTransform::new(from2, 0.0, to2, 10.0);
+        let v = Vector::new_with(1.0, 1.0, 1.0);
+        let expected = Vector::new_with(2.0, 0.0, 0.5*2f32.sqrt());
+
+        assert_eq!(xform.xfvec(0.0, v.clone()), v);
+        assert_eq!(xform.xfvec(10.0, v.clone()), expected);
+
+        // !KLUDGE! These numbers look right -- but they might not *be* right....
+        assert_eq!(xform.xfvec(5.0, v.clone()),
+                   Vector::new_with(1.5, 0.40589696, 0.9799222));
+
+        let xfvec = xform.xfvec(9.99999, v.clone());
+        assert!((xfvec.x - expected.x).abs() < 1e-5);
+        assert!((xfvec.y - expected.y).abs() < 1e-5);
+        assert!((xfvec.z - expected.z).abs() < 1e-5);
     }
 }
