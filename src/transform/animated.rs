@@ -251,6 +251,9 @@ mod tests {
     use geometry::vector::Dot;
     use geometry::vector::Vector;
     use quaternion::Quaternion;
+    use ray::Ray;
+    use ray::RayDifferential;
+    use time::Time;
     use transform::matrix4x4::Matrix4x4;
     use transform::transform::Transform;
     use transform::transform::ApplyTransform;
@@ -407,5 +410,123 @@ mod tests {
         assert!((xfvec.x - expected.x).abs() < 1e-5);
         assert!((xfvec.y - expected.y).abs() < 1e-5);
         assert!((xfvec.z - expected.z).abs() < 1e-5);
+    }
+
+    #[test]
+    fn it_can_transform_rays() {
+        let from = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0));
+        let to = Transform::translate(&Vector::new_with(-3.0, 0.0, -14.0));
+        let mut xform = AnimatedTransform::new(from, 0.0, to, 1.0);
+
+        let mut p = Point::new();
+        let mut v = Vector::new_with(1.0, -10.3, 16.2);
+        let mut r = Ray::new_with(p.clone(), v.clone(), 0.0);
+        let mut rd = RayDifferential::new_with(p.clone(), v.clone(), 0.0);
+
+        r.set_time(0.0);
+        assert_eq!(xform.xf(r.clone()).o, Point::new_with(1.0, 2.0, 3.0));
+        assert_eq!(xform.xf(r.clone()).d, v);
+
+        rd.ray.set_time(0.0);
+        assert_eq!(xform.xf(rd.clone()).ray.o, Point::new_with(1.0, 2.0, 3.0));
+        assert_eq!(xform.xf(rd.clone()).ray.d, v);
+
+        r.set_time(1.0);
+        assert_eq!(xform.xf(r.clone()).o, Point::new_with(-3.0, 0.0, -14.0));
+        assert_eq!(xform.xf(r.clone()).d, v);
+
+        rd.ray.set_time(1.0);
+        assert_eq!(xform.xf(rd.clone()).ray.o, Point::new_with(-3.0, 0.0, -14.0));
+        assert_eq!(xform.xf(rd.clone()).ray.d, v);
+
+        r.set_time(0.5);
+        assert_eq!(xform.xf(r.clone()).o, Point::new_with(-1.0, 1.0, -5.5));
+        assert_eq!(xform.xf(r.clone()).d, v);
+
+        rd.ray.set_time(0.5);
+        assert_eq!(xform.xf(rd.clone()).ray.o, Point::new_with(-1.0, 1.0, -5.5));
+        assert_eq!(xform.xf(rd.clone()).ray.d, v);
+
+        r.set_time(0.0);
+        assert_eq!(xform.t(&r).o, Point::new_with(1.0, 2.0, 3.0));
+        assert_eq!(xform.t(&r).d, v);
+
+        rd.ray.set_time(0.0);
+        assert_eq!(xform.t(&rd).ray.o, Point::new_with(1.0, 2.0, 3.0));
+        assert_eq!(xform.t(&rd).ray.d, v);
+
+        r.set_time(1.0);
+        assert_eq!(xform.t(&r).o, Point::new_with(-3.0, 0.0, -14.0));
+        assert_eq!(xform.t(&r).d, v);
+
+        rd.ray.set_time(1.0);
+        assert_eq!(xform.t(&rd).ray.o, Point::new_with(-3.0, 0.0, -14.0));
+        assert_eq!(xform.t(&rd).ray.d, v);
+
+        r.set_time(0.5);
+        assert_eq!(xform.t(&r).o, Point::new_with(-1.0, 1.0, -5.5));
+        assert_eq!(xform.t(&r).d, v);
+
+        rd.ray.set_time(0.5);
+        assert_eq!(xform.t(&rd).ray.o, Point::new_with(-1.0, 1.0, -5.5));
+        assert_eq!(xform.t(&rd).ray.d, v);
+
+        let from2 = Transform::new();
+        let to2 = Transform::translate(&Vector::new_with(1.0, 1.0, 1.0)) *
+            Transform::scale(2.0, 1.5, 0.5) *
+            Transform::rotate_x(45.0);
+        xform = AnimatedTransform::new(from2, 0.0, to2, 10.0);
+        p = Point::new_with(1.0, 1.0, 1.0);
+        v = Vector::new_with(1.0, 1.0, 1.0);
+        r = Ray::new_with(p.clone(), v.clone(), 0.0);
+        rd = RayDifferential::new_with(p.clone(), v.clone(), 0.0);
+
+        let o_expected = Point::new_with(3.0, 1.0, 1.0 + 0.5*2f32.sqrt());
+        let d_expected = Vector::new_with(2.0, 0.0, 0.5*2f32.sqrt());
+
+        r.set_time(0.0);
+        assert_eq!(xform.xf(r.clone()).o, p);
+        assert_eq!(xform.xf(r.clone()).d, v);
+
+        r.set_time(10.0);
+        assert_eq!(xform.xf(r.clone()).o, o_expected);
+        assert_eq!(xform.xf(r.clone()).d, d_expected);
+
+        rd.ray.set_time(0.0);
+        assert_eq!(xform.xf(rd.clone()).ray.o, p);
+        assert_eq!(xform.xf(rd.clone()).ray.d, v);
+
+        rd.ray.set_time(10.0);
+        assert_eq!(xform.xf(rd.clone()).ray.o, o_expected);
+        assert_eq!(xform.xf(rd.clone()).ray.d, d_expected);
+
+        // !KLUDGE! These numbers look right -- but they might not *be* right....
+        r.set_time(5.0);
+        rd.ray.set_time(5.0);
+        assert_eq!(xform.xf(r.clone()).o, Point::new_with(2.0, 0.90589696, 1.4799222));
+        assert_eq!(xform.xf(r.clone()).d, Vector::new_with(1.5, 0.40589696, 0.9799222));
+        assert_eq!(xform.xf(rd.clone()).ray.o, Point::new_with(2.0, 0.90589696, 1.4799222));
+        assert_eq!(xform.xf(rd.clone()).ray.d, Vector::new_with(1.5, 0.40589696, 0.9799222));
+
+        r.set_time(9.99999);
+        rd.ray.set_time(9.99999);
+
+        let xfr = xform.xf(r.clone());
+        assert!((xfr.o.x - o_expected.x).abs() < 1e-5);
+        assert!((xfr.o.y - o_expected.y).abs() < 1e-5);
+        assert!((xfr.o.z - o_expected.z).abs() < 1e-5);
+
+        assert!((xfr.d.x - d_expected.x).abs() < 1e-5);
+        assert!((xfr.d.y - d_expected.y).abs() < 1e-5);
+        assert!((xfr.d.z - d_expected.z).abs() < 1e-5);
+
+        let xfrd = xform.xf(rd.clone());
+        assert!((xfrd.ray.d.x - d_expected.x).abs() < 1e-5);
+        assert!((xfrd.ray.d.y - d_expected.y).abs() < 1e-5);
+        assert!((xfrd.ray.d.z - d_expected.z).abs() < 1e-5);
+
+        assert!((xfrd.ray.d.x - d_expected.x).abs() < 1e-5);
+        assert!((xfrd.ray.d.y - d_expected.y).abs() < 1e-5);
+        assert!((xfrd.ray.d.z - d_expected.z).abs() < 1e-5);
     }
 }
