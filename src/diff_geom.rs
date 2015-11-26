@@ -2,7 +2,7 @@ use geometry::normal::Normal;
 use geometry::normal::Normalize;
 use geometry::point::Point;
 use geometry::vector::Vector;
-use shape::Shape;
+use shape::shape::Shape;
 
 #[derive(Debug, Clone)]
 pub struct DifferentialGeometry<'a> {
