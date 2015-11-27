@@ -6,7 +6,7 @@ use transform::transform::Transform;
 
 use std::sync::atomic::AtomicIsize;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct Shape {
     pub object2world: Transform,
     pub world2object: Transform,
@@ -28,6 +28,15 @@ impl Shape {
             shape_id: NEXT_SHAPE_ID.fetch_add(
                 1, ::std::sync::atomic::Ordering::Relaxed)
         }
+    }
+}
+
+impl ::std::cmp::PartialEq for Shape {
+    fn eq(&self, other: &Shape) -> bool {
+        self.object2world == other.object2world
+            && self.world2object == other.world2object
+            && self.reverse_orientation == other.reverse_orientation
+            && self.transform_swaps_handedness == other.transform_swaps_handedness
     }
 }
 
@@ -84,5 +93,11 @@ mod tests {
                        transform_swaps_handedness: false,
                        shape_id: some_shape.shape_id + 1
                    });
+    }
+
+    #[test]
+    fn two_shapes_can_be_equal() {
+        assert_eq!(Shape::new(Transform::new(), Transform::new(), false),
+                   Shape::new(Transform::new(), Transform::new(), false));
     }
 }
