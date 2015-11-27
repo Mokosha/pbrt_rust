@@ -17,7 +17,7 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn new(o2w: &Transform, w2o: &Transform, ro: bool,
+    pub fn new(o2w: Transform, w2o: Transform, ro: bool,
                rad: f32, z0: f32, z1: f32, pm: f32) -> Sphere {
         debug_assert!(rad > 0f32);
         let zmin = z0.min(z1).clamp(-rad, rad);
