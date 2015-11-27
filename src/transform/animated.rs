@@ -119,11 +119,11 @@ impl AnimatedTransform {
 
     fn interpolate(&self, time: f32) -> Transform {
         // Handle boundary conditions for matrix interpolation
-        if (!self.actually_animated || time <= self.start_time) {
+        if !self.actually_animated || time <= self.start_time {
             return self.start_transform.clone();
         }
 
-        if (time >= self.end_time) {
+        if time >= self.end_time {
             return self.end_transform.clone();
         }
 
@@ -176,7 +176,7 @@ impl AnimatedTransform {
                         (r_ref[i][2] - r_next_ref[i][2]).abs())
             });
 
-            if (norm < 0.0001f32) {
+            if norm < 0.0001f32 {
                 break;
             }
 
@@ -189,7 +189,7 @@ impl AnimatedTransform {
     }
 
     pub fn motion_bounds(&self, b: &BBox, use_inverse: bool) -> BBox {
-        if (!self.actually_animated) {
+        if !self.actually_animated {
             return self.start_transform.inverse().t(b);
         }
 
@@ -198,7 +198,7 @@ impl AnimatedTransform {
             let t = self.start_time.lerp(&self.end_time,
                                          ((i as f32) / ((num_steps - 1) as f32)));
             bbox.unioned_with(&(
-                if (use_inverse) {
+                if use_inverse {
                     self.interpolate(t).invert().t(b)
                 } else {
                     self.interpolate(t).t(b)
@@ -253,7 +253,6 @@ mod tests {
     use quaternion::Quaternion;
     use ray::Ray;
     use ray::RayDifferential;
-    use time::Time;
     use transform::matrix4x4::Matrix4x4;
     use transform::transform::Transform;
     use transform::transform::ApplyTransform;

@@ -198,7 +198,7 @@ impl ApplyTransform<Point> for Transform {
         let yt = self.m[1][0] * x + self.m[1][1] * y + self.m[1][2] * z + self.m[1][3];
         let zt = self.m[2][0] * x + self.m[2][1] * y + self.m[2][2] * z + self.m[2][3];
         let w = self.m[3][0] * x + self.m[3][1] * y + self.m[3][2] * z + self.m[3][3];
-        if (w != 1f32) {
+        if w != 1f32 {
             Point::new_with(xt / w, yt / w, zt / w)
         } else {
             Point::new_with(xt, yt, zt)

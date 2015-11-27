@@ -37,7 +37,7 @@ impl<'a> DifferentialGeometry<'a> {
                 _shape: Option<&'a Shape>) -> DifferentialGeometry<'a> {
         let mut norm = _dpdu.clone().cross(&_dpdv).normalize();
         if let Some(s) = _shape {
-            if (s.reverse_orientation ^ s.transform_swaps_handedness) {
+            if s.reverse_orientation ^ s.transform_swaps_handedness {
                 norm = norm * -1f32;
             }
         }
