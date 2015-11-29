@@ -56,6 +56,33 @@ impl Degrees for f64 {
     }
 }
 
+pub fn quadratic(a: f32, b: f32, c: f32) -> Option<(f32, f32)> {
+    // Find quadratic discriminant
+    let descrim = b * b - 4f32 * a * c;
+    if descrim < 0.0 {
+        return None;
+    } else if descrim.abs() < 1e-6 {
+        let t = -b / (2.0 * a);
+        return Some((t, t))
+    }
+
+    let root_descrim = descrim.sqrt();
+
+    // Compute quadratic t values
+    let q = {
+        if b < 0.0 {
+            -0.5f32 * (b - root_descrim)
+        } else {
+            -0.5f32 * (b + root_descrim)
+        }
+    };
+
+    let t0 = q / a;
+    let t1 = c / q;
+
+    if t0 < t1 { Some((t0, t1)) } else { Some((t1, t0)) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -199,5 +226,26 @@ mod tests {
             assert!(is_close((f64::consts::FRAC_PI_2).as_degrees(), 90f64));
             assert!(is_close((f64::consts::FRAC_PI_4).as_degrees(), 45f64));
         }
+    }
+
+    #[test]
+    fn it_can_solve_quadratic_equations() {
+        assert_eq!(None, quadratic(1.0, 0.0, 1.0));
+        assert_eq!(Some((2.0, 2.0)), quadratic(-1.0, 4.0, -4.0));
+        assert_eq!(Some((0.0, 0.0)), quadratic(1.0, 0.0, 0.0));
+
+        // parabola: (x - 1)^2 - 1 == x^2 - 2x
+        assert_eq!(Some((0.0, 2.0)), quadratic(1.0, -2.0, 0.0));
+
+        // As a matter of fact, we can generalize it:
+        for i in 2..200 {
+            assert_eq!(Some((0.0, i as f32)), quadratic(1.0, -(i as f32), 0.0));
+        }
+
+        // Last one: -(x - 4)^2 + 3 == -x^2 + 8x - 13
+        // (+/-)sqrt(3) + 4
+        let t0 = 3f32.sqrt() + 4.0;
+        let t1 = -(3f32.sqrt()) + 4.0;
+        assert_eq!(Some((t1, t0)), quadratic(-1.0, 8.0, -13.0));
     }
 }
