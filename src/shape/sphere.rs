@@ -53,7 +53,6 @@ impl IsShape for Sphere {
 
     fn intersect(&self, r: &Ray) -> Option<ShapeIntersection> {
         let phi : f32 = 0.0;
-        let phit : Point = Point::new();
 
         // Transform ray to object space
         let ray = self.get_shape().world2object.t(r);
@@ -86,7 +85,41 @@ impl IsShape for Sphere {
         }
 
         // Compute sphere hit position and phi
-        // Test sphere intersection against clipping parameters
+        let (p_hit, phi) = {
+            let get_hit = |t: f32| {
+                let mut hit = ray.point_at(t);
+                if hit.x == 0.0 && hit.y == 0.0 {
+                    hit.x = 1e-5 * self.radius;
+                }
+
+                let mut angle = hit.y.atan2(hit.x);
+                if angle < 0.0 {
+                    angle += 2.0 * ::std::f32::consts::PI;
+                }
+                (hit, angle)
+            };
+
+            let hit_is_invalid = |hit: &(Point, f32)| {
+                (hit.0.z > -self.radius && hit.0.z < self.z_min) ||
+                    (hit.0.z <  self.radius && hit.0.z > self.z_max) ||
+                    (hit.1 > self.phi_max)
+            };
+
+            // Test sphere intersection against clipping parameters
+            let mut test = get_hit(t_hit);
+            if hit_is_invalid(&test) {
+                if t_hit == t1 { return None; }
+                if t1 > ray.maxt { return None; }
+                t_hit = t1;
+                test = get_hit(t_hit);
+                if hit_is_invalid(&test) {
+                    return None;
+                }
+            }
+
+            test
+        };
+
         // Find parametric representation of sphere hit
         // Initialize DifferentialGeometry from parametric information
         let dg : DifferentialGeometry = DifferentialGeometry::new();
@@ -162,11 +195,30 @@ mod tests {
         let xf2 = Transform::translate(&Vector::new_with(0.0, -3.0, 0.0))
             * Transform::scale(2.0, 2.0, 2.0);
         let xf2_inv = xf2.inverse();
-        let s2 = Sphere::new(xf2, xf2_inv, false, 0.75, 0.5, 0.75, 180.0);
+        let s2 = Sphere::new(xf2.clone(), xf2_inv.clone(), false, 0.75, -0.5, 0.75, 180.0);
+        let straight_down = Ray::new_with(Point::new(), Vector::new_with(0.0, -1.0, 0.0), 0.0);
         assert!(s2.can_intersect());
+
+        // Check against z-bounds
+        assert_eq!(None, Sphere::new(xf2.clone(), xf2_inv.clone(), false, 0.75, -0.75, -0.5, 180.0)
+                   .intersect(&straight_down));
+        assert_eq!(None, Sphere::new(xf2.clone(), xf2_inv.clone(), false, 0.75, 0.5, 0.75, 180.0)
+                   .intersect(&straight_down));
+
+        // If we do go straight down, it should be fine...
+        assert!(s2.intersect(&straight_down).is_some());
+
+        // If we start in the middle of the sphere, it should not
+        assert_eq!(None, s2.intersect(
+            &Ray::new_with(Point::new_with(0.0, -3.0, 0.0),
+                           Vector::new_with(0.0, -1.0, 0.0), 0.0)));
+
+        // If we go straight up, though we should hit it...
         assert!(s2.intersect(
-            &Ray::new_with(Point::new(),
-                           Vector::new_with(0.0, -1.0, 0.0), 0.0)).is_some());
+            &Ray::new_with(Point::new_with(0.0, -3.0, 0.0),
+                           Vector::new_with(0.0, 1.0, 0.0), 0.0)).is_some());
+
+        // If we graze the sphere in some awkward way, no go either.
         assert_eq!(None, s2.intersect(
             &Ray::new_with(Point::new_with(0.0, -4.0, 10.0),
                            Vector::new_with(0.0, 0.0, -1.0), 0.0)));
