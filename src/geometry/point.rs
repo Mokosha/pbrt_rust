@@ -18,6 +18,10 @@ impl Point {
     pub fn distance_squared(&self, p: &Point) -> f32 { (self - p).length_squared() }
 }
 
+impl From<Point> for Vector {
+    fn from(p: Point) -> Vector { Vector::new_with(p.x, p.y, p.z) }
+}
+
 impl<'a, 'b> ::std::ops::Sub<&'b Vector> for &'a Point {
     type Output = Point;
     fn sub(self, other: &'b Vector) -> Point {
@@ -184,6 +188,17 @@ mod tests {
         assert_eq!(
             Point::new_with(-1f32, 2f32, -3f32),
             Point { x: -1f32, y: 2f32, z: -3f32 });
+    }
+
+    #[test]
+    fn it_can_be_converted_to_a_vector() {
+        assert_eq!(Vector::new(), Vector::from(Point::new()));
+        assert_eq!(Vector::new_with(1.0, 2.0, 3.0),
+                   Vector::from(Point::new_with(1.0, 2.0, 3.0)));
+        assert_eq!(Vector::new_with(f32::INFINITY, f32::INFINITY, f32::INFINITY),
+                   Vector::from(Point::new_with(f32::INFINITY,
+                                                f32::INFINITY,
+                                                f32::INFINITY)));
     }
 
     #[test]
