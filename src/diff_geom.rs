@@ -4,7 +4,7 @@ use geometry::point::Point;
 use geometry::vector::Vector;
 use shape::shape::Shape;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct DifferentialGeometry<'a> {
     pub p: Point,
     pub nn: Normal,
