@@ -40,6 +40,24 @@ impl ::std::cmp::PartialEq for Shape {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct ShapeIntersection<'a> {
+    pub t_hit: f32,
+    pub ray_epsilon: f32,
+    pub dg: DifferentialGeometry<'a>
+}
+
+impl<'a> ShapeIntersection<'a> {
+    pub fn new(t: f32, eps: f32, dgeom: DifferentialGeometry<'a>)
+           -> ShapeIntersection<'a> {
+        ShapeIntersection {
+            t_hit: t,
+            ray_epsilon: eps,
+            dg: dgeom
+        }
+    }
+}
+
 pub trait IsShape {
     fn get_shape<'a>(&'a self) -> &'a Shape;
 
@@ -57,11 +75,9 @@ pub trait IsShape {
         unimplemented!();
     }
 
-    fn intersect(&self, _: &Ray) ->
-        // hit, tHit, rayEpsilon, intersection information
-        (bool, Option<f32>, Option<f32>, Option<DifferentialGeometry>) {
-            unimplemented!();
-        }
+    fn intersect(&self, _: &Ray) -> Option<ShapeIntersection> {
+        unimplemented!();
+    }
     
     fn intersect_p(&self, _: &Ray) -> bool {
         unimplemented!();
