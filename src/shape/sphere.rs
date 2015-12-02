@@ -131,7 +131,7 @@ impl IsShape for Sphere {
             if hit.is_some() { hit.unwrap() } else { return None; }
         };
 
-        let p_hit = r.point_at(t_hit);
+        let p_hit = ray.point_at(t_hit);
 
         // Find parametric representation of sphere hit
         let u = phi / self.phi_max;
@@ -195,13 +195,16 @@ impl IsShape for Sphere {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use geometry::vector::Vector;
+    use geometry::normal::Normal;
     use geometry::point::Point;
+    use geometry::vector::Vector;
     use ray::Ray;
     use shape::shape::Shape;
     use shape::shape::IsShape;
     use shape::shape::ShapeIntersection;
     use transform::transform::Transform;
+
+    use std::f32::consts::PI;
 
     #[test]
     fn it_can_be_created() {
@@ -280,5 +283,26 @@ mod tests {
         assert!(!s2.intersect_p(
             &Ray::new_with(Point::new_with(0.0, -4.0, 10.0),
                            Vector::new_with(0.0, 0.0, -1.0), 0.0)));
+    }
+
+    #[test]
+    fn it_has_intersection_information() {
+        let xf = Transform::translate(&Vector::new_with(0.0, -1.0, 0.0));
+        let xf_inv = xf.inverse();
+        let s = Sphere::new(xf, xf_inv, false, 0.5, -0.5, 0.5, 360.0);
+
+        let r = Ray::new_with(
+            Point::new(), Vector::new_with(0.0, -1.0, 0.0), 0.0);
+        let shape_int = s.intersect(&r).unwrap();
+
+        assert_eq!(shape_int.t_hit, 0.5);
+        assert_eq!(shape_int.ray_epsilon, 0.5 * 5e-4);
+        assert_eq!(shape_int.dg.p, Point::new_with(0.0, -0.5, 0.0));
+        assert_eq!(shape_int.dg.shape.unwrap(), s.get_shape());
+        assert_eq!(shape_int.dg.nn, Normal::new_with(0.0, 1.0, 0.0));
+        assert_eq!(shape_int.dg.u, 0.25); // A quarter of a full revolution (phi)
+        assert_eq!(shape_int.dg.v, 0.5);  // A half of a half revolution (theta)
+        assert_eq!(shape_int.dg.dpdu, Vector::new_with(-PI, 0.0, 0.0));
+        assert_eq!(shape_int.dg.dpdv, Vector::new_with(0.0, 0.0, PI / 2.0));
     }
 }
