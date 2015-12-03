@@ -166,20 +166,20 @@ impl IsShape for Sphere {
             Vector::from(p_hit.clone());
 
         // Compute coefficients for final forms
-        let _E = dpdu.dot(&dpdu);
-        let _F = dpdu.dot(&dpdv);
-        let _G = dpdv.dot(&dpdv);
-        let _N : Vector = dpdu.clone().cross(&dpdv).normalize();
-        let _e = _N.dot(&d2pduu);
-        let _f = _N.dot(&d2pduv);
-        let _g = _N.dot(&d2pdvv);
+        let _ee = dpdu.dot(&dpdu);
+        let _ff = dpdu.dot(&dpdv);
+        let _gg = dpdv.dot(&dpdv);
+        let _nn : Vector = dpdu.clone().cross(&dpdv).normalize();
+        let _e = _nn.dot(&d2pduu);
+        let _f = _nn.dot(&d2pduv);
+        let _g = _nn.dot(&d2pdvv);
 
         // Compute dn/du and dn/dv from fundamental form coefficients
-        let invEGF2 = 1.0 / (_E * _G - _F * _F);
-        let dndu = Normal::from((_f*_F - _e*_G) * invEGF2 * &dpdu +
-                                (_e*_F - _f*_E) * invEGF2 * &dpdv);
-        let dndv = Normal::from((_g*_F - _f*_G) * invEGF2 * &dpdu +
-                                (_f*_F - _g*_E) * invEGF2 * &dpdv);
+        let inveeggff2 = 1.0 / (_ee * _gg - _ff * _ff);
+        let dndu = Normal::from((_f*_ff - _e*_gg) * inveeggff2 * &dpdu +
+                                (_e*_ff - _f*_ee) * inveeggff2 * &dpdv);
+        let dndv = Normal::from((_g*_ff - _f*_gg) * inveeggff2 * &dpdu +
+                                (_f*_ff - _g*_ee) * inveeggff2 * &dpdv);
 
         // Initialize DifferentialGeometry from parametric information
         let o2w = &(self.get_shape().object2world);
@@ -205,7 +205,6 @@ mod tests {
     use ray::Ray;
     use shape::shape::Shape;
     use shape::shape::IsShape;
-    use shape::shape::ShapeIntersection;
     use transform::transform::Transform;
 
     use std::f32::consts::PI;
