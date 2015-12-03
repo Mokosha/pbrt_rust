@@ -190,6 +190,10 @@ impl IsShape for Sphere {
 
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
     }
+
+    fn area(&self) -> f32 {
+        self.phi_max * self.radius * (self.z_max - self.z_min)
+    }
 }
 
 #[cfg(test)]
@@ -304,5 +308,45 @@ mod tests {
         assert_eq!(shape_int.dg.v, 0.5);  // A half of a half revolution (theta)
         assert_eq!(shape_int.dg.dpdu, Vector::new_with(-PI, 0.0, 0.0));
         assert_eq!(shape_int.dg.dpdv, Vector::new_with(0.0, 0.0, PI / 2.0));
+    }
+
+    #[test]
+    fn it_has_a_surface_area() {
+        // Sphere surface area is 4 PI r^2...
+        assert_eq!(Sphere::new(
+            Transform::new(), Transform::new(), false,
+            1.0, -1.0, 1.0, 360.0).area(), 4.0 * PI);
+
+        assert_eq!(Sphere::new(
+            Transform::new(), Transform::new(), false,
+            0.5, -1.0, 1.0, 360.0).area(), PI);
+
+        // Half spheres should be half as big...
+        assert_eq!(Sphere::new(
+            Transform::new(), Transform::new(), false,
+            1.0, -1.0, 1.0, 180.0).area(), 2.0 * PI);
+
+        assert_eq!(Sphere::new(
+            Transform::new(), Transform::new(), false,
+            0.5, 0.0, 1.0, 360.0).area(), 0.5 * PI);
+
+        assert_eq!(Sphere::new(
+            Transform::new(), Transform::new(), false,
+            0.5, -1.0, 0.0, 360.0).area(), 0.5 * PI);
+
+        // If we transform the sphere (i.e. scale it) it
+        // logically changes its surface area, but not
+        // functionally...
+        let xf = Transform::scale(0.5, 2.0, 1.0);
+        assert_eq!(Sphere::new(
+            xf.clone(), xf.inverse(), false,
+            1.0, -1.0, 1.0, 360.0).area(), 4.0 * PI);
+
+        // Certainly other transforms shouldn't do anything
+        let xf2 = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
+            * Transform::rotate_x(30.0) * xf;
+        assert_eq!(Sphere::new(
+            xf2.clone(), xf2.inverse(), false,
+            1.0, -1.0, 1.0, 360.0).area(), 4.0 * PI);
     }
 }
