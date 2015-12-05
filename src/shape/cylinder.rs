@@ -194,6 +194,86 @@ mod tests {
             &Ray::new_with(Point::new_with(1.0, 1.0, 1.0),
                            Vector::new_with(0.0, 0.0, -1.0), 0.0)));
 
-        // !FIXME! Add a couple more stringent tests...
+        assert!(!simple.intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 1.0, 2.0),
+                           Vector::new_with(-1.0, -1.0, 0.0), 0.0)));
+
+        assert!(!simple.intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 1.0, 2.0),
+                           Vector::new_with(-1.0, -1.0, 0.0), 0.0)));
+
+        assert!(!simple.intersect_p(
+            &Ray::new_with(Point::new_with(-1.0, 1.0, -2.0),
+                           Vector::new_with(1.0, -1.0, 0.0), 0.0)));
+
+        // Shooting down the middle of a cylinder shouldn't work either...
+        assert!(!simple.intersect_p(
+            &Ray::new_with(Point::new_with(0.1, 0.1, -2.0),
+                           Vector::new_with(0.0, 0.0, 1.0), 0.0)));
+
+        // Hitting the cylinder from the inside should work...
+        assert!(simple.intersect_p(
+            &Ray::new_with(Point::new_with(0.1, 0.1, -2.0),
+                           Vector::new_with(-0.4, -0.4, 1.5), 0.0)));
+
+        // Test partial cylinder...
+        let xf = Transform::translate(&Vector::new_with(1.0, 2.0, 3.0));
+        let partial = Cylinder::new(xf.clone(), xf.inverse(), false,
+                                    1.0, -3.0, 0.0, 90.0);
+
+        assert!(partial.intersect_p(
+            &Ray::new_with(Point::new_with(2.0, 4.0, 1.5),
+                           Vector::new_with(-1.0, -1.0, 0.0), 0.0)));
+
+        assert!(!partial.intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 2.0, 1.5),
+                           Vector::new_with(-1.0, -1.0, 0.0), 0.0)));
+
+        assert!(partial.intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 2.0, 1.5),
+                           Vector::new_with(1.0, 1.0, 0.0), 0.0)));
+
+        // Finally, one that just barely misses...
+        assert!(!partial.intersect_p(
+            &Ray::new_with(Point::new_with(2.5, 2.5, 10.0),
+                           Vector::new_with(-1.0, -1.0, -10.0), 0.0)));
+
+        // Can we intersect one with no radius?
+        assert!(Cylinder::new(Transform::new(), Transform::new(), false,
+                              0.0, -1.0, 1.0, 360.0).intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 1.0, -0.5),
+                           Vector::new_with(-1.0, -1.0, 0.0), 0.0)));            
+
+        // Even if it has a really tiny phi_max?
+        assert!(Cylinder::new(Transform::new(), Transform::new(), false,
+                              0.0, -1.0, 1.0, 0.1).intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 1.0, -0.5),
+                           Vector::new_with(-1.0, -1.0, 0.0), 0.0)));            
+
+        // What if it has no phi_max? (This makes sense, since all intersection
+        // points have phi = 0,
+        assert!(Cylinder::new(Transform::new(), Transform::new(), false,
+                              0.0, -1.0, 1.0, 0.0).intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 1.0, -0.5),
+                           Vector::new_with(-1.0, -1.0, 0.0), 0.0)));            
+
+        // Negative phi_max gets clamped?
+        assert!(Cylinder::new(Transform::new(), Transform::new(), false,
+                              0.0, -1.0, 1.0, -1.0).intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 1.0, -0.5),
+                           Vector::new_with(-1.0, -1.0, 0.0), 0.0)));            
+
+        // It should work even if we have a cylinder effectively defined
+        // as the origin...
+        assert!(Cylinder::new(Transform::new(), Transform::new(), false,
+                              0.0, 0.0, 0.0, 360.0).intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 1.0, 1.0),
+                           Vector::new_with(-1.0, -1.0, -1.0), 0.0)));            
+
+        // But not if it's defined as some other point along the z-axis
+        assert!(!Cylinder::new(Transform::new(), Transform::new(), false,
+                               0.0, -1.0, -1.0, 360.0).intersect_p(
+            &Ray::new_with(Point::new_with(1.0, 1.0, 1.0),
+                           Vector::new_with(-1.0, -1.0, -1.0), 0.0)));            
     }
 }
