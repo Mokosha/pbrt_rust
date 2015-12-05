@@ -141,8 +141,12 @@ impl IsShape for Cylinder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ::std::f32::consts::PI;
+
     use bbox::BBox;
     use geometry::point::Point;
+    use geometry::normal::Normal;
+    use geometry::normal::Normalize;
     use geometry::vector::Vector;
     use ray::Ray;
     use shape::shape::IsShape;
@@ -281,5 +285,37 @@ mod tests {
                                0.0, -1.0, -1.0, 360.0).intersect_p(
             &Ray::new_with(Point::new_with(1.0, 1.0, 1.0),
                            Vector::new_with(-1.0, -1.0, -1.0), 0.0)));            
+    }
+
+    #[test]
+    fn it_has_intersection_information() {
+        // Just like the sphere -- this looks right? idk...
+        let xf = Transform::rotate_y(90.0);
+        let c = Cylinder::new(xf.clone(), xf.inverse(), false,
+                              1.0, -1.0, 1.0, 180.0);
+
+        let r = Ray::new_with(Point::new_with(0.0, 1.0, 1.0),
+                              Vector::new_with(0.0, -1.0, -1.0).normalize(), 0.0);
+        let shape_int = c.intersect(&r).unwrap();
+
+        assert!((shape_int.t_hit - (2f32.sqrt() - 1.0)).abs() < 1e-6);
+        assert!((shape_int.ray_epsilon - ((2f32.sqrt() - 1.0) * 5e-4)).abs() < 1e-6);
+
+        let sqrt2_2 = 2f32.sqrt() * 0.5;
+        assert!((shape_int.dg.p -
+                 Point::new_with(0.0, sqrt2_2, sqrt2_2)).length_squared() < 1e-6);
+
+        assert_eq!(shape_int.dg.shape.unwrap(), c.get_shape());
+        assert!((Vector::from(shape_int.dg.nn) -
+                 Vector::new_with(0.0, 1.0, 1.0).normalize()).length_squared() < 1e-6);
+
+        assert_eq!(shape_int.dg.u, 0.75);
+        assert!((shape_int.dg.v - 0.5).abs() < 1e-6);
+
+        let expected_dpdu = Vector::new_with(0.0, -PI * sqrt2_2, PI * sqrt2_2);
+        assert!((shape_int.dg.dpdu - expected_dpdu).length_squared() < 1e-6);
+
+        let expected_dpdv = Vector::new_with(2.0, 0.0, 0.0);
+        assert!((shape_int.dg.dpdv - expected_dpdv).length_squared() < 1e-6);
     }
 }
