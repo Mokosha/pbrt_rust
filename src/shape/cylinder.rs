@@ -2,6 +2,7 @@ use std::f32::consts::PI;
 
 use bbox::BBox;
 use geometry::point::Point;
+use geometry::vector::Vector;
 use ray::Ray;
 use shape::shape::IsShape;
 use shape::shape::Shape;
@@ -117,18 +118,23 @@ impl IsShape for Cylinder {
         let p_hit = ray.point_at(t_hit);
 
         // Find parametric representation of cylinder hit
+        let u = phi / self.phi_max;
+        let v = (p_hit.z - self.z_min) / (self.z_max - self.z_min);
 
-        /*
+        // Compute cylinder dpdu and dpdv
+        let dpdu = self.phi_max * Vector::new_with(-p_hit.y, p_hit.x, 0.0);
+        let dpdv = Vector::new_with(0.0, 0.0, self.z_max - self.z_min);
+
+        // Compute cylinder dndu and dndv
+        let d2pduu = -self.phi_max * self.phi_max *
+            Vector::new_with(p_hit.x, p_hit.y, 0.0);
+        let d2pduv = Vector::new();
+        let d2pdvv = Vector::new();
+
         // Initialize DifferentialGeometry from parametric information
-        let o2w = &(self.get_shape().object2world);
-
-        let dg : DifferentialGeometry = DifferentialGeometry::new_with(
-            o2w.xf(p_hit), o2w.xf(dpdu), o2w.xf(dpdv), o2w.xf(dndu),
-            o2w.xf(dndv), u, v, Some(self.get_shape()));
+        let dg = self.compute_dg(u, v, p_hit, dpdu, dpdv, d2pduu, d2pduv, d2pdvv);
 
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
-         */
-        unimplemented!()
     }
 }
 

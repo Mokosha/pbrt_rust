@@ -150,12 +150,6 @@ impl IsShape for Sphere {
                              p_hit.z * sin_phi,
                              -self.radius * theta.sin());
 
-        // Note: This is the part where the math kind of escapes me as I haven't
-        // actually taken a course on differential geometry. For that, the book recommends
-        // the book by A. Gray:
-        // Modern differential geometry of curves and surfaces
-        // ISBN: 0849378729
-
         // Compute dn/du and dn/dv
         let d2pduu = -self.phi_max * self.phi_max * Vector::new_with(p_hit.x, p_hit.y, 0.0);
         let d2pduv = (self.theta_max - self.theta_min) * p_hit.z * self.phi_max *
@@ -165,29 +159,7 @@ impl IsShape for Sphere {
             (self.theta_max - self.theta_min) *
             Vector::from(p_hit.clone());
 
-        // Compute coefficients for final forms
-        let _ee = dpdu.dot(&dpdu);
-        let _ff = dpdu.dot(&dpdv);
-        let _gg = dpdv.dot(&dpdv);
-        let _nn : Vector = dpdu.clone().cross(&dpdv).normalize();
-        let _e = _nn.dot(&d2pduu);
-        let _f = _nn.dot(&d2pduv);
-        let _g = _nn.dot(&d2pdvv);
-
-        // Compute dn/du and dn/dv from fundamental form coefficients
-        let inveeggff2 = 1.0 / (_ee * _gg - _ff * _ff);
-        let dndu = Normal::from((_f*_ff - _e*_gg) * inveeggff2 * &dpdu +
-                                (_e*_ff - _f*_ee) * inveeggff2 * &dpdv);
-        let dndv = Normal::from((_g*_ff - _f*_gg) * inveeggff2 * &dpdu +
-                                (_f*_ff - _g*_ee) * inveeggff2 * &dpdv);
-
-        // Initialize DifferentialGeometry from parametric information
-        let o2w = &(self.get_shape().object2world);
-
-        let dg : DifferentialGeometry = DifferentialGeometry::new_with(
-            o2w.xf(p_hit), o2w.xf(dpdu), o2w.xf(dpdv), o2w.xf(dndu),
-            o2w.xf(dndv), u, v, Some(self.get_shape()));
-
+        let dg = self.compute_dg(u, v, p_hit, dpdu, dpdv, d2pduu, d2pduv, d2pdvv);
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
     }
 
