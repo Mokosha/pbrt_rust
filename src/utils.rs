@@ -62,8 +62,12 @@ pub fn quadratic(a: f32, b: f32, c: f32) -> Option<(f32, f32)> {
     if descrim < 0.0 {
         return None;
     } else if descrim.abs() < 1e-6 {
-        let t = -b / (2.0 * a);
-        return Some((t, t))
+        if a == 0.0 {
+            return None;
+        } else {
+            let t = -b / (2.0 * a);
+            return Some((t, t));
+        }
     }
 
     let root_descrim = descrim.sqrt();
@@ -76,6 +80,13 @@ pub fn quadratic(a: f32, b: f32, c: f32) -> Option<(f32, f32)> {
             -0.5f32 * (b + root_descrim)
         }
     };
+
+    if a == 0.0 {
+        return None;
+    }
+
+    // Pretty sure this can never happen
+    assert!(q != 0.0);
 
     let t0 = q / a;
     let t1 = c / q;
@@ -247,5 +258,9 @@ mod tests {
         let t0 = 3f32.sqrt() + 4.0;
         let t1 = -(3f32.sqrt()) + 4.0;
         assert_eq!(Some((t1, t0)), quadratic(-1.0, 8.0, -13.0));
+
+        // Make sure that we handle "bad" input, too...
+        assert_eq!(quadratic(0.0, 1.0, 1.0), None);
+        assert_eq!(quadratic(0.0, 0.0, 1.75), None);
     }
 }
