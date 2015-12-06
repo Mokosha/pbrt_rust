@@ -14,6 +14,8 @@ use transform::transform::ApplyTransform;
 use utils::Degrees;
 use utils::Clamp;
 
+use shape::helpers::compute_dg;
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Sphere {
     shape: Shape,
@@ -159,7 +161,8 @@ impl IsShape for Sphere {
             (self.theta_max - self.theta_min) *
             Vector::from(p_hit.clone());
 
-        let dg = self.compute_dg(u, v, p_hit, dpdu, dpdv, d2pduu, d2pduv, d2pdvv);
+        let dg = compute_dg(self.get_shape(), u, v, p_hit,
+                            dpdu, dpdv, d2pduu, d2pduv, d2pdvv);
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
     }
 

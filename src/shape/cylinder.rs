@@ -12,6 +12,8 @@ use transform::transform::Transform;
 use utils::Clamp;
 use utils::Degrees;
 
+use shape::helpers::compute_dg;
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Cylinder {
     shape: Shape,
@@ -132,7 +134,8 @@ impl IsShape for Cylinder {
         let d2pdvv = Vector::new();
 
         // Initialize DifferentialGeometry from parametric information
-        let dg = self.compute_dg(u, v, p_hit, dpdu, dpdv, d2pduu, d2pduv, d2pdvv);
+        let dg = compute_dg(self.get_shape(), u, v, p_hit,
+                            dpdu, dpdv, d2pduu, d2pduv, d2pdvv);
 
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
     }
