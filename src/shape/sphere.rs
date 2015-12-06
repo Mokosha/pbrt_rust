@@ -1,7 +1,4 @@
 use bbox::BBox;
-use diff_geom::DifferentialGeometry;
-use geometry::normal::Normal;
-use geometry::normal::Normalize;
 use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;

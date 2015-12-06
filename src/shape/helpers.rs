@@ -5,7 +5,6 @@ use geometry::vector::Dot;
 use geometry::vector::Vector;
 use geometry::normal::Normal;
 use geometry::normal::Normalize;
-use transform::transform::Transform;
 use transform::transform::ApplyTransform;
 
 // Note: This is the part where the math kind of escapes me as I haven't

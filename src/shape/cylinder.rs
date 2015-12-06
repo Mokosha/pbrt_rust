@@ -153,13 +153,11 @@ mod tests {
 
     use bbox::BBox;
     use geometry::point::Point;
-    use geometry::normal::Normal;
     use geometry::normal::Normalize;
     use geometry::vector::Vector;
     use ray::Ray;
     use shape::shape::IsShape;
     use shape::shape::Shape;
-    use transform::transform::ApplyTransform;
     use transform::transform::Transform;
     use utils::Degrees;
 
