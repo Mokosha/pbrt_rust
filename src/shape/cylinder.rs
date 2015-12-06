@@ -139,6 +139,11 @@ impl IsShape for Cylinder {
 
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
     }
+
+    fn area(&self) -> f32 {
+        // Unroll the rectangle
+        (self.z_max - self.z_min) * self.phi_max * self.radius
+    }
 }
 
 #[cfg(test)]
@@ -320,5 +325,24 @@ mod tests {
 
         let expected_dpdv = Vector::new_with(2.0, 0.0, 0.0);
         assert!((shape_int.dg.dpdv - expected_dpdv).length_squared() < 1e-6);
+    }
+
+    #[test]
+    fn it_has_a_surface_area() {
+        assert_eq!(Cylinder::new(Transform::new(), Transform::new(), false,
+                                 1.0 / PI, 0.0, 1.0, 360.0).area(), 2.0);
+        assert_eq!(Cylinder::new(Transform::new(), Transform::new(), false,
+                                 1.0 / PI, 0.0, 1.0, 180.0).area(), 1.0);
+
+        // It doesn't handle transforms...
+        let xf = Transform::scale(1.0, 2.0, 0.5);
+        assert_eq!(Cylinder::new(xf.clone(), xf.inverse(), false,
+                                 1.0 / PI, 0.0, 1.0, 360.0).area(), 2.0);
+
+        // It handles zero size cylinders...
+        assert_eq!(Cylinder::new(xf.clone(), xf.inverse(), false,
+                                 0.0, 0.0, 1.0, 360.0).area(), 0.0);
+        assert_eq!(Cylinder::new(xf.clone(), xf.inverse(), false,
+                                 1.0, 0.0, 0.0, 360.0).area(), 0.0);
     }
 }
