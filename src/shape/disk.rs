@@ -1,3 +1,6 @@
+use bbox::BBox;
+use geometry::point::Point;
+use shape::shape::IsShape;
 use shape::shape::Shape;
 use transform::transform::Transform;
 use utils::Clamp;
@@ -25,11 +28,24 @@ impl Disk {
     }
 }
 
+impl IsShape for Disk {
+    fn get_shape<'a>(&'a self) -> &'a Shape { &self.shape }
+
+    fn object_bound(&self) -> BBox {
+        BBox::new_with(
+            Point::new_with(-self.radius, -self.radius, self.height),
+            Point::new_with(self.radius, self.radius, self.height))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use ::std::f32::consts::PI;
 
+    use bbox::BBox;
+    use geometry::point::Point;
+    use shape::shape::IsShape;
     use shape::shape::Shape;
     use transform::transform::Transform;
 
@@ -54,5 +70,21 @@ mod tests {
                        inner_radius: 1.0,
                        phi_max: 0.5 * PI
                    });
+    }
+
+    #[test]
+    fn it_has_object_bounds() {
+        assert_eq!(Disk::new(Transform::new(), Transform::new(), false,
+                             0.0, 1.0, 0.5, 360.0).object_bound(),
+                   BBox::new_with(
+                       Point::new_with(-1.0, -1.0, 0.0),
+                       Point::new_with(1.0, 1.0, 0.0)));
+
+        let xf = Transform::scale(1.0, 2.0, 3.0);
+        assert_eq!(Disk::new(xf.clone(), xf.inverse(), false, 2.0, 0.0, 1.0, 90.0)
+                   .object_bound(),
+                   BBox::new_with(
+                       Point::new_with(0.0, 0.0, 2.0),
+                       Point::new_with(0.0, 0.0, 2.0)));
     }
 }
