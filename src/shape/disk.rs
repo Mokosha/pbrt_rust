@@ -1,8 +1,12 @@
 use bbox::BBox;
+use diff_geom::DifferentialGeometry;
 use geometry::point::Point;
+use geometry::vector::Vector;
+use geometry::normal::Normal;
 use ray::Ray;
 use shape::shape::IsShape;
 use shape::shape::Shape;
+use shape::shape::ShapeIntersection;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 use utils::Clamp;
@@ -46,8 +50,8 @@ impl Disk {
         // See if hit point is inside disk radii
         let p_hit = r.point_at(t_hit);
         let dist2 = p_hit.x * p_hit.x + p_hit.y * p_hit.y;
-        if (dist2 > (self.radius * self.radius) ||
-            dist2 < (self.inner_radius * self.inner_radius)) {
+        if dist2 > (self.radius * self.radius) ||
+            dist2 < (self.inner_radius * self.inner_radius) {
             return None;
         }
 
@@ -79,6 +83,42 @@ impl IsShape for Disk {
         let ray = self.get_shape().world2object.t(r);
         self.get_intersection_point(&ray).is_some()
     }
+
+    fn intersect(&self, r: &Ray) -> Option<ShapeIntersection> {
+        // Transform ray to object space
+        let ray = self.get_shape().world2object.t(r);
+
+        let (t_hit, phi) = {
+            let hit = self.get_intersection_point(&ray);
+            if hit.is_some() { hit.unwrap() } else { return None; }
+        };
+
+        let p_hit = ray.point_at(t_hit);
+        let u = phi / self.phi_max;
+        let dist = (p_hit.x * p_hit.x + p_hit.y * p_hit.y).sqrt();
+        let v = 1.0 - (dist - self.inner_radius) /
+            (self.radius - self.inner_radius);
+
+        let dpdu = (self.phi_max / (2.0 * ::std::f32::consts::PI)) *
+            Vector::new_with(-self.phi_max * p_hit.y,
+                              self.phi_max * p_hit.x, 0.0);
+        let dpdv = ((self.radius - self.inner_radius) /
+                    (self.radius * (1.0 - v))) *
+            Vector::new_with(-p_hit.x, -p_hit.y, 0.0);
+
+        let o2w = &(self.get_shape().object2world);
+        let mut dg = DifferentialGeometry::new_with(
+            o2w.xf(p_hit), o2w.xf(dpdu), o2w.xf(dpdv), o2w.xf(Normal::new()),
+            o2w.xf(Normal::new()), u, v, Some(self.get_shape()));
+
+        if ray.o.z > 0.0 {
+            dg.nn = o2w.xf(Normal::new_with(0.0, 0.0, 1.0));
+        } else {
+            dg.nn = o2w.xf(Normal::new_with(0.0, 0.0, -1.0));
+        }
+
+        Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
+    }
 }
 
 #[cfg(test)]
@@ -88,6 +128,7 @@ mod tests {
 
     use bbox::BBox;
     use geometry::point::Point;
+    use geometry::normal::Normal;
     use geometry::vector::Vector;
     use ray::Ray;
     use shape::shape::IsShape;
@@ -193,5 +234,43 @@ mod tests {
             &Ray::new_with(
                 Point::new_with(1.0, 10.5, 140.0),
                 Vector::new_with(-1.0, -10.5, -140.0), 0.0)));
+    }
+
+    #[test]
+    fn it_has_intersection_info() {
+        let simple_disk = Disk::new(Transform::new(), Transform::new(), false,
+                                    0.0, 1.0, 0.0, 360.0);
+        let info = simple_disk.intersect(
+            &Ray::new_with(
+                Point::new_with(0.0, 0.0, 1.0),
+                Vector::new_with(0.0, 0.0, -1.0), 0.0)).unwrap();
+
+        assert_eq!(info.t_hit, 1.0);
+        assert_eq!(info.ray_epsilon, 5e-4);
+        assert_eq!(info.dg.p, Point::new());
+        assert_eq!(info.dg.nn, Normal::new_with(0.0, 0.0, 1.0));
+
+
+        // Hit the top half of a half-pipe
+        let half_pipe = Disk::new(Transform::new(), Transform::new(), false,
+                                  0.0, 0.75, 0.25, 180.0);
+        let half_pipe_int = half_pipe.intersect(
+            &Ray::new_with(
+                Point::new_with(0.0, 0.5, 1.0),
+                Vector::new_with(0.0, 0.0, -1.0), 0.0)).unwrap();
+
+        assert_eq!(half_pipe_int.t_hit, 1.0);
+        assert_eq!(half_pipe_int.ray_epsilon, 5e-4);
+        assert_eq!(half_pipe_int.dg.p, Point::new_with(0.0, 0.5, 0.0));
+        assert_eq!(half_pipe_int.dg.nn, Normal::new_with(0.0, 0.0, 1.0));
+        assert_eq!(half_pipe_int.dg.u, 0.5);
+        assert_eq!(half_pipe_int.dg.v, 0.5);
+        assert_eq!(half_pipe_int.dg.dndu, Normal::new());
+        assert_eq!(half_pipe_int.dg.dndv, Normal::new());
+
+        // !FIXME! I don't know if these are right because I still don't have
+        // an intuitive grasp of how differential geometry works...
+        // assert_eq!(half_pipe_int.dg.dpdu, Vector::new());
+        // assert_eq!(half_pipe_int.dg.dpdv, Vector::new());
     }
 }
