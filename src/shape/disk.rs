@@ -67,6 +67,12 @@ impl Disk {
 
         if phi > self.phi_max { None } else { Some((t_hit, phi)) }
     }
+
+    fn area(&self) -> f32 {
+        let r2 = self.radius * self.radius;
+        let ir2 = self.inner_radius * self.inner_radius;
+        0.5 * self.phi_max * (r2 - ir2)
+    }
 }
 
 impl IsShape for Disk {
@@ -272,5 +278,24 @@ mod tests {
         // an intuitive grasp of how differential geometry works...
         // assert_eq!(half_pipe_int.dg.dpdu, Vector::new());
         // assert_eq!(half_pipe_int.dg.dpdv, Vector::new());
+    }
+
+    #[test]
+    fn it_has_an_area() {
+        assert_eq!(Disk::new(Transform::new(), Transform::new(), false,
+                             0.0, 1.0, 0.0, 360.0).area(),
+                   ::std::f32::consts::PI);
+
+        assert_eq!(Disk::new(Transform::new(), Transform::new(), false,
+                             2381.0, 1.0, 0.0, 360.0).area(),
+                   ::std::f32::consts::PI);
+
+        assert_eq!(Disk::new(Transform::new(), Transform::new(), false,
+                             0.0, 1.0, 0.0, 180.0).area(),
+                   0.5 * ::std::f32::consts::PI);
+
+        assert_eq!(Disk::new(Transform::new(), Transform::new(), false,
+                             0.0, 1.0, 0.5f32.sqrt(), 360.0).area(),
+                   0.5 * ::std::f32::consts::PI);
     }
 }
