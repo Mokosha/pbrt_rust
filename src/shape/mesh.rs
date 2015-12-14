@@ -20,10 +20,17 @@ pub struct Mesh {
     atex: ::std::rc::Rc<Texture<f32>>
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Triangle<'a> {
+    mesh: &'a Mesh,
+    v: Vec<usize>
+}
+
 impl Mesh {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
                _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
                uv: Option<&[f32]>, _atex: ::std::rc::Rc<Texture<f32>>) -> Mesh {
+        assert!(vi.len() % 3 == 0);
         let xf = o2w.clone();
         Mesh {
             shape: Shape::new(o2w, w2o, ro),
@@ -34,6 +41,20 @@ impl Mesh {
             uvs: uv.map(|v| v.to_vec()),
             atex: _atex.clone()
         }
+    }
+
+    pub fn to_tris<'a>(&'a self) -> Vec<Triangle<'a>> {
+        let mut indices = self.vertex_index.clone();
+        let mut tris = Vec::new();
+        while let (Some(v1), Some(v2), Some(v3)) =
+            (indices.pop(), indices.pop(), indices.pop()) {
+                tris.push(Triangle {
+                    mesh: &self,
+                    v: vec![v1, v2, v3]
+                });
+            }
+
+        tris
     }
 }
 
@@ -50,7 +71,27 @@ impl IsShape for Mesh {
 
     // Cannot intersect meshes directly.
     fn can_intersect(&self) -> bool { false }
+}
 
+impl<'a> IsShape for Triangle<'a> {
+    fn get_shape<'b>(&'b self) -> &'b Shape { self.mesh.get_shape() }
+
+    fn object_bound(&self) -> BBox {
+        let p1 = self.mesh.p[self.v[0]].clone();
+        let p2 = self.mesh.p[self.v[1]].clone();
+        let p3 = self.mesh.p[self.v[2]].clone();
+
+        let w2o = &(self.get_shape().world2object);
+        BBox::new_with(w2o.xf(p1), w2o.xf(p2)).unioned_with(&(w2o.xf(p3)))
+    }
+
+    fn world_bound(&self) -> BBox {
+        let p1 = self.mesh.p[self.v[0]].clone();
+        let p2 = self.mesh.p[self.v[1]].clone();
+        let p3 = self.mesh.p[self.v[2]].clone();
+
+        BBox::new_with(p1, p2).unioned_with(&p3)
+    }
 }
 
 #[cfg(test)]
