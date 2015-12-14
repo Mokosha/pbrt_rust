@@ -81,8 +81,11 @@ impl<'a> IsShape for Triangle<'a> {
         let p2 = self.mesh.p[self.v[1]].clone();
         let p3 = self.mesh.p[self.v[2]].clone();
 
+
         let w2o = &(self.get_shape().world2object);
-        BBox::new_with(w2o.xf(p1), w2o.xf(p2)).unioned_with(&(w2o.xf(p3)))
+        BBox::from(w2o.xf(p1)).
+            unioned_with(&(w2o.xf(p2))).
+            unioned_with(&(w2o.xf(p3)))
     }
 
     fn world_bound(&self) -> BBox {
@@ -90,13 +93,14 @@ impl<'a> IsShape for Triangle<'a> {
         let p2 = self.mesh.p[self.v[1]].clone();
         let p3 = self.mesh.p[self.v[2]].clone();
 
-        BBox::new_with(p1, p2).unioned_with(&p3)
+        BBox::from(p1).unioned_with(&p2).unioned_with(&p3)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use bbox::BBox;
     use geometry::point::Point;
     use shape::shape::IsShape;
@@ -173,4 +177,61 @@ mod tests {
                              ::std::rc::Rc::new(white_float_tex())).world_bound(),
                    BBox::new_with(Point::new(), Point::new_with(1.0, 1.0, 1.0)));
     }
+
+    #[test]
+    fn it_can_be_refined_to_triangles() {
+        let xf = Transform::rotate_y(90.0);
+        let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                             &tet_tris, &tet_pts, None, None, None,
+                             ::std::rc::Rc::new(white_float_tex()));
+        let tris = mesh.to_tris();
+
+        assert_eq!(tris.len(), 4);
+        assert_eq!(tris[3].v, vec![2, 3, 0]);
+        assert_eq!(tris[2].v, vec![2, 1, 0]);
+        assert_eq!(tris[1].v, vec![1, 3, 0]);
+        assert_eq!(tris[0].v, vec![3, 2, 1]);
+    }
+
+    #[test]
+    fn its_triangles_have_object_space_bounds() {
+        let xf = Transform::rotate_y(90.0);
+        let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                             &tet_tris, &tet_pts, None, None, None,
+                             ::std::rc::Rc::new(white_float_tex()));
+        let tris = mesh.to_tris();
+        assert_eq!(tris[3].object_bound(),
+                   BBox::new_with(Point::new(), Point::new_with(0.0, 1.0, 1.0)));
+        assert_eq!(tris[2].object_bound(),
+                   BBox::new_with(Point::new(), Point::new_with(1.0, 1.0, 0.0)));
+        assert_eq!(tris[1].object_bound(),
+                   BBox::new_with(Point::new(), Point::new_with(1.0, 0.0, 1.0)));
+        assert_eq!(tris[0].object_bound(),
+                   BBox::new_with(Point::new(), Point::new_with(1.0, 1.0, 1.0)));
+    }
+
+    #[test]
+    fn its_triangles_have_world_space_bounds() {
+        let xf = Transform::rotate_y(90.0);
+        let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                             &tet_tris, &tet_pts, None, None, None,
+                             ::std::rc::Rc::new(white_float_tex()));
+        let tris = mesh.to_tris();
+        assert!((tris[3].world_bound().p_min - Point::new()).length_squared() < 1e-6);
+        assert!((tris[3].world_bound().p_max -
+                 Point::new_with(1.0, 1.0, 0.0)).length_squared() < 1e-6);
+        assert!((tris[2].world_bound().p_min -
+                 Point::new_with(0.0, 0.0, -1.0)).length_squared() < 1e-6);
+        assert!((tris[2].world_bound().p_max -
+                 Point::new_with(0.0, 1.0, 0.0)).length_squared() < 1e-6);
+        assert!((tris[1].world_bound().p_min -
+                 Point::new_with(0.0, 0.0, -1.0)).length_squared() < 1e-6);
+        assert!((tris[1].world_bound().p_max -
+                 Point::new_with(1.0, 0.0, 0.0)).length_squared() < 1e-6);
+        assert!((tris[0].world_bound().p_min -
+                 Point::new_with(0.0, 0.0, -1.0)).length_squared() < 1e-6);
+        assert!((tris[0].world_bound().p_max -
+                 Point::new_with(1.0, 1.0, 0.0)).length_squared() < 1e-6);
+    }
+
 }
