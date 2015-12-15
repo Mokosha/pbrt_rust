@@ -97,6 +97,16 @@ impl<'a> IsShape for Triangle<'a> {
     }
 }
 
+impl<'a> ::std::ops::Index<usize> for Triangle<'a> {
+    type Output = Point;
+    fn index(&self, i: usize) -> &Point {
+        match i {
+            0 ... 2 => &(self.mesh.p[self.v[i]]),
+            _ => panic!("Error - Triangle index out of bounds!")
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
