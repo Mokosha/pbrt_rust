@@ -113,6 +113,8 @@ mod tests {
 
     use bbox::BBox;
     use geometry::point::Point;
+    use geometry::vector::Vector;
+    use ray::Ray;
     use shape::shape::IsShape;
     use transform::transform::Transform;
 
@@ -244,4 +246,26 @@ mod tests {
                  Point::new_with(1.0, 1.0, 0.0)).length_squared() < 1e-6);
     }
 
+    #[test]
+    fn its_triangles_can_be_intersected() {
+        let mesh = Mesh::new(Transform::new(), Transform::new(), false,
+                             &tet_tris, &tet_pts, None, None, None,
+                             ::std::rc::Rc::new(white_float_tex()));
+        let tris = mesh.to_tris();
+
+        assert!(tris[3].intersect_p(&Ray::new_with(
+            Point::new(), Vector::new_with(1.0, 1.0, 1.0), 0.0)));
+
+        assert!(!tris[3].intersect_p(&Ray::new_with(
+            Point::new_with(1.5, 1.5, 1.5),
+            Vector::new_with(1.0, 1.0, 1.0), 0.0)));
+
+        assert!(tris[3].intersect_p(&Ray::new_with(
+            Point::new_with(1.5, 1.5, 1.5),
+            Vector::new_with(-1.0, -1.0, -1.0), 0.0)));
+
+        assert!(!tris[3].intersect_p(&Ray::new_with(
+            Point::new_with(1.0, 1.0, -1.0),
+            Vector::new_with(-1.0, -1.0, 1.0), 0.0)));
+    }
 }
