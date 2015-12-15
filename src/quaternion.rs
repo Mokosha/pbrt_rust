@@ -135,9 +135,9 @@ impl Lerp<f32> for Quaternion {
     }
 }
 
-impl ::std::ops::Index<i32> for Quaternion {
+impl ::std::ops::Index<usize> for Quaternion {
     type Output = f32;
-    fn index<'a>(&'a self, index: i32) -> &'a f32 {
+    fn index(&self, index: usize) -> &f32 {
         match index {
             0 => &self.v.x,
             1 => &self.v.y,
@@ -148,8 +148,8 @@ impl ::std::ops::Index<i32> for Quaternion {
     }
 }
 
-impl ::std::ops::IndexMut<i32> for Quaternion {
-    fn index_mut<'a>(&'a mut self, index: i32) -> &'a mut f32 {
+impl ::std::ops::IndexMut<usize> for Quaternion {
+    fn index_mut(&mut self, index: usize) -> &mut f32 {
         match index {
             0 => &mut self.v.x,
             1 => &mut self.v.y,

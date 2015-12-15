@@ -130,9 +130,9 @@ impl<'a> ::std::ops::Neg for &'a Vector {
     }
 }
 
-impl ::std::ops::Index<i32> for Vector {
+impl ::std::ops::Index<usize> for Vector {
     type Output = f32;
-    fn index<'a>(&'a self, index: i32) -> &'a f32 {
+    fn index(&self, index: usize) -> &f32 {
         match index {
             0 => &self.x,
             1 => &self.y,
@@ -142,8 +142,8 @@ impl ::std::ops::Index<i32> for Vector {
     }
 }
 
-impl ::std::ops::IndexMut<i32> for Vector {
-    fn index_mut<'a>(&'a mut self, index: i32) -> &'a mut f32 {
+impl ::std::ops::IndexMut<usize> for Vector {
+    fn index_mut(&mut self, index: usize) -> &mut f32 {
         match index {
             0 => &mut self.x,
             1 => &mut self.y,

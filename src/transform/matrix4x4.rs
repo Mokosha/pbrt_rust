@@ -256,24 +256,18 @@ impl ::std::ops::Mul<Matrix4x4> for f32 {
 
 impl ::std::ops::Index<usize> for Matrix4x4 {
     type Output = [f32; 4];
-    fn index<'a>(&'a self, index: usize) -> &'a [f32; 4] {
-        match index {
-            0 => &self.m[0],
-            1 => &self.m[1],
-            2 => &self.m[2],
-            3 => &self.m[3],
+    fn index(&self, i: usize) -> &[f32; 4] {
+        match i {
+            0 ... 3 => &self.m[i],
             _ => panic!("Error - Matrix4x4 index out of bounds!")
         }
     }
 }
 
 impl ::std::ops::IndexMut<usize> for Matrix4x4 {
-    fn index_mut<'a>(&'a mut self, index: usize) -> &'a mut [f32; 4] {
-        match index {
-            0 => &mut self.m[0],
-            1 => &mut self.m[1],
-            2 => &mut self.m[2],
-            3 => &mut self.m[3],
+    fn index_mut(&mut self, i: usize) -> &mut [f32; 4] {
+        match i {
+            0 ... 3 => &mut self.m[i],
             _ => panic!("Error - Matrix4x4 index out of bounds!")
         }
     }

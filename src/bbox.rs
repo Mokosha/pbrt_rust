@@ -107,9 +107,9 @@ impl BBox {
     }
 }
 
-impl ::std::ops::Index<i32> for BBox {
+impl ::std::ops::Index<usize> for BBox {
     type Output = Point;
-    fn index<'a>(&'a self, index: i32) -> &'a Point {
+    fn index(&self, index: usize) -> &Point {
         match index {
             0 => &self.p_min,
             1 => &self.p_max,
@@ -118,8 +118,8 @@ impl ::std::ops::Index<i32> for BBox {
     }
 }
 
-impl ::std::ops::IndexMut<i32> for BBox {
-    fn index_mut<'a>(&'a mut self, index: i32) -> &'a mut Point {
+impl ::std::ops::IndexMut<usize> for BBox {
+    fn index_mut(&mut self, index: usize) -> &mut Point {
         match index {
             0 => &mut self.p_min,
             1 => &mut self.p_max,
