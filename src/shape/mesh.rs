@@ -23,7 +23,7 @@ pub struct Mesh {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Triangle<'a> {
     mesh: &'a Mesh,
-    v: Vec<usize>
+    v: [usize; 3]
 }
 
 impl Mesh {
@@ -50,7 +50,7 @@ impl Mesh {
             (indices.pop(), indices.pop(), indices.pop()) {
                 tris.push(Triangle {
                     mesh: &self,
-                    v: vec![v1, v2, v3]
+                    v: [v1, v2, v3]
                 });
             }
 
@@ -187,10 +187,10 @@ mod tests {
         let tris = mesh.to_tris();
 
         assert_eq!(tris.len(), 4);
-        assert_eq!(tris[3].v, vec![2, 3, 0]);
-        assert_eq!(tris[2].v, vec![2, 1, 0]);
-        assert_eq!(tris[1].v, vec![1, 3, 0]);
-        assert_eq!(tris[0].v, vec![3, 2, 1]);
+        assert_eq!(tris[3].v, [2, 3, 0]);
+        assert_eq!(tris[2].v, [2, 1, 0]);
+        assert_eq!(tris[1].v, [1, 3, 0]);
+        assert_eq!(tris[0].v, [3, 2, 1]);
     }
 
     #[test]
