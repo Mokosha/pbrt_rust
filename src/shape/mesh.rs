@@ -2,7 +2,9 @@ use bbox::BBox;
 use bbox::Union;
 use geometry::normal::Normal;
 use geometry::point::Point;
+use geometry::vector::Dot;
 use geometry::vector::Vector;
+use ray::Ray;
 use shape::shape::IsShape;
 use shape::shape::Shape;
 use texture::Texture;
@@ -33,6 +35,39 @@ impl<'a> Triangle<'a> {
         let p3 = &(self.mesh.p[self.v[2]]);
 
         (p1, p2, p3)
+    }
+
+    pub fn get_intersection_point(&self, r: &Ray) -> Option<f32> {
+        // Compute s1
+        let (p1, p2, p3) = self.get_vertices();
+
+        let e1 = p2 - p1;
+        let e2 = p3 - p1;
+        let s1 = r.d.clone().cross(&e2);
+        let divisor = s1.dot(&e1);
+        if divisor == 0f32 {
+            return None;
+        }
+
+        // Compute first barycentric coordinate
+        let inv_divisor = 1.0 / divisor;
+        let s = &(r.o) - p1;
+        let b1 = s1.dot(&s) * inv_divisor;
+        if b1 < 0.0 || b1 > 1.0 {
+            return None;
+        }
+
+        // Compute second barycentric coordinate
+        let s2 = s.clone().cross(&e1);
+        let b2 = r.d.dot(&s2) * inv_divisor;
+        if b2 < 0.0 || (b1 + b2) > 1.0 {
+            return None;
+        }
+
+        // Compute t to intersection point
+        let t = e2.dot(&s2) * inv_divisor;
+
+        if t < r.mint || t > r.maxt { None } else { Some(t) }
     }
 }
 
@@ -101,6 +136,9 @@ impl<'a> IsShape for Triangle<'a> {
         BBox::from(p1.clone()).unioned_with(p2).unioned_with(p3)
     }
 
+    fn intersect_p(&self, r: &Ray) -> bool {
+        self.get_intersection_point(r).is_some()
+    }
 }
 
 impl<'a> ::std::ops::Index<usize> for Triangle<'a> {
@@ -259,18 +297,18 @@ mod tests {
                              ::std::rc::Rc::new(white_float_tex()));
         let tris = mesh.to_tris();
 
-        assert!(tris[3].intersect_p(&Ray::new_with(
+        assert!(tris[0].intersect_p(&Ray::new_with(
             Point::new(), Vector::new_with(1.0, 1.0, 1.0), 0.0)));
 
-        assert!(!tris[3].intersect_p(&Ray::new_with(
+        assert!(!tris[0].intersect_p(&Ray::new_with(
             Point::new_with(1.5, 1.5, 1.5),
             Vector::new_with(1.0, 1.0, 1.0), 0.0)));
 
-        assert!(tris[3].intersect_p(&Ray::new_with(
+        assert!(tris[0].intersect_p(&Ray::new_with(
             Point::new_with(1.5, 1.5, 1.5),
             Vector::new_with(-1.0, -1.0, -1.0), 0.0)));
 
-        assert!(!tris[3].intersect_p(&Ray::new_with(
+        assert!(!tris[0].intersect_p(&Ray::new_with(
             Point::new_with(1.0, 1.0, -1.0),
             Vector::new_with(-1.0, -1.0, 1.0), 0.0)));
     }
