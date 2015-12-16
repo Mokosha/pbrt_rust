@@ -26,6 +26,16 @@ pub struct Triangle<'a> {
     v: [usize; 3]
 }
 
+impl<'a> Triangle<'a> {
+    pub fn get_vertices(&self) -> (&'a Point, &'a Point, &'a Point) {
+        let p1 = &(self.mesh.p[self.v[0]]);
+        let p2 = &(self.mesh.p[self.v[1]]);
+        let p3 = &(self.mesh.p[self.v[2]]);
+
+        (p1, p2, p3)
+    }
+}
+
 impl Mesh {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
                _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
@@ -77,24 +87,20 @@ impl<'a> IsShape for Triangle<'a> {
     fn get_shape<'b>(&'b self) -> &'b Shape { self.mesh.get_shape() }
 
     fn object_bound(&self) -> BBox {
-        let p1 = self.mesh.p[self.v[0]].clone();
-        let p2 = self.mesh.p[self.v[1]].clone();
-        let p3 = self.mesh.p[self.v[2]].clone();
-
+        let (p1, p2, p3) = self.get_vertices();
 
         let w2o = &(self.get_shape().world2object);
-        BBox::from(w2o.xf(p1)).
-            unioned_with(&(w2o.xf(p2))).
-            unioned_with(&(w2o.xf(p3)))
+        BBox::from(w2o.t(p1)).
+            unioned_with(&(w2o.t(p2))).
+            unioned_with(&(w2o.t(p3)))
     }
 
     fn world_bound(&self) -> BBox {
-        let p1 = self.mesh.p[self.v[0]].clone();
-        let p2 = self.mesh.p[self.v[1]].clone();
-        let p3 = self.mesh.p[self.v[2]].clone();
+        let (p1, p2, p3) = self.get_vertices();
 
-        BBox::from(p1).unioned_with(&p2).unioned_with(&p3)
+        BBox::from(p1.clone()).unioned_with(p2).unioned_with(p3)
     }
+
 }
 
 impl<'a> ::std::ops::Index<usize> for Triangle<'a> {
