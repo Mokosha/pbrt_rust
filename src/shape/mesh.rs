@@ -37,7 +37,7 @@ impl<'a> Triangle<'a> {
         (p1, p2, p3)
     }
 
-    pub fn get_intersection_point(&self, r: &Ray) -> Option<f32> {
+    pub fn get_intersection_point(&self, r: &Ray) -> Option<(f32, f32, f32)> {
         // Compute s1
         let (p1, p2, p3) = self.get_vertices();
 
@@ -67,7 +67,7 @@ impl<'a> Triangle<'a> {
         // Compute t to intersection point
         let t = e2.dot(&s2) * inv_divisor;
 
-        if t < r.mint || t > r.maxt { None } else { Some(t) }
+        if t < r.mint || t > r.maxt { None } else { Some((t, b1, b2)) }
     }
 }
 
