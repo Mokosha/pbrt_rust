@@ -69,6 +69,21 @@ impl<'a> Triangle<'a> {
 
         if t < r.mint || t > r.maxt { None } else { Some((t, b1, b2)) }
     }
+
+    pub fn get_uvs(&self) -> [[f32; 2]; 3] {
+        if let Some(uvs) = self.mesh.uvs.as_ref() {
+            [[uvs[2 * self.v[0]],
+              uvs[2 * self.v[0] + 1]],
+             [uvs[2 * self.v[1]],
+              uvs[2 * self.v[1] + 1]],
+             [uvs[2 * self.v[2]],
+              uvs[2 * self.v[2] + 1]]]
+        } else {
+            [[0.0, 0.0],
+             [1.0, 0.0],
+             [1.0, 1.0]]
+        }
+    }
 }
 
 impl Mesh {
