@@ -1,15 +1,23 @@
+use std::rc::Rc;
+use std::convert::AsRef;
+
 use bbox::BBox;
 use bbox::Union;
+use diff_geom::DifferentialGeometry;
 use geometry::normal::Normal;
+use geometry::normal::Normalize;
 use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
 use ray::Ray;
 use shape::shape::IsShape;
 use shape::shape::Shape;
+use shape::shape::ShapeIntersection;
 use texture::Texture;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
+
+use geometry::vector::coordinate_system;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Mesh {
@@ -19,7 +27,7 @@ pub struct Mesh {
     n: Option<Vec<Normal>>,
     s: Option<Vec<Vector>>,
     uvs: Option<Vec<f32>>,
-    atex: ::std::rc::Rc<Texture<f32>>
+    atex: Option<Rc<Texture<f32>>>
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -89,7 +97,7 @@ impl<'a> Triangle<'a> {
 impl Mesh {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
                _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
-               uv: Option<&[f32]>, _atex: ::std::rc::Rc<Texture<f32>>) -> Mesh {
+               uv: Option<&[f32]>, _atex: Option<Rc<Texture<f32>>>) -> Mesh {
         assert!(vi.len() % 3 == 0);
         let xf = o2w.clone();
         Mesh {
@@ -99,7 +107,7 @@ impl Mesh {
             n: _n.map(|v| v.to_vec()),
             s: _s.map(|v| v.to_vec()),
             uvs: uv.map(|v| v.to_vec()),
-            atex: _atex.clone()
+            atex: _atex.map(|t| t.clone())
         }
     }
 
@@ -154,6 +162,59 @@ impl<'a> IsShape for Triangle<'a> {
     fn intersect_p(&self, r: &Ray) -> bool {
         self.get_intersection_point(r).is_some()
     }
+
+    fn intersect(&self, r: &Ray) -> Option<ShapeIntersection> {
+        let (t, b1, b2) = {
+            match self.get_intersection_point(r) {
+                None => return None,
+                Some(t) => t
+            }
+        };
+
+        let (p1, p2, p3) = self.get_vertices();
+        let uvs = self.get_uvs();
+
+        // Compute deltas for triangle partial derivatives
+        let du1 = uvs[0][0] - uvs[2][0];
+        let du2 = uvs[1][0] - uvs[2][0];
+        let dv1 = uvs[0][1] - uvs[2][1];
+        let dv2 = uvs[1][1] - uvs[2][1];
+
+        let dp1 = p1 - p3;
+        let dp2 = p2 - p3;
+
+        // Compute triangle partial derivatives
+        let (dpdu, dpdv) = {
+            let determinant = du1 * dv2 - dv1 * du2;
+            if determinant == 0.0 {
+                // Handle zero determinant for triangle partial
+                // derivatives matrix
+                coordinate_system(&((p3 - p1).cross(&(p2 - p1)).normalize()))
+            } else {
+                let inv_det = 1.0 / determinant;
+                (( dv2 * &dp1 - dv1 * &dp2) * inv_det,
+                 (-du2 * &dp1 + du1 * &dp2) * inv_det)
+            }
+        };
+
+        // Interpolate (u, v) triangle parametric coordinates
+        let b0 = 1.0 - b1 - b2;
+        let tu = b0 * uvs[0][0] + b1 * uvs[1][0] + b2 * uvs[2][0];
+        let tv = b0 * uvs[0][1] + b1 * uvs[1][1] + b2 * uvs[2][1];
+
+        // Test intersection against alpha texture, if present
+        let dg = DifferentialGeometry::new_with(
+            r.point_at(t), dpdu, dpdv, Normal::new(), Normal::new(), tu, tv,
+            Some(self.get_shape()));
+
+        if let Some(tex_ref) = self.mesh.atex.as_ref().map(|t| t.clone()) {
+            if (*tex_ref).evaluate(&dg) == 0.0 {
+                return None
+            }
+        }
+
+        Some(ShapeIntersection::new(t, t * 5e-4, dg))
+    }
 }
 
 impl<'a> ::std::ops::Index<usize> for Triangle<'a> {
@@ -177,8 +238,6 @@ mod tests {
     use shape::shape::IsShape;
     use transform::transform::Transform;
 
-    use texture::white_float_tex;
-
     // Tetrahedron
     static tet_pts : [Point; 4] =
         [Point { x: 0.0, y: 0.0, z: 0.0 },
@@ -191,8 +250,7 @@ mod tests {
     #[test]
     fn it_can_be_created() {
         let mesh = Mesh::new(Transform::new(), Transform::new(), false,
-                             &tet_tris, &tet_pts, None, None, None,
-                             ::std::rc::Rc::new(white_float_tex()));
+                             &tet_tris, &tet_pts, None, None, None, None);
         // Make sure that all of the indices and points remained untransformed...
         assert_eq!(mesh.vertex_index, tet_tris.to_vec());
         assert_eq!(mesh.p, tet_pts.to_vec());
@@ -200,8 +258,7 @@ mod tests {
         // If we rotate it about y by 90 degrees then it should be OK as well
         let xf = Transform::rotate_y(90.0);
         let mesh2 = Mesh::new(xf.clone(), xf.inverse(), false,
-                              &tet_tris, &tet_pts, None, None, None,
-                              ::std::rc::Rc::new(white_float_tex()));
+                              &tet_tris, &tet_pts, None, None, None, None);
 
         assert_eq!(mesh2.vertex_index, tet_tris.to_vec());
         assert!(mesh2.p.iter().zip(vec![
@@ -218,15 +275,13 @@ mod tests {
     fn it_has_object_space_bounds() {
         let xf = Transform::rotate_y(90.0);
         let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                             &tet_tris, &tet_pts, None, None, None,
-                             ::std::rc::Rc::new(white_float_tex()));
+                             &tet_tris, &tet_pts, None, None, None, None);
         let expected = BBox::new_with(Point::new(),
                                       Point::new_with(1.0, 1.0, 1.0));
 
         assert_eq!(mesh.object_bound(), expected);
         assert_eq!(Mesh::new(Transform::new(), Transform::new(), false,
-                             &tet_tris, &tet_pts, None, None, None,
-                             ::std::rc::Rc::new(white_float_tex())).object_bound(),
+                             &tet_tris, &tet_pts, None, None, None, None).object_bound(),
                    expected);
     }
 
@@ -234,8 +289,7 @@ mod tests {
     fn it_has_world_space_bounds() {
         let xf = Transform::rotate_y(90.0);
         let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                             &tet_tris, &tet_pts, None, None, None,
-                             ::std::rc::Rc::new(white_float_tex()));
+                             &tet_tris, &tet_pts, None, None, None, None);
 
         let expected = BBox::new_with(Point::new_with(0.0, 0.0, -1.0),
                                       Point::new_with(1.0, 1.0, 0.0));
@@ -244,8 +298,7 @@ mod tests {
         assert!((mesh.world_bound().p_min - expected.p_min).length_squared() < 1e-6);
         assert!((mesh.world_bound().p_max - expected.p_max).length_squared() < 1e-6);
         assert_eq!(Mesh::new(Transform::new(), Transform::new(), false,
-                             &tet_tris, &tet_pts, None, None, None,
-                             ::std::rc::Rc::new(white_float_tex())).world_bound(),
+                             &tet_tris, &tet_pts, None, None, None, None).world_bound(),
                    BBox::new_with(Point::new(), Point::new_with(1.0, 1.0, 1.0)));
     }
 
@@ -253,8 +306,7 @@ mod tests {
     fn it_can_be_refined_to_triangles() {
         let xf = Transform::rotate_y(90.0);
         let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                             &tet_tris, &tet_pts, None, None, None,
-                             ::std::rc::Rc::new(white_float_tex()));
+                             &tet_tris, &tet_pts, None, None, None, None);
         let tris = mesh.to_tris();
 
         assert_eq!(tris.len(), 4);
@@ -268,8 +320,7 @@ mod tests {
     fn its_triangles_have_object_space_bounds() {
         let xf = Transform::rotate_y(90.0);
         let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                             &tet_tris, &tet_pts, None, None, None,
-                             ::std::rc::Rc::new(white_float_tex()));
+                             &tet_tris, &tet_pts, None, None, None, None);
         let tris = mesh.to_tris();
         assert_eq!(tris[3].object_bound(),
                    BBox::new_with(Point::new(), Point::new_with(0.0, 1.0, 1.0)));
@@ -285,8 +336,7 @@ mod tests {
     fn its_triangles_have_world_space_bounds() {
         let xf = Transform::rotate_y(90.0);
         let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                             &tet_tris, &tet_pts, None, None, None,
-                             ::std::rc::Rc::new(white_float_tex()));
+                             &tet_tris, &tet_pts, None, None, None, None);
         let tris = mesh.to_tris();
         assert!((tris[3].world_bound().p_min - Point::new()).length_squared() < 1e-6);
         assert!((tris[3].world_bound().p_max -
@@ -308,8 +358,7 @@ mod tests {
     #[test]
     fn its_triangles_can_be_intersected() {
         let mesh = Mesh::new(Transform::new(), Transform::new(), false,
-                             &tet_tris, &tet_pts, None, None, None,
-                             ::std::rc::Rc::new(white_float_tex()));
+                             &tet_tris, &tet_pts, None, None, None, None);
         let tris = mesh.to_tris();
 
         assert!(tris[0].intersect_p(&Ray::new_with(
@@ -326,5 +375,12 @@ mod tests {
         assert!(!tris[0].intersect_p(&Ray::new_with(
             Point::new_with(1.0, 1.0, -1.0),
             Vector::new_with(-1.0, -1.0, 1.0), 0.0)));
+    }
+
+    #[test]
+    #[ignore]
+    fn its_triangles_have_intersection_information() {
+        // !FIXME! Implement this when I know how to actually measure it.
+        unimplemented!();
     }
 }
