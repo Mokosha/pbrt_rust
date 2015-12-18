@@ -215,6 +215,11 @@ impl<'a> IsShape for Triangle<'a> {
 
         Some(ShapeIntersection::new(t, t * 5e-4, dg))
     }
+
+    fn area(&self) -> f32 {
+        let (p1, p2, p3) = self.get_vertices();
+        0.5 * (p2 - p1).cross(&(p3 - p1)).length()
+    }
 }
 
 impl<'a> ::std::ops::Index<usize> for Triangle<'a> {
@@ -382,5 +387,25 @@ mod tests {
     fn its_triangles_have_intersection_information() {
         // !FIXME! Implement this when I know how to actually measure it.
         unimplemented!();
+    }
+
+    #[test]
+    fn its_triangles_have_surface_area() {
+        let mesh = Mesh::new(Transform::new(), Transform::new(), false,
+                             &tet_tris, &tet_pts, None, None, None, None);
+        let tris = mesh.to_tris();
+
+        assert_eq!(tris[1].area(), 0.5);
+        assert_eq!(tris[2].area(), 0.5);
+        assert_eq!(tris[3].area(), 0.5);
+
+        let xf = Transform::scale(2.0, 2.0, 2.0);
+        let xf_mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                                &tet_tris, &tet_pts, None, None, None, None);
+        let xf_tris = xf_mesh.to_tris();
+
+        assert_eq!(xf_tris[1].area(), 2.0);
+        assert_eq!(xf_tris[2].area(), 2.0);
+        assert_eq!(xf_tris[3].area(), 2.0);
     }
 }
