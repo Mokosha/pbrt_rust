@@ -94,6 +94,24 @@ pub fn quadratic(a: f32, b: f32, c: f32) -> Option<(f32, f32)> {
     if t0 < t1 { Some((t0, t1)) } else { Some((t1, t0)) }
 }
 
+pub fn solve_linear_system_2x2(a: [[f32; 2]; 2], b: [f32; 2])
+                               -> Option<(f32, f32)> {
+    let det = a[0][0] * a[1][1] - a[0][1] * a[1][0];
+    if det.abs() < 1e-10 {
+        return None;
+    }
+
+    let inv_det = 1.0 / det;
+    let x0 = (a[1][1] * b[0] - a[0][1] * b[1]) * inv_det;
+    let x1 = (a[0][0] * b[1] - a[1][0] * b[0]) * inv_det;
+
+    if x0.is_nan() || x1.is_nan() {
+        None
+    } else {
+        Some((x0, x1))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -262,5 +280,42 @@ mod tests {
         // Make sure that we handle "bad" input, too...
         assert_eq!(quadratic(0.0, 1.0, 1.0), None);
         assert_eq!(quadratic(0.0, 0.0, 1.75), None);
+    }
+
+    #[test]
+    fn it_can_solve_2x2_linear_systems() {
+        // Let's try the obvious case
+        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [0.0, 1.0]], [3.5, -4.2]),
+                   Some((3.5, -4.2)));
+
+        // Let's try the degenerate case...
+        assert_eq!(solve_linear_system_2x2([[::std::f32::NAN, 0.0], [0.0, 1.0]], [3.5, -4.2]),
+                   None);
+        assert_eq!(solve_linear_system_2x2([[1.0, ::std::f32::NAN], [0.0, 1.0]], [3.5, -4.2]),
+                   None);
+        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [::std::f32::NAN, 1.0]], [3.5, -4.2]),
+                   None);
+        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [0.0, ::std::f32::NAN]], [3.5, -4.2]),
+                   None);
+        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [0.0, 1.0]], [::std::f32::NAN, -4.2]),
+                   None);
+        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [0.0, 1.0]], [3.5, ::std::f32::NAN]),
+                   None);
+
+        // Let's try another degenerate case...
+        assert_eq!(solve_linear_system_2x2([[0.0, 0.0], [0.0, 0.0]], [3.5, -4.2]),
+                   None);
+        assert_eq!(solve_linear_system_2x2([[1.0, 2.0], [1.0, 2.0]], [3.5, -4.2]),
+                   None);
+        assert_eq!(solve_linear_system_2x2([[3.0, 2.0], [6.0, 4.0]], [3.5, -4.2]),
+                   None);
+
+        // Let's try a rotation
+        let sqrt2_2 = 0.5 * 2f32.sqrt();
+        let (ox, oy) = solve_linear_system_2x2([[sqrt2_2, -sqrt2_2],
+                                                [sqrt2_2,  sqrt2_2]],
+                                               [3.0, 1.0]).unwrap();
+        assert!((ox - (2.0 * 2f32.sqrt())).abs() < 1e-6);
+        assert!((oy + 2f32.sqrt()).abs() < 1e-6);
     }
 }
