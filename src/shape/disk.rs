@@ -67,12 +67,6 @@ impl Disk {
 
         if phi > self.phi_max { None } else { Some((t_hit, phi)) }
     }
-
-    fn area(&self) -> f32 {
-        let r2 = self.radius * self.radius;
-        let ir2 = self.inner_radius * self.inner_radius;
-        0.5 * self.phi_max * (r2 - ir2)
-    }
 }
 
 impl IsShape for Disk {
@@ -124,6 +118,12 @@ impl IsShape for Disk {
         }
 
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
+    }
+
+    fn area(&self) -> f32 {
+        let r2 = self.radius * self.radius;
+        let ir2 = self.inner_radius * self.inner_radius;
+        0.5 * self.phi_max * (r2 - ir2)
     }
 }
 

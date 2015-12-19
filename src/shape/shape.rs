@@ -84,10 +84,8 @@ pub trait IsShape {
     }
 
     fn get_shading_geometry<'a>(&self, _: &Transform,
-                                dg: &DifferentialGeometry<'a>) ->
-        DifferentialGeometry<'a> {
-            dg.clone()
-        }
+                                dg: DifferentialGeometry<'a>) ->
+        DifferentialGeometry<'a> { dg }
 
     fn area(&self) -> f32 { unimplemented!(); }
 }
