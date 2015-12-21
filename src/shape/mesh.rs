@@ -131,11 +131,11 @@ impl IsShape for Mesh {
     fn get_shape<'a>(&'a self) -> &'a Shape { &(self.shape) }
     fn object_bound(&self) -> BBox {
         let w2o = &(self.get_shape().world2object);
-        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with(&(w2o.t(p))))
+        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with(w2o.t(p)))
     }
 
     fn world_bound(&self) -> BBox {
-        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with(p))
+        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with_ref(p))
     }
 
     // Cannot intersect meshes directly.
@@ -149,15 +149,18 @@ impl<'a> IsShape for Triangle<'a> {
         let (p1, p2, p3) = self.get_vertices();
 
         let w2o = &(self.get_shape().world2object);
-        BBox::from(w2o.t(p1)).
-            unioned_with(&(w2o.t(p2))).
-            unioned_with(&(w2o.t(p3)))
+        BBox::from(w2o.t(p1))
+            .unioned_with(w2o.t(p2))
+            .unioned_with(w2o.t(p3))
     }
 
     fn world_bound(&self) -> BBox {
         let (p1, p2, p3) = self.get_vertices();
 
-        BBox::from(p1.clone()).unioned_with(p2).unioned_with(p3)
+        BBox::new()
+            .unioned_with_ref(p1)
+            .unioned_with_ref(p2)
+            .unioned_with_ref(p3)
     }
 
     fn intersect_p(&self, r: &Ray) -> bool {

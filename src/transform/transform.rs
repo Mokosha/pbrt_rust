@@ -246,15 +246,19 @@ impl ApplyTransform<RayDifferential> for Transform {
 
 impl ApplyTransform<BBox> for Transform {
     fn xf(&self, b: BBox) -> BBox {
-        BBox::new().unioned_with(
-            &self.xf(Point::new_with(b.p_min.x, b.p_min.y, b.p_min.z))).unioned_with(
-            &self.xf(Point::new_with(b.p_min.x, b.p_min.y, b.p_max.z))).unioned_with(
-            &self.xf(Point::new_with(b.p_min.x, b.p_max.y, b.p_min.z))).unioned_with(
-            &self.xf(Point::new_with(b.p_min.x, b.p_max.y, b.p_max.z))).unioned_with(
-            &self.xf(Point::new_with(b.p_max.x, b.p_min.y, b.p_min.z))).unioned_with(
-            &self.xf(Point::new_with(b.p_max.x, b.p_min.y, b.p_max.z))).unioned_with(
-            &self.xf(Point::new_with(b.p_max.x, b.p_max.y, b.p_min.z))).unioned_with(
-            &self.xf(Point::new_with(b.p_max.x, b.p_max.y, b.p_max.z)))
+        let tx = self.xf(Vector::new_with(b.p_max.x - b.p_min.x, 0.0, 0.0));
+        let ty = self.xf(Vector::new_with(0.0, b.p_max.y - b.p_min.y, 0.0));
+        let tz = self.xf(Vector::new_with(0.0, 0.0, b.p_max.z - b.p_min.z));
+
+        let tp = self.xf(b.p_min);
+        BBox::from(tp.clone())
+            .unioned_with(&tp + &tx)
+            .unioned_with(&tp + &ty)
+            .unioned_with(&tp + &tz)
+            .unioned_with(&tp + &tx + &ty)
+            .unioned_with(&tp + &tx + &tz)
+            .unioned_with(&tp + &ty + &tz)
+            .unioned_with(&tp + &tx + &ty + &tz)
     }
 }
 

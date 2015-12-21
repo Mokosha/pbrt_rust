@@ -3,10 +3,13 @@ use geometry::vector::Vector;
 use std::f32;
 use utils::Lerp;
 
-pub trait Union<T: ?Sized = Self>: Sized {
+pub trait Union<T = Self> : Sized {
     fn union(&self, &T) -> Self;
-    fn unioned_with(self, v: &T) -> Self {
+    fn unioned_with_ref(self, v: &T) -> Self {
         self.union(v)
+    }
+    fn unioned_with(self, v: T) -> Self {
+        self.union(&v)
     }
 }
 
@@ -449,7 +452,7 @@ mod tests {
         let unioned = BBox::new_with(
             Point::new_with(-1f32, -1f32, -1f32),
             Point::new_with(3f32, 1f32, 1f32));
-        assert_eq!(bbox.unioned_with(&p2), unioned);
+        assert_eq!(bbox.unioned_with(p2), unioned);
     }
 
     #[test]
@@ -472,7 +475,7 @@ mod tests {
             Point::new_with(3f32, 1f32, 1f32));
         assert_eq!(bbox.union(&bbox3), unioned);
 
-        assert_eq!(BBox::new().unioned_with(&bbox3), bbox3);
+        assert_eq!(BBox::new().unioned_with_ref(&bbox3), bbox3);
     }
 
     #[test]

@@ -197,12 +197,12 @@ impl AnimatedTransform {
         (0..num_steps).fold(BBox::new(), |bbox, i| {
             let t = self.start_time.lerp(&self.end_time,
                                          ((i as f32) / ((num_steps - 1) as f32)));
-            bbox.unioned_with(&(
+            bbox.unioned_with(
                 if use_inverse {
                     self.interpolate(t).invert().t(b)
                 } else {
                     self.interpolate(t).t(b)
-                }))
+                })
         })
     }
 
@@ -326,7 +326,7 @@ mod tests {
                    // !KLUDGE! This x-value *looks* right but may not *be* right...
                    // Basically I have little intuitive sense for what happens to the
                    // box if you translate before you rotate...
-                   BBox::new_with(Point::new_with(-1.6106478, -2.0,
+                   BBox::new_with(Point::new_with(-1.6106477, -2.0,
                                                   -2.0*2f32.sqrt()),
                                   Point::new_with(2f32.sqrt(), 1.0, 1.0)));
 
