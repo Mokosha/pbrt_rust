@@ -33,8 +33,8 @@ impl<'a> DifferentialGeometry<'a> {
     }
 
     pub fn new_with(_p: Point, _dpdu: Vector, _dpdv: Vector,
-                _dndu: Normal, _dndv: Normal, _u: f32, _v: f32,
-                _shape: Option<&'a Shape>) -> DifferentialGeometry<'a> {
+                    _dndu: Normal, _dndv: Normal, _u: f32, _v: f32,
+                    _shape: Option<&'a Shape>) -> DifferentialGeometry<'a> {
         let mut norm = _dpdu.clone().cross(&_dpdv).normalize();
         if let Some(s) = _shape {
             if s.reverse_orientation ^ s.transform_swaps_handedness {
