@@ -18,6 +18,7 @@ use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 
 use geometry::vector::coordinate_system;
+use utils::solve_linear_system_2x2;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Mesh {
@@ -220,6 +221,75 @@ impl<'a> IsShape for Triangle<'a> {
         let (p1, p2, p3) = self.get_vertices();
         0.5 * (p2 - p1).cross(&(p3 - p1)).length()
     }
+
+    fn get_shading_geometry<'b>(&self, o2w: &Transform,
+                                dg: DifferentialGeometry<'b>)
+                                -> DifferentialGeometry<'b> {
+        if let None = self.mesh.n {
+            return dg;
+        }
+
+        if let None = self.mesh.s {
+            return dg;
+        }
+
+        // Initialize Triangle shading geometry with n and s
+
+        // Compute barycentric coordinates for point
+        let b: [f32; 3] = {
+            let uv = self.get_uvs();
+            let a = [[uv[1][0] - uv[0][0], uv[2][0] - uv[0][0]],
+                     [uv[1][1] - uv[0][1], uv[2][1] - uv[0][1]]];
+            let c = [dg.u - uv[0][0], dg.v - uv[0][1]];
+            if let Some((b1, b2)) = solve_linear_system_2x2(a, c) {
+                [1.0 - b1 - b2, b1, b2]
+            } else {
+                let a_third = 1f32 / 3f32;
+                [a_third, a_third, a_third]
+            }
+        };
+
+        let (ss, ts) = {
+            // Use n and s to compute shading tangents for triangle, ss and ts
+            let ns = {
+                if let Some(n) = self.mesh.n.as_ref() {
+                    Normal::from(o2w.xf(
+                        b[0] * &n[self.v[0]] +
+                        b[1] * &n[self.v[1]] +
+                        b[2] * &n[self.v[2]])).normalize()
+                } else {
+                    dg.nn
+                }
+            };
+
+            let ss = {
+                if let Some(s) = self.mesh.s.as_ref() {
+                    o2w.xf(
+                        b[0] * &s[self.v[0]] +
+                        b[1] * &s[self.v[1]] +
+                        b[2] * &s[self.v[2]]).normalize()
+                } else {
+                    dg.dpdu.normalize()
+                }
+            };
+
+            let mut ts = ss.cross(&Vector::from(ns.clone()));
+            if ts.length_squared() > 0f32 {
+                (ts.clone().normalize(),
+                 ts.cross(&Vector::from(ns.clone())))
+            } else {
+                coordinate_system(&Vector::from(ns))
+            }
+        };
+
+        let (dndu, dndv) = {
+            //Compute dn/du and dn/dv for triangle shading geometry
+            (Normal::new(), Normal::new())
+        };
+
+        DifferentialGeometry::new_with(
+            dg.p, ss, ts, o2w.xf(dndu), o2w.xf(dndv), dg.u, dg.v, dg.shape)
+    }
 }
 
 impl<'a> ::std::ops::Index<usize> for Triangle<'a> {
@@ -237,6 +307,7 @@ mod tests {
     use super::*;
 
     use bbox::BBox;
+    use diff_geom::DifferentialGeometry;
     use geometry::point::Point;
     use geometry::vector::Vector;
     use ray::Ray;
@@ -407,5 +478,28 @@ mod tests {
         assert_eq!(xf_tris[1].area(), 2.0);
         assert_eq!(xf_tris[2].area(), 2.0);
         assert_eq!(xf_tris[3].area(), 2.0);
+    }
+
+    #[test]
+    #[ignore]
+    fn its_triangles_have_shading_geometry() {
+        let mesh = Mesh::new(Transform::new(), Transform::new(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
+        let tris = mesh.to_tris();
+
+        assert_eq!(tris[0].get_shading_geometry(&Transform::new(),
+                                                DifferentialGeometry::new()),
+                   DifferentialGeometry::new());
+        assert_eq!(tris[1].get_shading_geometry(&Transform::new(),
+                                                DifferentialGeometry::new()),
+                   DifferentialGeometry::new());
+        assert_eq!(tris[2].get_shading_geometry(&Transform::new(),
+                                                DifferentialGeometry::new()),
+                   DifferentialGeometry::new());
+        assert_eq!(tris[3].get_shading_geometry(&Transform::new(),
+                                                DifferentialGeometry::new()),
+                   DifferentialGeometry::new());
+
+        panic!("Add more actual tests!");
     }
 }
