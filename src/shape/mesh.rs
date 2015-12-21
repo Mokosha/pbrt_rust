@@ -225,19 +225,15 @@ impl<'a> IsShape for Triangle<'a> {
     fn get_shading_geometry<'b>(&self, o2w: &Transform,
                                 dg: DifferentialGeometry<'b>)
                                 -> DifferentialGeometry<'b> {
-        if let None = self.mesh.n {
-            return dg;
-        }
-
-        if let None = self.mesh.s {
+        if self.mesh.n.is_none() && self.mesh.s.is_none() {
             return dg;
         }
 
         // Initialize Triangle shading geometry with n and s
 
         // Compute barycentric coordinates for point
+        let uv = self.get_uvs();
         let b: [f32; 3] = {
-            let uv = self.get_uvs();
             let a = [[uv[1][0] - uv[0][0], uv[2][0] - uv[0][0]],
                      [uv[1][1] - uv[0][1], uv[2][1] - uv[0][1]]];
             let c = [dg.u - uv[0][0], dg.v - uv[0][1]];
@@ -273,7 +269,7 @@ impl<'a> IsShape for Triangle<'a> {
                 }
             };
 
-            let mut ts = ss.cross(&Vector::from(ns.clone()));
+            let ts = ss.cross(&Vector::from(ns.clone()));
             if ts.length_squared() > 0f32 {
                 (ts.clone().normalize(),
                  ts.cross(&Vector::from(ns.clone())))
@@ -282,10 +278,35 @@ impl<'a> IsShape for Triangle<'a> {
             }
         };
 
-        let (dndu, dndv) = {
-            //Compute dn/du and dn/dv for triangle shading geometry
-            (Normal::new(), Normal::new())
-        };
+        let (dndu, dndv) =
+            if let None = self.mesh.n.as_ref() {
+                (Normal::new(), Normal::new())
+            } else {
+                let du1 = uv[0][0] - uv[2][0];
+                let du2 = uv[1][0] - uv[2][0];
+                let dv1 = uv[0][1] - uv[2][1];
+                let dv2 = uv[1][1] - uv[2][1];
+
+                let (n1, n2, n3) = {
+                    let n = self.mesh.n.as_ref().unwrap();
+                    (&n[self.v[0]], &n[self.v[1]], &n[self.v[2]])
+                };
+
+                let dn1 = n1 - n3;
+                let dn2 = n2 - n3;
+
+                // Compute triangle partial derivatives
+                let determinant = du1 * dv2 - dv1 * du2;
+                if determinant == 0.0 {
+                    // Handle zero determinant for triangle partial
+                    // derivatives matrix
+                    (Normal::new(), Normal::new())
+                } else {
+                    let inv_det = 1.0 / determinant;
+                    (Normal::from(( dv2 * &dn1 - dv1 * &dn2) * inv_det),
+                     Normal::from((-du2 * &dn1 + du1 * &dn2) * inv_det))
+                }
+            };
 
         DifferentialGeometry::new_with(
             dg.p, ss, ts, o2w.xf(dndu), o2w.xf(dndv), dg.u, dg.v, dg.shape)
