@@ -130,13 +130,43 @@ impl AnimatedTransform {
         let dt = (time - self.start_time) / (self.end_time - self.start_time);
 
         // Interpolate translation at dt
-        let trans = self.t1.lerp(&self.t2, dt);
+        let trans = {
+            if (&self.t1 - &self.t2).length_squared() < 1e-6 {
+                self.t1.clone()
+            } else {
+                self.t1.lerp(&self.t2, dt)
+            }
+        };
 
         // Interpolate rotation at dt
-        let rotate = self.r1.lerp(&self.r2, dt);
+        let rotate = {
+            let dx = (self.r1.v.x - self.r2.v.x).abs();
+            let dy = (self.r1.v.y - self.r2.v.y).abs();
+            let dz = (self.r1.v.z - self.r2.v.z).abs();
+            let dw = (self.r1.w - self.r2.w).abs();
+            if (dx * dx + dy * dy + dz * dz + dw * dw) < 1e-6 {
+                self.r1.clone()
+            } else {
+                self.r1.lerp(&self.r2, dt)
+            }
+        };
 
         // Interpolate scale at dt
-        let scale = self.s1.lerp(&self.s2, dt);
+        let scale = {
+            let dm = self.s1.m.iter().zip(self.s2.m.iter()).fold(0.0, |acc, (r1, r2)| {
+                let d0 = (r1[0] - r2[0]).abs();
+                let d1 = (r1[1] - r2[1]).abs();
+                let d2 = (r1[2] - r2[2]).abs();
+                let d3 = (r1[3] - r2[3]).abs();
+                acc + d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3
+            });
+
+            if dm < 1e-6 {
+                self.s1.clone()
+            } else {
+                self.s1.lerp(&self.s2, dt)
+            }
+        };
 
         // Compute interpolated matrix as product of interpolated components
         Transform::translate(&trans) *
@@ -326,7 +356,7 @@ mod tests {
                    // !KLUDGE! This x-value *looks* right but may not *be* right...
                    // Basically I have little intuitive sense for what happens to the
                    // box if you translate before you rotate...
-                   BBox::new_with(Point::new_with(-1.6106477, -2.0,
+                   BBox::new_with(Point::new_with(-1.6106474, -2.0,
                                                   -2.0*2f32.sqrt()),
                                   Point::new_with(2f32.sqrt(), 1.0, 1.0)));
 
