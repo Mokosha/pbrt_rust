@@ -94,9 +94,9 @@ pub struct AnimatedTransform {
     start_transform: Transform,
     end_transform: Transform,
     actually_animated: bool,
-    t1: Vector, t2: Vector,
-    r1: Quaternion, r2: Quaternion,
-    s1: Matrix4x4, s2: Matrix4x4
+    t1: Vector, t2: Vector, t_animated: bool,
+    r1: Quaternion, r2: Quaternion, r_animated: bool,
+    s1: Matrix4x4, s2: Matrix4x4, s_animated: bool
 }
 
 impl AnimatedTransform {
@@ -105,15 +105,34 @@ impl AnimatedTransform {
         let (t1, r1, s1) = AnimatedTransform::decompose(&transform1);
         let (t2, r2, s2) = AnimatedTransform::decompose(&transform2);
         let animated = transform1.ne(&transform2);
+        let t_anim = (&t1 - &t2).length_squared() >= 1e-6;
+        let r_anim = {
+            let dx = (r1.v.x - r2.v.x).abs();
+            let dy = (r1.v.y - r2.v.y).abs();
+            let dz = (r1.v.z - r2.v.z).abs();
+            let dw = (r1.w - r2.w).abs();
+            (dx * dx + dy * dy + dz * dz + dw * dw) >= 1e-6
+        };
+
+        let s_anim = {
+            s1.m.iter().zip(s2.m.iter()).fold(0.0, |acc, (r1, r2)| {
+                let d0 = (r1[0] - r2[0]).abs();
+                let d1 = (r1[1] - r2[1]).abs();
+                let d2 = (r1[2] - r2[2]).abs();
+                let d3 = (r1[3] - r2[3]).abs();
+                acc + d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3
+            }) >= 1e-6
+        };
+
         AnimatedTransform {
             start_time: time1,
             end_time: time2,
             start_transform: transform1,
             end_transform: transform2,
             actually_animated: animated,
-            t1: t1, t2: t2,
-            r1: r1, r2: r2,
-            s1: s1, s2: s2
+            t1: t1, t2: t2, t_animated: t_anim,
+            r1: r1, r2: r2, r_animated: r_anim,
+            s1: s1, s2: s2, s_animated: s_anim
         }
     }
 
@@ -130,42 +149,24 @@ impl AnimatedTransform {
         let dt = (time - self.start_time) / (self.end_time - self.start_time);
 
         // Interpolate translation at dt
-        let trans = {
-            if (&self.t1 - &self.t2).length_squared() < 1e-6 {
-                self.t1.clone()
-            } else {
-                self.t1.lerp(&self.t2, dt)
-            }
+        let trans = if self.t_animated {
+            self.t1.lerp(&self.t2, dt)
+        } else {
+            self.t1.clone()
         };
 
         // Interpolate rotation at dt
-        let rotate = {
-            let dx = (self.r1.v.x - self.r2.v.x).abs();
-            let dy = (self.r1.v.y - self.r2.v.y).abs();
-            let dz = (self.r1.v.z - self.r2.v.z).abs();
-            let dw = (self.r1.w - self.r2.w).abs();
-            if (dx * dx + dy * dy + dz * dz + dw * dw) < 1e-6 {
-                self.r1.clone()
-            } else {
-                self.r1.lerp(&self.r2, dt)
-            }
+        let rotate = if self.r_animated {
+            self.r1.lerp(&self.r2, dt)
+        } else {
+            self.r1.clone()
         };
 
         // Interpolate scale at dt
-        let scale = {
-            let dm = self.s1.m.iter().zip(self.s2.m.iter()).fold(0.0, |acc, (r1, r2)| {
-                let d0 = (r1[0] - r2[0]).abs();
-                let d1 = (r1[1] - r2[1]).abs();
-                let d2 = (r1[2] - r2[2]).abs();
-                let d3 = (r1[3] - r2[3]).abs();
-                acc + d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3
-            });
-
-            if dm < 1e-6 {
-                self.s1.clone()
-            } else {
-                self.s1.lerp(&self.s2, dt)
-            }
+        let scale = if self.s_animated {
+            self.s1.lerp(&self.s2, dt)
+        } else {
+            self.s1.clone()
         };
 
         // Compute interpolated matrix as product of interpolated components
@@ -296,9 +297,9 @@ mod tests {
             start_transform: from.clone(),
             end_transform: from.clone(),
             actually_animated: false,
-            t1: Vector::new(), t2: Vector::new(),
-            r1: Quaternion::new(), r2: Quaternion::new(),
-            s1: Matrix4x4::new(), s2: Matrix4x4::new()
+            t1: Vector::new(), t2: Vector::new(), t_animated: false,
+            r1: Quaternion::new(), r2: Quaternion::new(), r_animated: false,
+            s1: Matrix4x4::new(), s2: Matrix4x4::new(), s_animated: false
         };
 
         assert_eq!(expected_anim,
@@ -310,9 +311,9 @@ mod tests {
             start_transform: from.clone(),
             end_transform: from.clone(),
             actually_animated: false,
-            t1: Vector::new(), t2: Vector::new(),
-            r1: Quaternion::new(), r2: Quaternion::new(),
-            s1: Matrix4x4::new(), s2: Matrix4x4::new()
+            t1: Vector::new(), t2: Vector::new(), t_animated: false,
+            r1: Quaternion::new(), r2: Quaternion::new(), r_animated: false,
+            s1: Matrix4x4::new(), s2: Matrix4x4::new(), s_animated: false,
         };
 
         assert_eq!(expected_anim,
@@ -327,10 +328,11 @@ mod tests {
              start_transform: from.clone(),
              end_transform: to.clone(),
              actually_animated: true,
-             t1: Vector::new(), t2: Vector::new_with(1.0, 1.0, 1.0),
+             t1: Vector::new(), t2: Vector::new_with(1.0, 1.0, 1.0), t_animated: true,
              r1: Quaternion::new(),
              r2: Quaternion::new_with(0.0, 0.38268343236, 0.0, 0.92387953251),
-             s1: Matrix4x4::new(), s2: Matrix4x4::new()
+             r_animated: true,
+             s1: Matrix4x4::new(), s2: Matrix4x4::new(), s_animated: false
         };
 
         check_animated_xform!(
