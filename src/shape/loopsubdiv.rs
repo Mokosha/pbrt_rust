@@ -1,6 +1,3 @@
-use std::ops::{Add, Rem};
-use std::num::{One};
-
 use geometry::point::Point;
 use shape::shape::IsShape;
 use shape::shape::Shape;
