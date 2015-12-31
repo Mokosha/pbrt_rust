@@ -53,12 +53,55 @@ impl SDVertex {
             boundary: false
         }
     }
+
+    fn valence(&self) -> usize {
+        let sf = match self.start_face.clone() {
+            None => return 0,
+            Some(_f) => _f.upgrade().unwrap()
+        };
+
+        if self.boundary {
+            // Compute valence of boundary vertex
+            let mut nf = 1;
+            let mut f = sf.next_face(self);
+            while f != None {
+                f = f.unwrap().next_face(self);
+                nf += 1;
+            }
+
+            f = sf.prev_face(self);
+            while f != None {
+                f = f.unwrap().prev_face(self);
+                nf += 1;
+            }
+
+            nf
+        } else {
+            // Compute valence of interior vertex
+            let mut nf = 1;
+            let mut f = sf.next_face(self).unwrap();
+            while f != sf {
+                f = f.next_face(self).unwrap();
+                nf += 1;
+            }
+
+            nf
+        }
+    }
 }
 
 pub struct SDFace {
     v: [Weak<SDVertex>; 3],
     f: [Option<Weak<SDFace>>; 3],
     children: [Option<Weak<SDFace>>; 4],
+}
+
+impl ::std::cmp::PartialEq for SDFace {
+    fn eq(&self, other: &SDFace) -> bool {
+        self.v.iter().zip(other.v.iter()).fold(true, |r, (p, q)| {
+            r && p.upgrade().unwrap() == q.upgrade().unwrap()
+        })
+    }
 }
 
 impl SDFace {
@@ -68,6 +111,32 @@ impl SDFace {
             f: [None, None, None],
             children: [None, None, None, None]
         }
+    }
+
+    fn vnum(&self, v: &SDVertex) -> usize {
+        for i in 0..3 {
+            if self.v[i].upgrade().unwrap().as_ref() == v {
+                return i;
+            }
+        }
+
+        panic!("Basic logic error in SDFace::vnum()");
+    }
+
+    fn next_face(&self, v: &SDVertex) -> Option<Rc<SDFace>> {
+        self.f[self.vnum(v)].clone().map(|fr| fr.upgrade().unwrap())
+    }
+
+    fn prev_face(&self, v: &SDVertex) -> Option<Rc<SDFace>> {
+        self.f[prev(self.vnum(v))].clone().map(|fr| fr.upgrade().unwrap())
+    }
+
+    fn next_vert(&self, v: &SDVertex) -> Weak<SDVertex> {
+        self.v[next(self.vnum(v))].clone()
+    }
+
+    fn prev_vert(&self, v: &SDVertex) -> Weak<SDVertex> {
+        self.v[prev(self.vnum(v))].clone()
     }
 }
 
@@ -120,12 +189,9 @@ pub struct LoopSubdiv {
 
 impl LoopSubdiv {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool,
-               num_faces: usize,
                vertex_indices: &[usize], points: &[Point], nl: usize)
                -> LoopSubdiv {
-        debug_assert_eq!((vertex_indices.len() % 3), 0);
-
-        // Allocate vertices and faces
+        // Allocate vertices
         let mut vert_id = 0;
         let mut verts = {
             let mut vs = Vec::new();
@@ -138,26 +204,28 @@ impl LoopSubdiv {
             vs
         };
 
+        // Allocate faces
+        debug_assert_eq!((vertex_indices.len() % 3), 0);
+        let num_faces = vertex_indices.len() / 3;
         let mut faces: Vec<Rc<SDFace>> = {
             let mut vert_idxs = vertex_indices.iter();
 
             (0..num_faces).map(|_| {
-                let mut v0 = verts[*vert_idxs.next().unwrap()].clone();
-                let mut v1 = verts[*vert_idxs.next().unwrap()].clone();
-                let mut v2 = verts[*vert_idxs.next().unwrap()].clone();
-                Rc::new(SDFace::new(
-                    Rc::downgrade(&v0),
-                    Rc::downgrade(&v1),
-                    Rc::downgrade(&v2)))
+                let v0 = *vert_idxs.next().unwrap();
+                let v1 = *vert_idxs.next().unwrap();
+                let v2 = *vert_idxs.next().unwrap();
+                let f = Rc::new(SDFace::new(
+                    Rc::downgrade(&verts[v0]),
+                    Rc::downgrade(&verts[v1]),
+                    Rc::downgrade(&verts[v2])));
+
+                Rc::get_mut(&mut verts[v0]).unwrap().start_face = Some(Rc::downgrade(&f));
+                Rc::get_mut(&mut verts[v1]).unwrap().start_face = Some(Rc::downgrade(&f));
+                Rc::get_mut(&mut verts[v2]).unwrap().start_face = Some(Rc::downgrade(&f));
+
+                f
             }).collect()
         };
-
-        // Set face to vertex pointers
-        for f in faces.iter_mut() {
-            for i in 0..3 {
-                Rc::get_mut(&mut f.v[i].upgrade().unwrap()).unwrap().start_face = Some(Rc::downgrade(&f));
-            }
-        }
 
         // Set neighbor pointers in faces
         let mut edges: HashMap<(usize, usize), SDEdge> = HashMap::new();
@@ -195,6 +263,38 @@ impl LoopSubdiv {
         }
 
         // Finish vertex initialization
+        for v in verts.iter_mut() {
+            let boundary = {
+                let sf = {
+                    match v.start_face.clone() {
+                        None => continue,
+                        Some(_f) => _f.upgrade().unwrap()
+                    }
+                };
+
+                let mut f = sf.clone();
+                let mut is_boundary = false;
+                loop {
+                    f = match f.next_face(v.as_ref()) {
+                        None => {
+                            is_boundary = true;
+                            break;
+                        },
+
+                        Some(_f) => _f
+                    };
+
+                    if f == sf { break };
+                }
+
+                is_boundary
+            };
+
+            Rc::get_mut(v).unwrap().boundary = boundary;
+            Rc::get_mut(v).unwrap().regular =
+                (!v.boundary && v.valence() == 6) || (v.boundary && v.valence() == 4);
+        }
+
         LoopSubdiv {
             shape: Shape::new(o2w, w2o, ro),
             n_levels: nl,
@@ -221,11 +321,10 @@ mod tests {
     static TET_TRIS : [usize; 12] =
         [ 0, 3, 2, 0, 1, 2, 0, 3, 1, 1, 2, 3 ];
 
-    #[ignore]
     #[test]
     fn it_can_be_created() {
         let subdiv = LoopSubdiv::new(Transform::new(), Transform::new(), false,
-                                     4, &TET_TRIS, &TET_PTS, 1);
+                                     &TET_TRIS, &TET_PTS, 1);
         assert_eq!(subdiv.n_levels, 1);
         assert_eq!(subdiv.vertices.len(), 4);
         assert_eq!(subdiv.faces.len(), 4);
