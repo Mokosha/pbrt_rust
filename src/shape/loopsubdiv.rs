@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::rc::{Rc, Weak};
 use std::hash::{Hash, Hasher};
 use std::collections::HashMap;
@@ -115,7 +116,7 @@ impl SDFace {
 
     fn vnum(&self, v: &SDVertex) -> usize {
         for i in 0..3 {
-            if self.v[i].upgrade().unwrap().as_ref() == v {
+            if (*self.v[i].upgrade().unwrap()).borrow() == v {
                 return i;
             }
         }
@@ -275,7 +276,7 @@ impl LoopSubdiv {
                 let mut f = sf.clone();
                 let mut is_boundary = false;
                 loop {
-                    f = match f.next_face(v.as_ref()) {
+                    f = match f.next_face((*v).borrow()) {
                         None => {
                             is_boundary = true;
                             break;
