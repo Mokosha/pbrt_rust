@@ -56,15 +56,15 @@ impl SDVertex {
 }
 
 pub struct SDFace {
-    v: [Option<Weak<SDVertex>>; 3],
+    v: [Weak<SDVertex>; 3],
     f: [Option<Weak<SDFace>>; 3],
     children: [Option<Weak<SDFace>>; 4],
 }
 
 impl SDFace {
-    fn new() -> SDFace {
+    fn new(v1: Weak<SDVertex>, v2: Weak<SDVertex>, v3: Weak<SDVertex>) -> SDFace {
         SDFace {
-            v: [None, None, None],
+            v: [v1.clone(), v2.clone(), v3.clone()],
             f: [None, None, None],
             children: [None, None, None, None]
         }
@@ -119,20 +119,12 @@ pub struct LoopSubdiv {
 }
 
 impl LoopSubdiv {
-    pub fn test(num_faces: usize) -> Vec<Rc<SDFace>> {
-        // Allocate vertices and faces
-        let mut fs = Vec::with_capacity(num_faces);
-        for _ in 0..num_faces {
-            fs.push(Rc::new(SDFace::new()));
-        }
-
-        fs
-    }
-
     pub fn new(o2w: Transform, w2o: Transform, ro: bool,
                num_faces: usize,
                vertex_indices: &[usize], points: &[Point], nl: usize)
                -> LoopSubdiv {
+        debug_assert_eq!((vertex_indices.len() % 3), 0);
+
         // Allocate vertices and faces
         let mut vert_id = 0;
         let mut verts = {
@@ -146,22 +138,24 @@ impl LoopSubdiv {
             vs
         };
 
-        let mut faces = {
-            let mut fs = Vec::with_capacity(num_faces);
-            for _ in 0..num_faces {
-                fs.push(Rc::new(SDFace::new()));
-            }
+        let mut faces: Vec<Rc<SDFace>> = {
+            let mut vert_idxs = vertex_indices.iter();
 
-            fs
+            (0..num_faces).map(|_| {
+                let mut v0 = verts[*vert_idxs.next().unwrap()].clone();
+                let mut v1 = verts[*vert_idxs.next().unwrap()].clone();
+                let mut v2 = verts[*vert_idxs.next().unwrap()].clone();
+                Rc::new(SDFace::new(
+                    Rc::downgrade(&v0),
+                    Rc::downgrade(&v1),
+                    Rc::downgrade(&v2)))
+            }).collect()
         };
 
         // Set face to vertex pointers
-        let mut vert_idxs = vertex_indices.iter();
         for f in faces.iter_mut() {
             for i in 0..3 {
-                let mut tv = verts[*vert_idxs.next().unwrap()].clone();
-                Rc::get_mut(f).unwrap().v[i] = Some(Rc::downgrade(&tv));
-                Rc::get_mut(&mut tv).unwrap().start_face = Some(Rc::downgrade(&f));
+                Rc::get_mut(&mut f.v[i].upgrade().unwrap()).unwrap().start_face = Some(Rc::downgrade(&f));
             }
         }
 
@@ -174,8 +168,8 @@ impl LoopSubdiv {
 
                 // Update neighbor pointer for edge_num
                 let key = {
-                    let id1 = f.v[v0].clone().unwrap().upgrade().unwrap().id;
-                    let id2 = f.v[v1].clone().unwrap().upgrade().unwrap().id;
+                    let id1 = f.v[v0].clone().upgrade().unwrap().id;
+                    let id2 = f.v[v1].clone().upgrade().unwrap().id;
                     if id1 < id2 { (id1, id2) } else { (id2, id1) }
                 };
 
@@ -183,6 +177,7 @@ impl LoopSubdiv {
                     {
                         let e = edges.get_mut(&key).unwrap();
                         assert!(e.f0_edge_num < 4);
+
                         // Handle previously seen edge
                         Rc::get_mut(&mut e.f[0].as_mut().unwrap().upgrade().unwrap())
                             .unwrap().f[e.f0_edge_num] = Some(Rc::downgrade(f));
@@ -191,9 +186,7 @@ impl LoopSubdiv {
                     edges.remove(&key);
                 } else {
                     // Handle new edge
-                    let p = f.v[v0].clone();
-                    let q = f.v[v1].clone();
-                    let mut e = SDEdge::new(p.unwrap(), q.unwrap());
+                    let mut e = SDEdge::new(f.v[v0].clone(), f.v[v1].clone());
                     e.f[0] = Some(Rc::downgrade(f));
                     e.f0_edge_num = edge_num;
                     edges.insert(key, e);
@@ -231,13 +224,10 @@ mod tests {
     #[ignore]
     #[test]
     fn it_can_be_created() {
-/*        let subdiv = LoopSubdiv::new(Transform::new(), Transform::new(), false,
+        let subdiv = LoopSubdiv::new(Transform::new(), Transform::new(), false,
                                      4, &TET_TRIS, &TET_PTS, 1);
-        let subdiv = LoopSubdiv::new_test(4);
         assert_eq!(subdiv.n_levels, 1);
         assert_eq!(subdiv.vertices.len(), 4);
         assert_eq!(subdiv.faces.len(), 4);
-         */
-        assert_eq!(LoopSubdiv::test(4).len(), 4);
     }
 }
