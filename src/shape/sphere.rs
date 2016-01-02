@@ -274,10 +274,11 @@ mod tests {
         assert_eq!(shape_int.ray_epsilon, 0.5 * 5e-4);
         assert_eq!(shape_int.dg.p, Point::new_with(0.0, -0.5, 0.0));
         assert_eq!(shape_int.dg.shape.unwrap(), s.get_shape());
+
         let expected_normal = Normal::new_with(0.0, 1.0, 0.0);
-        assert_eq!(shape_int.dg.nn.x, 0.0);
-        assert!((shape_int.dg.nn.y - 1.0).abs() < 1e-6);
-        assert_eq!(shape_int.dg.nn.z, 0.0);
+        assert_eq!(shape_int.dg.nn.x, expected_normal.x);
+        assert!((shape_int.dg.nn.y - expected_normal.y).abs() < 1e-6);
+        assert_eq!(shape_int.dg.nn.z, expected_normal.z);
         assert_eq!(shape_int.dg.u, 0.25); // A quarter of a full revolution (phi)
         assert!((shape_int.dg.v - 0.5).abs() < 1e-6);  // A half of a half revolution (theta)
         assert!((shape_int.dg.dpdu.x + PI).abs() < 1e-6);

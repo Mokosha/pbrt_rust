@@ -29,7 +29,7 @@ impl bbox::HasBounds for Scene {
 
 impl Scene {
     pub fn new() -> Scene {
-        let mut scene = Scene {
+        let scene = Scene {
             aggregate: primitive::Primitive,
             lights: vec![],
             volume_region: None,

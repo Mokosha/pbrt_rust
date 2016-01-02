@@ -7,11 +7,9 @@ use integrator::Integrator;
 use integrator::VolumeIntegrator;
 use integrator::SurfaceIntegrator;
 use intersection::Intersection;
-use light::Light;
 use ray;
 use rng::RNG;
 use rng::PseudoRNG;
-use renderer;
 use renderer::Renderer;
 use sampler;
 use scene;
@@ -182,7 +180,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Rende
                 31 - (x.leading_zeros() as i32) + (if 0 == x.bitand(x - 1) { 0 } else { 1 })
             }) (::std::cmp::max(32 * num_cpus, num_pixels / (16 * 16)));
 
-            let mut task_data = SamplerRendererTaskData::new(scene, self, &mut sample);
+            let task_data = SamplerRendererTaskData::new(scene, self, &mut sample);
             let task_data_shared = Arc::new(RwLock::new(task_data));
 
             println!("Running {} tasks on pool with {} cpus", num_tasks, num_cpus);
