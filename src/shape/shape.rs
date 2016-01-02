@@ -70,7 +70,7 @@ pub trait IsShape<'a, T : IsShape<'a> = Self> {
     // Default is all shapes can intersect..
     fn can_intersect(&'a self) -> bool { true }
 
-    fn refine(&'a self) -> Vec<T> {
+    fn refine(&'a mut self) -> Vec<T> {
         unimplemented!();
     }
 
