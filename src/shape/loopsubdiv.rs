@@ -3,9 +3,12 @@ use std::rc::{Rc, Weak};
 use std::hash::{Hash, Hasher};
 use std::collections::HashMap;
 
+use bbox::BBox;
+use bbox::Union;
 use geometry::point::Point;
 use shape::shape::IsShape;
 use shape::shape::Shape;
+use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 
 fn next(i: usize) -> usize { (i + 1) % 3 }
@@ -91,7 +94,7 @@ impl SDVertex {
     }
 }
 
-pub struct SDFace {
+struct SDFace {
     v: [Weak<SDVertex>; 3],
     f: [Option<Weak<SDFace>>; 3],
     children: [Option<Weak<SDFace>>; 4],
@@ -304,6 +307,21 @@ impl LoopSubdiv {
             max_vert_id: vert_id
         }
     }
+}
+
+impl IsShape for LoopSubdiv {
+    fn get_shape<'a>(&'a self) -> &'a Shape { &self.shape }
+    fn object_bound(&self) -> BBox {
+        self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with_ref(&v.p))
+    }
+
+    fn world_bound(&self) -> BBox {
+        let o2w = &self.get_shape().object2world;
+        self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with(o2w.t(&v.p)))
+    }
+
+    // Cannot intersect meshes directly.
+    fn can_intersect(&self) -> bool { false }
 }
 
 #[cfg(test)]
