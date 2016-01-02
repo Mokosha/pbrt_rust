@@ -107,8 +107,8 @@ impl Sphere {
     }
 }
 
-impl IsShape for Sphere {
-    fn get_shape<'a>(&'a self) -> &'a Shape { &self.shape }
+impl<'a> IsShape<'a> for Sphere {
+    fn get_shape(&'a self) -> &'a Shape { &self.shape }
     fn object_bound(&self) -> BBox {
         BBox::new_with(
             Point::new_with(-self.radius, -self.radius, self.z_min),

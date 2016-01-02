@@ -309,8 +309,8 @@ impl LoopSubdiv {
     }
 }
 
-impl IsShape for LoopSubdiv {
-    fn get_shape<'a>(&'a self) -> &'a Shape { &self.shape }
+impl<'a> IsShape<'a> for LoopSubdiv {
+    fn get_shape(&'a self) -> &'a Shape { &self.shape }
     fn object_bound(&self) -> BBox {
         self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with_ref(&v.p))
     }

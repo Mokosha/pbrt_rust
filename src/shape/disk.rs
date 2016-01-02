@@ -69,8 +69,8 @@ impl Disk {
     }
 }
 
-impl IsShape for Disk {
-    fn get_shape<'a>(&'a self) -> &'a Shape { &self.shape }
+impl<'a> IsShape<'a> for Disk {
+    fn get_shape(&'a self) -> &'a Shape { &self.shape }
 
     fn object_bound(&self) -> BBox {
         BBox::new_with(

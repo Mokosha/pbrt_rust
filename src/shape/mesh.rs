@@ -111,39 +111,10 @@ impl Mesh {
             atex: _atex.map(|t| t.clone())
         }
     }
-
-    pub fn to_tris<'a>(&'a self) -> Vec<Triangle<'a>> {
-        let mut indices = self.vertex_index.clone();
-        let mut tris = Vec::new();
-        while let (Some(v1), Some(v2), Some(v3)) =
-            (indices.pop(), indices.pop(), indices.pop()) {
-                tris.push(Triangle {
-                    mesh: &self,
-                    v: [v1, v2, v3]
-                });
-            }
-
-        tris
-    }
 }
 
-impl IsShape for Mesh {
-    fn get_shape<'a>(&'a self) -> &'a Shape { &(self.shape) }
-    fn object_bound(&self) -> BBox {
-        let w2o = &(self.get_shape().world2object);
-        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with(w2o.t(p)))
-    }
-
-    fn world_bound(&self) -> BBox {
-        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with_ref(p))
-    }
-
-    // Cannot intersect meshes directly.
-    fn can_intersect(&self) -> bool { false }
-}
-
-impl<'a> IsShape for Triangle<'a> {
-    fn get_shape<'b>(&'b self) -> &'b Shape { self.mesh.get_shape() }
+impl<'a> IsShape<'a> for Triangle<'a> {
+    fn get_shape(&'a self) -> &'a Shape { self.mesh.get_shape() }
 
     fn object_bound(&self) -> BBox {
         let (p1, p2, p3) = self.get_vertices();
@@ -316,6 +287,35 @@ impl<'a> IsShape for Triangle<'a> {
     }
 }
 
+impl<'a> IsShape<'a, Triangle<'a>> for Mesh {
+    fn get_shape(&'a self) -> &'a Shape { &(self.shape) }
+    fn object_bound(&self) -> BBox {
+        let w2o = &(self.get_shape().world2object);
+        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with(w2o.t(p)))
+    }
+
+    fn world_bound(&self) -> BBox {
+        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with_ref(p))
+    }
+
+    // Cannot intersect meshes directly.
+    fn can_intersect(&self) -> bool { false }
+
+    fn refine(&'a self) -> Vec<Triangle<'a>> {
+        let mut indices = self.vertex_index.clone();
+        let mut tris = Vec::new();
+        while let (Some(v1), Some(v2), Some(v3)) =
+            (indices.pop(), indices.pop(), indices.pop()) {
+                tris.push(Triangle {
+                    mesh: &self,
+                    v: [v1, v2, v3]
+                });
+            }
+
+        tris
+    }
+}
+
 impl<'a> ::std::ops::Index<usize> for Triangle<'a> {
     type Output = Point;
     fn index(&self, i: usize) -> &Point {
@@ -407,7 +407,7 @@ mod tests {
         let xf = Transform::rotate_y(90.0);
         let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
                              &TET_TRIS, &TET_PTS, None, None, None, None);
-        let tris = mesh.to_tris();
+        let tris = mesh.refine();
 
         assert_eq!(tris.len(), 4);
         assert_eq!(tris[3].v, [2, 3, 0]);
@@ -421,7 +421,7 @@ mod tests {
         let xf = Transform::rotate_y(90.0);
         let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
                              &TET_TRIS, &TET_PTS, None, None, None, None);
-        let tris = mesh.to_tris();
+        let tris = mesh.refine();
         assert_eq!(tris[3].object_bound(),
                    BBox::new_with(Point::new(), Point::new_with(0.0, 1.0, 1.0)));
         assert_eq!(tris[2].object_bound(),
@@ -437,7 +437,7 @@ mod tests {
         let xf = Transform::rotate_y(90.0);
         let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
                              &TET_TRIS, &TET_PTS, None, None, None, None);
-        let tris = mesh.to_tris();
+        let tris = mesh.refine();
         assert!((tris[3].world_bound().p_min - Point::new()).length_squared() < 1e-6);
         assert!((tris[3].world_bound().p_max -
                  Point::new_with(1.0, 1.0, 0.0)).length_squared() < 1e-6);
@@ -459,7 +459,7 @@ mod tests {
     fn its_triangles_can_be_intersected() {
         let mesh = Mesh::new(Transform::new(), Transform::new(), false,
                              &TET_TRIS, &TET_PTS, None, None, None, None);
-        let tris = mesh.to_tris();
+        let tris = mesh.refine();
 
         assert!(tris[0].intersect_p(&Ray::new_with(
             Point::new(), Vector::new_with(1.0, 1.0, 1.0), 0.0)));
@@ -488,7 +488,7 @@ mod tests {
     fn its_triangles_have_surface_area() {
         let mesh = Mesh::new(Transform::new(), Transform::new(), false,
                              &TET_TRIS, &TET_PTS, None, None, None, None);
-        let tris = mesh.to_tris();
+        let tris = mesh.refine();
 
         assert_eq!(tris[1].area(), 0.5);
         assert_eq!(tris[2].area(), 0.5);
@@ -497,7 +497,7 @@ mod tests {
         let xf = Transform::scale(2.0, 2.0, 2.0);
         let xf_mesh = Mesh::new(xf.clone(), xf.inverse(), false,
                                 &TET_TRIS, &TET_PTS, None, None, None, None);
-        let xf_tris = xf_mesh.to_tris();
+        let xf_tris = xf_mesh.refine();
 
         assert_eq!(xf_tris[1].area(), 2.0);
         assert_eq!(xf_tris[2].area(), 2.0);
@@ -509,7 +509,7 @@ mod tests {
     fn its_triangles_have_shading_geometry() {
         let mesh = Mesh::new(Transform::new(), Transform::new(), false,
                              &TET_TRIS, &TET_PTS, None, None, None, None);
-        let tris = mesh.to_tris();
+        let tris = mesh.refine();
 
         assert_eq!(tris[0].get_shading_geometry(&Transform::new(),
                                                 DifferentialGeometry::new()),

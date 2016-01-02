@@ -58,33 +58,32 @@ impl<'a> ShapeIntersection<'a> {
     }
 }
 
-pub trait IsShape {
-    fn get_shape<'a>(&'a self) -> &'a Shape;
+pub trait IsShape<'a, T : IsShape<'a> = Self> {
+    fn get_shape(&'a self) -> &'a Shape;
 
-    fn object_bound(&self) -> BBox;
+    fn object_bound(&'a self) -> BBox;
 
-    fn world_bound(&self) -> BBox {
-        let data = self.get_shape();
-        data.object2world.xf(self.object_bound())
+    fn world_bound(&'a self) -> BBox {
+        self.get_shape().object2world.xf(self.object_bound())
     }
 
     // Default is all shapes can intersect..
-    fn can_intersect(&self) -> bool { true }
+    fn can_intersect(&'a self) -> bool { true }
 
-    fn refine<T>(&self) -> Vec<T> where T : IsShape {
+    fn refine(&'a self) -> Vec<T> {
         unimplemented!();
     }
 
-    fn intersect(&self, _: &Ray) -> Option<ShapeIntersection> {
+    fn intersect(&'a self, _: &Ray) -> Option<ShapeIntersection> {
         unimplemented!();
     }
     
-    fn intersect_p(&self, _: &Ray) -> bool {
+    fn intersect_p(&'a self, _: &Ray) -> bool {
         unimplemented!();
     }
 
-    fn get_shading_geometry<'a>(&self, _: &Transform,
-                                dg: DifferentialGeometry<'a>) ->
+    fn get_shading_geometry(&'a self, _: &Transform,
+                            dg: DifferentialGeometry<'a>) ->
         DifferentialGeometry<'a> { dg }
 
     fn area(&self) -> f32 { unimplemented!(); }
