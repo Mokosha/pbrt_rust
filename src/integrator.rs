@@ -22,7 +22,7 @@ fn process_specular<T: RNG, R: Renderer>(
         &wo, BSDFSample::new(rng), sample_type);
 
     let win = wi.abs_dot(n);
-    if (pdf > 0f32 && !f.is_black() && win != 0f32) {
+    if pdf > 0f32 && !f.is_black() && win != 0f32 {
         // Cmpute ray differential rd for specular reflection <512>
         let rd = ray.clone(); // !FIXME! just to compile
         let li = renderer.li_simple(scene, &rd, sample, rng);

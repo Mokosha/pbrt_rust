@@ -95,10 +95,10 @@ fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+
     loop {
         sampler.get_more_samples(&mut samples, &mut rng);
         let sample_count = samples.len();
-        if (sample_count == 0) { break; }
+        if sample_count == 0 { break; }
 
         // Generate camera rays and compute radiance along rays
-        for i in (0..sample_count) {
+        for i in 0..sample_count {
             // Find camera ray for sample[i]
             let (ray_weight, mut ray) =
                 data.read().unwrap().renderer.camera.generate_ray_differential(&(samples[i]));
@@ -106,7 +106,7 @@ fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+
             ray.scale_differentials(1.0f32 / sampler.samples_per_pixel().sqrt());
 
             // Evaluate radiance along camera ray
-            if (ray_weight > 0f32) {
+            if ray_weight > 0f32 {
                 let mut ts: Option<Spectrum> = None;
                 let mut isect: Option<Intersection> = None;
 
@@ -115,7 +115,7 @@ fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+
                     ray_weight *
                     data.read().unwrap().renderer.li(scene, &ray, &(samples[i]), &mut rng, &mut isect, &mut ts);
 
-                if (!ls.is_valid()) { panic!("Invalid radiance value!"); }
+                if !ls.is_valid() { panic!("Invalid radiance value!"); }
                 l_s.push(ls);
 
                 if let Some(ts_val) = ts {
@@ -139,7 +139,7 @@ fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+
         }
 
         // Report sample results to Sampler, add contributions to image
-        if (sampler.report_results(&samples, &rays, &l_s, &isects, sample_count)) {
+        if sampler.report_results(&samples, &rays, &l_s, &isects, sample_count) {
             for i in 0..sample_count {
                 // !FIXME! This synchronization is still a bit coarse grained, but
                 // we may be able to move the lock within a few levels to get finer
@@ -185,7 +185,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Rende
 
             println!("Running {} tasks on pool with {} cpus", num_tasks, num_cpus);
             Pool::new(num_cpus as u32).scoped(|scope| {
-                for i in (0..num_tasks) {
+                for i in 0..num_tasks {
                     let data = task_data_shared.clone();
                     unsafe { scope.execute(move || run_task(data, i, num_tasks)); }
                 }

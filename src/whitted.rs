@@ -56,10 +56,10 @@ impl SurfaceIntegrator for WhittedIntegrator {
             // Add contribution of each light source
             let (li, wi, pdf, visibility) =
                 light.sample_l(p, isect.ray_epsilon, LightSample::new(rng), ray.time.clone());
-            if (li.is_black() || pdf == 0f32) { l_acc }
+            if li.is_black() || pdf == 0f32 { l_acc }
             else {
                 let f = bsdf.f(&wo, &wi);
-                if (f.is_black() || !visibility.unoccluded(scene)) { l_acc }
+                if f.is_black() || !visibility.unoccluded(scene) { l_acc }
                 else {
                     l_acc +
                         f * li * wi.abs_dot(n) *
@@ -69,7 +69,7 @@ impl SurfaceIntegrator for WhittedIntegrator {
         });
 
         l + (
-            if (ray.depth + 1 < self.max_depth) {
+            if ray.depth + 1 < self.max_depth {
                 // Trace rays for specular reflection and refraction
                 let refl = integrator::specular_reflect;
                 let tmit = integrator::specular_transmit;
