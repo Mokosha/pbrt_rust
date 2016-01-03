@@ -58,7 +58,10 @@ impl<'a> ShapeIntersection<'a> {
     }
 }
 
-pub trait IsShape<'a, T : IsShape<'a> = Self> {
+pub trait IntoShape { }
+pub trait FromShape<T: IntoShape> { }
+
+pub trait IsShape<'a, T : FromShape<Self> = Self> : FromShape<Self> + Sized + IntoShape {
     fn get_shape(&'a self) -> &'a Shape;
 
     fn object_bound(&'a self) -> BBox;

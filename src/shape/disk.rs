@@ -4,6 +4,8 @@ use geometry::point::Point;
 use geometry::vector::Vector;
 use geometry::normal::Normal;
 use ray::Ray;
+use shape::shape::FromShape;
+use shape::shape::IntoShape;
 use shape::shape::IsShape;
 use shape::shape::Shape;
 use shape::shape::ShapeIntersection;
@@ -68,6 +70,9 @@ impl Disk {
         if phi > self.phi_max { None } else { Some((t_hit, phi)) }
     }
 }
+
+impl IntoShape for Disk { }
+impl FromShape<Disk> for Disk { }
 
 impl<'a> IsShape<'a> for Disk {
     fn get_shape(&'a self) -> &'a Shape { &self.shape }

@@ -4,6 +4,8 @@ use bbox::BBox;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use ray::Ray;
+use shape::shape::FromShape;
+use shape::shape::IntoShape;
 use shape::shape::IsShape;
 use shape::shape::Shape;
 use shape::shape::ShapeIntersection;
@@ -93,6 +95,9 @@ impl Cylinder {
         return Some((t_hit, p_hit.1))
     }
 }
+
+impl IntoShape for Cylinder { }
+impl FromShape<Cylinder> for Cylinder { }
 
 impl<'a> IsShape<'a> for Cylinder {
     fn get_shape(&'a self) -> &'a Shape { &self.shape }

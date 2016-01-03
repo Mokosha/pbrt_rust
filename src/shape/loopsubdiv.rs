@@ -6,6 +6,10 @@ use std::collections::HashMap;
 use bbox::BBox;
 use bbox::Union;
 use geometry::point::Point;
+use shape::mesh::Mesh;
+use shape::mesh::Triangle;
+use shape::shape::FromShape;
+use shape::shape::IntoShape;
 use shape::shape::IsShape;
 use shape::shape::Shape;
 use transform::transform::ApplyTransform;
@@ -309,7 +313,11 @@ impl LoopSubdiv {
     }
 }
 
-impl<'a> IsShape<'a> for LoopSubdiv {
+impl IntoShape for LoopSubdiv { }
+impl FromShape<LoopSubdiv> for Mesh { }
+impl FromShape<LoopSubdiv> for LoopSubdiv { }
+
+impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
     fn get_shape(&'a self) -> &'a Shape { &self.shape }
     fn object_bound(&self) -> BBox {
         self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with_ref(&v.p))

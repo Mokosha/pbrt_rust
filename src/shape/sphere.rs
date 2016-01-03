@@ -3,6 +3,8 @@ use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
 use ray::Ray;
+use shape::shape::FromShape;
+use shape::shape::IntoShape;
 use shape::shape::Shape;
 use shape::shape::ShapeIntersection;
 use shape::shape::IsShape;
@@ -106,6 +108,9 @@ impl Sphere {
         Some((t_hit, test.1))
     }
 }
+
+impl IntoShape for Sphere { }
+impl FromShape<Sphere> for Sphere { }
 
 impl<'a> IsShape<'a> for Sphere {
     fn get_shape(&'a self) -> &'a Shape { &self.shape }

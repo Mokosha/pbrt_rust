@@ -10,6 +10,8 @@ use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
 use ray::Ray;
+use shape::shape::FromShape;
+use shape::shape::IntoShape;
 use shape::shape::IsShape;
 use shape::shape::Shape;
 use shape::shape::ShapeIntersection;
@@ -113,8 +115,11 @@ impl Mesh {
     }
 }
 
+impl<'a> FromShape<Triangle<'a>> for Triangle<'a> { }
+impl<'a> IntoShape for Triangle<'a> { }
+
 impl<'a> IsShape<'a> for Triangle<'a> {
-    fn get_shape(&'a self) -> &'a Shape { self.mesh.get_shape() }
+    fn get_shape(&'a self) -> &'a Shape { &self.mesh.shape }
 
     fn object_bound(&self) -> BBox {
         let (p1, p2, p3) = self.get_vertices();
@@ -287,10 +292,14 @@ impl<'a> IsShape<'a> for Triangle<'a> {
     }
 }
 
+impl<'a> FromShape<Mesh> for Mesh { }
+impl<'a> FromShape<Mesh> for Triangle<'a> { }
+impl IntoShape for Mesh { }
+
 impl<'a> IsShape<'a, Triangle<'a>> for Mesh {
     fn get_shape(&'a self) -> &'a Shape { &(self.shape) }
     fn object_bound(&self) -> BBox {
-        let w2o = &(self.get_shape().world2object);
+        let w2o = &self.shape.world2object;
         self.p.iter().fold(BBox::new(), |b, p| b.unioned_with(w2o.t(p)))
     }
 
