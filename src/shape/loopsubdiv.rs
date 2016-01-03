@@ -18,6 +18,14 @@ use transform::transform::Transform;
 fn next(i: usize) -> usize { (i + 1) % 3 }
 fn prev(i: usize) -> usize { (i + 2) % 3 }
 
+fn beta(valence: usize) -> f32 {
+    if valence == 3 {
+        3f32 / 16f32
+    } else {
+        3f32 / ((8 * valence) as f32)
+    }
+}
+
 // !SPEED! This is a really poor approximation to the C++ code that was provided
 // in the book. Right now we have vectors of reference counted vertices and faces.
 // This means that we need to allocate a new vertex/face every time we add one to
@@ -62,39 +70,79 @@ impl SDVertex {
         }
     }
 
-    fn valence(&self) -> usize {
+    fn fold_faces<F, T>(&self, start: T, closure: F)
+                        -> T where F: Fn(T, &SDFace) -> T {
         let sf = match self.start_face.clone() {
-            None => return 0,
+            None => return start,
             Some(_f) => _f.upgrade().unwrap()
         };
 
         if self.boundary {
             // Compute valence of boundary vertex
-            let mut nf = 1;
-            let mut f = sf.next_face(self);
+            let mut first_face : Rc<SDFace> = sf;
+            let mut f : Option<Rc<SDFace>> = first_face.prev_face(self);
+
             while f != None {
-                f = f.unwrap().next_face(self);
-                nf += 1;
+                let face : Rc<SDFace> = f.unwrap();
+                first_face = face.clone();
+                f = face.prev_face(self);
             }
 
-            f = sf.prev_face(self);
+            f = Some(first_face);
+            let mut t = start;
+
             while f != None {
-                f = f.unwrap().prev_face(self);
-                nf += 1;
+                let face = f.unwrap();
+                t = closure(t, face.as_ref());
+                f = face.next_face(self);
             }
 
-            nf
+            t
         } else {
             // Compute valence of interior vertex
-            let mut nf = 1;
+            let mut t = closure(start, sf.as_ref());
             let mut f = sf.next_face(self).unwrap();
             while f != sf {
+                t = closure(t, f.as_ref());
                 f = f.next_face(self).unwrap();
-                nf += 1;
             }
 
-            nf
+            t
         }
+    }
+
+    fn valence(&self) -> usize {
+        self.fold_faces(1, |nf, _| { nf + 1 })
+    }
+
+    // !SPEED! Ideally we shouldn't be allocating a vec here -- better
+    // to figure out how to do something like alloca in C99...
+    fn one_ring(&self) -> Vec<Point> {
+        self.fold_faces(Vec::new(), |ps, nf| {
+            let mut v = ps;
+            if v.len() == 0 {
+                v.push(nf.prev_vert(self).upgrade().unwrap().p.clone());
+                v.push(nf.next_vert(self).upgrade().unwrap().p.clone());
+            } else {
+                v.push(nf.next_vert(self).upgrade().unwrap().p.clone());
+            }
+            v
+        })
+    }
+
+    fn weight_boundary(&self, beta: f32) -> Point {
+        let p_ring = self.one_ring();
+        assert!(p_ring.len() > 0);
+        (1.0 - 2.0 * beta) * &self.p + beta * &p_ring[0] + beta * &p_ring[p_ring.len() - 1]
+    }
+
+    fn weight_one_ring(&self, beta: f32) -> Point {
+        let p_ring = self.one_ring();
+        let mut p = (1.0 - (p_ring.len() as f32) * beta) * &self.p;
+        for vi in p_ring.iter() {
+            p = p + beta * vi;
+        }
+        p
     }
 }
 
@@ -330,6 +378,49 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
 
     // Cannot intersect meshes directly.
     fn can_intersect(&self) -> bool { false }
+
+    fn refine(&'a mut self) -> Vec<Mesh> {
+        let mut vtx_id = self.max_vert_id;
+        for i in 0..self.n_levels {
+            // Update f and v for next level of subdivision
+            // let new_faces = Vec::new();
+            let mut new_vertices = Vec::new();
+
+            // Allocate next level of children in mesh tree
+            for vtx in self.vertices.iter_mut() {
+                // Determine new vertex position
+                let p = if vtx.boundary {
+                    // Apply boundary rule for even vertex
+                    vtx.weight_boundary(1f32 / 8f32)
+                } else {
+                    // Apply one-ring rule for even vertex
+                    if vtx.regular {
+                        vtx.weight_one_ring(1f32 / 16f32)
+                    } else {
+                        vtx.weight_one_ring(beta(vtx.valence()))
+                    }
+                };
+
+                let mut new_vtx = Rc::new(SDVertex::new(vtx_id, &p));
+                Rc::get_mut(&mut new_vtx).unwrap().boundary = vtx.boundary;
+                Rc::get_mut(&mut new_vtx).unwrap().regular = vtx.regular;
+
+                Rc::get_mut(vtx).unwrap().child = Some(Rc::downgrade(&new_vtx));
+                new_vertices.push(new_vtx);
+            }
+
+            // Update vertex positions and create new edge vertices
+            // Update new mesh topology
+            // Prepare for next level of subdivision
+        }
+
+        // Push vertices to limit surface
+        // Compute vertex tangents on limit surface
+        // Create TriangleMesh from subdivision mesh
+
+        self.max_vert_id = vtx_id;
+        vec![]
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
