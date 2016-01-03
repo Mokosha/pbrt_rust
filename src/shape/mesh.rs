@@ -111,13 +111,6 @@ impl Mesh {
             atex: _atex.map(|t| t.clone())
         }
     }
-
-    pub fn get_tri<'a>(&'a self, v1: usize, v2: usize, v3: usize) -> Triangle<'a> {
-        Triangle {
-            mesh: &self,
-            v: [v1, v2, v3]
-        }
-    }
 }
 
 impl<'a> IsShape<'a> for Triangle<'a> {
@@ -313,7 +306,7 @@ impl<'a> IsShape<'a, Triangle<'a>> for Mesh {
         let mut tris = Vec::new();
         while let (Some(v1), Some(v2), Some(v3)) =
             (indices.pop(), indices.pop(), indices.pop()) {
-                tris.push(self.get_tri(v1, v2, v3));
+                tris.push( Triangle { mesh: self, v: [v1, v2, v3] });
             }
 
         tris
@@ -353,8 +346,8 @@ mod tests {
 
     #[test]
     fn it_can_be_created() {
-        let mut mesh = Mesh::new(Transform::new(), Transform::new(), false,
-                                 &TET_TRIS, &TET_PTS, None, None, None, None);
+        let mesh = Mesh::new(Transform::new(), Transform::new(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
         // Make sure that all of the indices and points remained untransformed...
         assert_eq!(mesh.vertex_index, TET_TRIS.to_vec());
         assert_eq!(mesh.p, TET_PTS.to_vec());
@@ -378,8 +371,8 @@ mod tests {
     #[test]
     fn it_has_object_space_bounds() {
         let xf = Transform::rotate_y(90.0);
-        let mut mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                                 &TET_TRIS, &TET_PTS, None, None, None, None);
+        let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
         let expected = BBox::new_with(Point::new(),
                                       Point::new_with(1.0, 1.0, 1.0));
 
@@ -392,8 +385,8 @@ mod tests {
     #[test]
     fn it_has_world_space_bounds() {
         let xf = Transform::rotate_y(90.0);
-        let mut mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                                 &TET_TRIS, &TET_PTS, None, None, None, None);
+        let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
 
         let expected = BBox::new_with(Point::new_with(0.0, 0.0, -1.0),
                                       Point::new_with(1.0, 1.0, 0.0));

@@ -324,11 +324,17 @@ impl<'a> IsShape<'a> for LoopSubdiv {
     fn can_intersect(&self) -> bool { false }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// !FIXME! We have to wait for https://github.com/rust-lang/rust/issues/30658
+// to be fixed before we can implement these fixes...
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use geometry::point::Point;
+    use shape::shape::IsShape;
     use transform::transform::Transform;
 
     // Tetrahedron
@@ -340,6 +346,7 @@ mod tests {
     static TET_TRIS : [usize; 12] =
         [ 0, 3, 2, 0, 1, 2, 0, 3, 1, 1, 2, 3 ];
 
+    #[ignore]
     #[test]
     fn it_can_be_created() {
         let subdiv = LoopSubdiv::new(Transform::new(), Transform::new(), false,
@@ -347,5 +354,30 @@ mod tests {
         assert_eq!(subdiv.n_levels, 1);
         assert_eq!(subdiv.vertices.len(), 4);
         assert_eq!(subdiv.faces.len(), 4);
+    }
+
+    #[ignore]
+    #[test]
+    fn it_has_object_space_bounds() {
+        unimplemented!();
+    }
+
+    #[ignore]
+    #[test]
+    fn it_has_world_space_bounds() {
+        unimplemented!();
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_be_refined() {
+        unimplemented!();
+    }
+
+    #[ignore]
+    #[test]
+    fn it_cant_be_intersected() {
+        assert!(!LoopSubdiv::new(Transform::new(), Transform::new(), false,
+                                 &TET_TRIS, &TET_PTS, 1).can_intersect());
     }
 }
