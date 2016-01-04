@@ -194,6 +194,17 @@ impl SDFace {
     fn prev_vert(&self, v: &SDVertex) -> Weak<SDVertex> {
         self.v[prev(self.vnum(v))].clone()
     }
+
+    fn other_vert(&self, v1: &SDVertex, v2: &SDVertex) -> Weak<SDVertex> {
+        for vtx in self.v.iter() {
+            let real_vtx = vtx.upgrade().unwrap();
+            if real_vtx.as_ref() != v1 && real_vtx.as_ref() != v2 {
+                return vtx.clone();
+            }
+        }
+
+        panic!("Basic logic error in SDFace::other_vert()");
+    }
 }
 
 struct SDEdge {
@@ -383,7 +394,6 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
         let mut vtx_id = self.max_vert_id;
         for i in 0..self.n_levels {
             // Update f and v for next level of subdivision
-            // let new_faces = Vec::new();
             let mut new_vertices = Vec::new();
 
             // Allocate next level of children in mesh tree
@@ -402,6 +412,8 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
                 };
 
                 let mut new_vtx = Rc::new(SDVertex::new(vtx_id, &p));
+                vtx_id += 1;
+
                 Rc::get_mut(&mut new_vtx).unwrap().boundary = vtx.boundary;
                 Rc::get_mut(&mut new_vtx).unwrap().regular = vtx.regular;
 
@@ -409,8 +421,96 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
                 new_vertices.push(new_vtx);
             }
 
-            // Update vertex positions and create new edge vertices
+            // Compute new odd edge vertices
+            let mut edge_verts: HashMap<SDEdge, Weak<SDVertex>> = HashMap::new();
+            for face in self.faces.iter_mut() {
+                for k in 0..3 {
+                    // Compute odd vertex on k'th edge
+                    let edge = SDEdge::new(face.v[k].clone(), face.v[next(k)].clone());
+                    if !edge_verts.contains_key(&edge) {
+                        // Apply edge rules to compute new vertex position
+                        let boundary = match face.f[k] {
+                            None => false,
+                            Some(_) => true
+                        };
+
+                        let pos = {
+                            let v1 = edge.v[0].upgrade().unwrap();
+                            let v2 = edge.v[1].upgrade().unwrap();
+                            if boundary {
+                                0.5 * &v1.p + 0.5 * &v2.p
+                            } else {
+                                let v3 = face
+                                    .other_vert(v1.as_ref(), v2.as_ref())
+                                    .upgrade().unwrap();
+
+                                let v4 =
+                                    face.f[k].clone().unwrap()
+                                    .upgrade().unwrap()
+                                    .other_vert(v1.as_ref(), v2.as_ref())
+                                    .upgrade().unwrap();
+
+                                let mut p = (3f32 / 8f32) * &v1.p;
+                                p = p + (3f32 / 8f32) * &v2.p;
+                                p = p + (1f32 / 8f32) * &v3.p;
+                                p = p + (1f32 / 8f32) * &v4.p;
+                                p
+                            }
+                        };
+
+                        // Create and initialize new odd vertex
+                        let mut vert = Rc::new(SDVertex::new(vtx_id, &pos));
+                        vtx_id += 1;
+
+                        Rc::get_mut(&mut vert).unwrap().boundary = boundary;
+                        Rc::get_mut(&mut vert).unwrap().regular = true;
+
+                        edge_verts.insert(edge, Rc::downgrade(&vert));
+                        new_vertices.push(vert);
+                    }
+                }
+            }
+
+            // Create child faces, set verts based on edges, and set
+            // start face for intermediate edge verts to center face...
+            let mut new_faces = Vec::new();
+            for f in self.faces.iter_mut() {
+                let mut cvs : Vec<Weak<SDVertex>> = (0..3).map(|k| {
+                    let edge = SDEdge::new(f.v[k].clone(), f.v[next(k)].clone());
+                    assert!(edge_verts.contains_key(&edge));
+                    edge_verts.get(&edge).unwrap().clone()
+                }).collect();
+
+                // Allocate new faces...
+                let f1 = Rc::new(SDFace::new(f.v[0].clone(), cvs[0].clone(), cvs[2].clone()));
+                let f2 = Rc::new(SDFace::new(cvs[0].clone(), f.v[1].clone(), cvs[1].clone()));
+                let f3 = Rc::new(SDFace::new(cvs[2].clone(), cvs[1].clone(), f.v[2].clone()));
+                let f4 = Rc::new(SDFace::new(cvs[0].clone(), cvs[1].clone(), cvs[2].clone()));
+
+                // Set f4 as the start face for all of the child vertices...
+                for cv in cvs.iter_mut() {
+                    Rc::get_mut(&mut cv.upgrade().unwrap()).unwrap().start_face = Some(Rc::downgrade(&f4))
+                }
+
+                // Set f1-f4 as the children for this face...
+                Rc::get_mut(f).unwrap().children = [
+                    Some(Rc::downgrade(&f1)),
+                    Some(Rc::downgrade(&f2)),
+                    Some(Rc::downgrade(&f3)),
+                    Some(Rc::downgrade(&f4))];
+
+                // Add each face to the list of new faces..
+                new_faces.push(f1);
+                new_faces.push(f2);
+                new_faces.push(f3);
+                new_faces.push(f4);
+            }
+
             // Update new mesh topology
+            /* Update even vertex face pointers */
+            /* Update face neighbor pointers */
+            /* Update face vertex pointers */
+
             // Prepare for next level of subdivision
         }
 
