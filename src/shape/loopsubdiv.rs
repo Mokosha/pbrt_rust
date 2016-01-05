@@ -5,7 +5,10 @@ use std::collections::HashMap;
 
 use bbox::BBox;
 use bbox::Union;
+use geometry::normal::Normal;
+use geometry::normal::Normalize;
 use geometry::point::Point;
+use geometry::vector::Vector;
 use shape::mesh::Mesh;
 use shape::mesh::Triangle;
 use shape::shape::FromShape;
@@ -569,10 +572,65 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
         }
 
         // Compute vertex tangents on limit surface
+        let ns : Vec<_> = v.iter().map(|vert| {
+            let mut s = Vector::new();
+            let mut t = Vector::new();
+
+            let valence = vert.valence();
+
+            let p_ring = vert.one_ring();
+            if vert.boundary {
+                // Compute tangents of interior vertex
+                for (k, p) in p_ring.iter().enumerate() {
+                    let factor = 2f32 * ::std::f32::consts::PI * (k as f32) / (valence as f32);
+                    s = s + factor.cos() * Vector::from(p.clone());
+                    t = t + factor.sin() * Vector::from(p.clone());
+                }
+            } else {
+                // Compute tangents of boundary vertex
+                s = &p_ring[valence - 1] - &p_ring[0];
+                t = match valence {
+                    2 => Vector::from(&p_ring[0] + &p_ring[1] - 2.0 * &vert.p),
+                    3 => &p_ring[1] - &vert.p,
+                    4 => Vector::from(-1.0 * &p_ring[0] + 2.0 * &p_ring[1] + 2.0 * &p_ring[2] +
+                                      -1.0 * &p_ring[3] - 2.0 * &vert.p),
+                    _ => {
+                        let theta = ::std::f32::consts::PI / ((valence - 1) as f32);
+                        let mut r = Vector::from(theta.sin() * (&p_ring[0] + &p_ring[valence - 1]));
+                        for (k, p) in p_ring.iter().enumerate() {
+                            let wt = (2.0 * theta.cos() - 2.0) * ((k as f32) * theta).sin();
+                            r = r + Vector::from(wt * p);
+                        }
+                        -r
+                    }
+                }
+            }
+
+            Normal::from(s.cross(&t).normalize())
+        }).collect();
+
         // Create TriangleMesh from subdivision mesh
+        let mut used_verts: HashMap<Rc<SDVertex>, usize> = HashMap::new();
+        let mut used_vert_id = 0;
+        for vert in v.iter() {
+            used_verts.insert(vert.clone(), used_vert_id);
+        }
+
+        let mut indices = Vec::with_capacity(f.len() * 3);
+        for face in f.iter() {
+            for j in 0..3 {
+                indices.push(*(used_verts.get(&face.v[j].upgrade().unwrap()).unwrap()));
+            }
+        }
 
         self.max_vert_id = vtx_id;
-        vec![]
+        vec![Mesh::new(self.shape.object2world.clone(),
+                       self.shape.world2object.clone(),
+                       self.shape.reverse_orientation,
+                       &*indices.into_boxed_slice(),
+                       &*p_limit.into_boxed_slice(),
+                       Some(&*ns.into_boxed_slice()),
+                       None, None, None)]
     }
 }
 
