@@ -391,13 +391,16 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
     fn can_intersect(&self) -> bool { false }
 
     fn refine(&'a mut self) -> Vec<Mesh> {
+        let mut f = self.faces.clone();
+        let mut v = self.vertices.clone();
+        
         let mut vtx_id = self.max_vert_id;
         for i in 0..self.n_levels {
             // Update f and v for next level of subdivision
             let mut new_vertices = Vec::new();
 
             // Allocate next level of children in mesh tree
-            for vtx in self.vertices.iter_mut() {
+            for vtx in v.iter_mut() {
                 // Determine new vertex position
                 let p = if vtx.boundary {
                     // Apply boundary rule for even vertex
@@ -423,7 +426,7 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
 
             // Compute new odd edge vertices
             let mut edge_verts: HashMap<SDEdge, Weak<SDVertex>> = HashMap::new();
-            for face in self.faces.iter_mut() {
+            for face in f.iter_mut() {
                 for k in 0..3 {
                     // Compute odd vertex on k'th edge
                     let edge = SDEdge::new(face.v[k].clone(), face.v[next(k)].clone());
@@ -474,7 +477,7 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
             // Create child faces, set verts based on edges, and set
             // start face for intermediate edge verts to center face...
             let mut new_faces = Vec::new();
-            for f in self.faces.iter_mut() {
+            for f in f.iter_mut() {
                 let mut cvs : Vec<Weak<SDVertex>> = (0..3).map(|k| {
                     let edge = SDEdge::new(f.v[k].clone(), f.v[next(k)].clone());
                     assert!(edge_verts.contains_key(&edge));
@@ -508,13 +511,63 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
 
             // Update new mesh topology
             /* Update even vertex face pointers */
+            for vert in v.iter_mut() {
+                let vert_num = vert.start_face.clone().unwrap().upgrade().unwrap().vnum(vert);
+                Rc::get_mut(&mut vert.child.clone().unwrap().upgrade().unwrap()).unwrap().start_face =
+                    vert.start_face.clone().unwrap().upgrade().unwrap().children[vert_num].clone()
+            }
+
             /* Update face neighbor pointers */
-            /* Update face vertex pointers */
+            for face in f.iter_mut() {
+                for k in 0..3 {
+                    // Update f pointers for siblings
+                    Rc::get_mut(&mut face.children[3].clone().unwrap().upgrade().unwrap()).unwrap().f[k] =
+                        face.children[next(k)].clone();
+                    Rc::get_mut(&mut face.children[k].clone().unwrap().upgrade().unwrap()).unwrap().f[next(k)] =
+                        face.children[3].clone();
+                    
+                    // Update children f pointers for neighbor children
+                    let mut child_ref = face.children[k].clone().unwrap().upgrade().unwrap();
+                    let mut f2 = face.f[k].clone();
+                    if let Some(f2_wref) = f2 {
+                        let f2_ref = f2_wref.upgrade().unwrap();
+                        Rc::get_mut(&mut child_ref).unwrap().f[k] =
+                            f2_ref.children[f2_ref.vnum(face.v[k].upgrade().unwrap().as_ref())].clone();
+                    } else {
+                        Rc::get_mut(&mut child_ref).unwrap().f[k] = None;
+                    }
+
+                    f2 = face.f[prev(k)].clone();
+                    if let Some(f2_wref) = f2 {
+                        let f2_ref = f2_wref.upgrade().unwrap();
+                        Rc::get_mut(&mut child_ref).unwrap().f[prev(k)] =
+                            f2_ref.children[f2_ref.vnum(face.v[k].upgrade().unwrap().as_ref())].clone();
+                    } else {
+                        Rc::get_mut(&mut child_ref).unwrap().f[prev(k)] = None;
+                    }
+                }
+            }
 
             // Prepare for next level of subdivision
+            f = new_faces;
+            v = new_vertices;
         }
 
         // Push vertices to limit surface
+        let p_limit : Vec<_> = v.iter().map(|vert| {
+            if vert.boundary {
+                vert.weight_boundary(1f32 / 5f32)
+            } else {
+                let valence = vert.valence();
+                let gamma = 1.0 / ((valence as f32) + 3.0 / (8.0 * beta(valence)));
+                vert.weight_one_ring(gamma)
+            }
+        }).collect();
+
+        for (k, vert) in v.iter_mut().enumerate() {
+            Rc::get_mut(vert).unwrap().p = p_limit[k].clone();
+        }
+
         // Compute vertex tangents on limit surface
         // Create TriangleMesh from subdivision mesh
 
