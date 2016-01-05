@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn it_can_be_scale() {
-        for i in (0..100) {
+        for i in 0..100 {
             assert_eq!(Normal::new() * (i as f32), Vector::new());
         }
 
@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn it_can_be_divided_by_scalars() {
-        for i in (1..100) {
+        for i in 1..100 {
             assert_eq!(Normal::new() / (i as f32), Vector::new());
         }
 

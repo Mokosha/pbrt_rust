@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     fn it_can_be_scaled() {
-        for i in (0..100) {
+        for i in 0..100 {
             assert_eq!(Point::new() * (i as f32), Point::new());
         }
 
