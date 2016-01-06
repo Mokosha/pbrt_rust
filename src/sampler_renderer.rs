@@ -208,7 +208,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Rende
                 self.surface_integrator.li(scene, self, ray, &mut local_isect, sample, rng)
             } else {
                 // Handle ray that doesn't intersect any geometry
-                scene.lights.iter().fold(Spectrum::from_value(0f32), |acc, light| acc + light.le(ray))
+                scene.lights().iter().fold(Spectrum::from_value(0f32), |acc, light| acc + light.le(ray))
             };
         let lvi = self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans);
 

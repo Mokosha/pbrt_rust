@@ -51,7 +51,7 @@ impl SurfaceIntegrator for WhittedIntegrator {
         let wo = -(&ray.d);
 
         // Compute emitted light if ray hit an area light source
-        let l = scene.lights.iter().fold(isect.le(&wo), |l_acc, ref light| {
+        let l = scene.lights().iter().fold(isect.le(&wo), |l_acc, ref light| {
 
             // Add contribution of each light source
             let (li, wi, pdf, visibility) =
