@@ -1,4 +1,5 @@
 use bbox::BBox;
+use bbox::HasBounds;
 use diff_geom::DifferentialGeometry;
 use geometry::point::Point;
 use geometry::vector::Vector;
@@ -73,6 +74,12 @@ impl Disk {
 
 impl IntoShape for Disk { }
 impl FromShape<Disk> for Disk { }
+
+impl HasBounds for Disk {
+    fn world_bound(&self) -> BBox {
+        self.get_shape().object2world.xf(self.object_bound())
+    }
+}
 
 impl<'a> IsShape<'a> for Disk {
     fn get_shape(&'a self) -> &'a Shape { &self.shape }

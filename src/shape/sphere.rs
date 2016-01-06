@@ -1,4 +1,5 @@
 use bbox::BBox;
+use bbox::HasBounds;
 use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
@@ -111,6 +112,12 @@ impl Sphere {
 
 impl IntoShape for Sphere { }
 impl FromShape<Sphere> for Sphere { }
+
+impl HasBounds for Sphere {
+    fn world_bound(&self) -> BBox {
+        self.get_shape().object2world.xf(self.object_bound())
+    }
+}
 
 impl<'a> IsShape<'a> for Sphere {
     fn get_shape(&'a self) -> &'a Shape { &self.shape }

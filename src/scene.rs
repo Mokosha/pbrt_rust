@@ -17,12 +17,12 @@ pub struct Scene {
 }
 
 impl bbox::HasBounds for Scene {
-    fn get_bounds(&self) -> bbox::BBox {
+    fn world_bound(&self) -> bbox::BBox {
         if let Some(volume) = self.volume_region {
-            let agg_box = &(self.aggregate).get_bounds();
-            (&agg_box).union(&volume.get_bounds())
+            let agg_box = &(self.aggregate).world_bound();
+            (&agg_box).union(&volume.world_bound())
         } else {
-            self.aggregate.get_bounds()
+            self.aggregate.world_bound()
         }
     }
 }
@@ -36,7 +36,7 @@ impl Scene {
             world_bound: bbox::BBox::new()
         };
 
-        let world_bound = scene.get_bounds();
+        let world_bound = scene.world_bound();
         scene
     }
 

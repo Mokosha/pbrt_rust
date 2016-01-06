@@ -170,11 +170,11 @@ impl Union for BBox {
 }
 
 pub trait HasBounds {
-    fn get_bounds(&self) -> BBox;
+    fn world_bound(&self) -> BBox;
 }
 
 impl HasBounds for BBox {
-    fn get_bounds(&self) -> BBox { self.clone() }
+    fn world_bound(&self) -> BBox { self.clone() }
 }
 
 #[cfg(test)]

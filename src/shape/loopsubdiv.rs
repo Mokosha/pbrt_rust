@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::collections::HashMap;
 
 use bbox::BBox;
+use bbox::HasBounds;
 use bbox::Union;
 use geometry::normal::Normal;
 use geometry::normal::Normalize;
@@ -379,15 +380,17 @@ impl IntoShape for LoopSubdiv { }
 impl FromShape<LoopSubdiv> for Mesh { }
 impl FromShape<LoopSubdiv> for LoopSubdiv { }
 
+impl HasBounds for LoopSubdiv {
+    fn world_bound(&self) -> BBox {
+        let o2w = &self.get_shape().object2world;
+        self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with(o2w.t(&v.p)))
+    }
+}
+
 impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
     fn get_shape(&'a self) -> &'a Shape { &self.shape }
     fn object_bound(&self) -> BBox {
         self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with_ref(&v.p))
-    }
-
-    fn world_bound(&self) -> BBox {
-        let o2w = &self.get_shape().object2world;
-        self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with(o2w.t(&v.p)))
     }
 
     // Cannot intersect meshes directly.

@@ -1,4 +1,5 @@
 use bbox::BBox;
+use bbox::HasBounds;
 use diff_geom::DifferentialGeometry;
 use ray::Ray;
 use transform::transform::ApplyTransform;
@@ -61,14 +62,11 @@ impl<'a> ShapeIntersection<'a> {
 pub trait IntoShape { }
 pub trait FromShape<T: IntoShape> { }
 
-pub trait IsShape<'a, T : FromShape<Self> = Self> : FromShape<Self> + Sized + IntoShape {
+pub trait IsShape<'a, T : FromShape<Self> = Self>
+    : FromShape<Self> + Sized + IntoShape + HasBounds {
     fn get_shape(&'a self) -> &'a Shape;
 
     fn object_bound(&'a self) -> BBox;
-
-    fn world_bound(&'a self) -> BBox {
-        self.get_shape().object2world.xf(self.object_bound())
-    }
 
     // Default is all shapes can intersect..
     fn can_intersect(&'a self) -> bool { true }

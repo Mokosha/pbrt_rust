@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 
 use bbox::BBox;
+use bbox::HasBounds;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use ray::Ray;
@@ -98,6 +99,12 @@ impl Cylinder {
 
 impl IntoShape for Cylinder { }
 impl FromShape<Cylinder> for Cylinder { }
+
+impl HasBounds for Cylinder {
+    fn world_bound(&self) -> BBox {
+        self.get_shape().object2world.xf(self.object_bound())
+    }
+}
 
 impl<'a> IsShape<'a> for Cylinder {
     fn get_shape(&'a self) -> &'a Shape { &self.shape }

@@ -16,5 +16,5 @@ impl Primitive {
 }
 
 impl bbox::HasBounds for Primitive {
-    fn get_bounds(&self) -> bbox::BBox { bbox::BBox::new() }
+    fn world_bound(&self) -> bbox::BBox { bbox::BBox::new() }
 }

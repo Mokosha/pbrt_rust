@@ -2,6 +2,7 @@ use std::rc::Rc;
 use std::convert::AsRef;
 
 use bbox::BBox;
+use bbox::HasBounds;
 use bbox::Union;
 use diff_geom::DifferentialGeometry;
 use geometry::normal::Normal;
@@ -118,6 +119,17 @@ impl Mesh {
 impl<'a> FromShape<Triangle<'a>> for Triangle<'a> { }
 impl<'a> IntoShape for Triangle<'a> { }
 
+impl<'a> HasBounds for Triangle<'a> {
+    fn world_bound(&self) -> BBox {
+        let (p1, p2, p3) = self.get_vertices();
+
+        BBox::new()
+            .unioned_with_ref(p1)
+            .unioned_with_ref(p2)
+            .unioned_with_ref(p3)
+    }
+}
+
 impl<'a> IsShape<'a> for Triangle<'a> {
     fn get_shape(&'a self) -> &'a Shape { &self.mesh.shape }
 
@@ -128,15 +140,6 @@ impl<'a> IsShape<'a> for Triangle<'a> {
         BBox::from(w2o.t(p1))
             .unioned_with(w2o.t(p2))
             .unioned_with(w2o.t(p3))
-    }
-
-    fn world_bound(&self) -> BBox {
-        let (p1, p2, p3) = self.get_vertices();
-
-        BBox::new()
-            .unioned_with_ref(p1)
-            .unioned_with_ref(p2)
-            .unioned_with_ref(p3)
     }
 
     fn intersect_p(&self, r: &Ray) -> bool {
@@ -296,15 +299,17 @@ impl<'a> FromShape<Mesh> for Mesh { }
 impl<'a> FromShape<Mesh> for Triangle<'a> { }
 impl IntoShape for Mesh { }
 
+impl HasBounds for Mesh {
+    fn world_bound(&self) -> BBox {
+        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with_ref(p))
+    }
+}
+
 impl<'a> IsShape<'a, Triangle<'a>> for Mesh {
     fn get_shape(&'a self) -> &'a Shape { &(self.shape) }
     fn object_bound(&self) -> BBox {
         let w2o = &self.shape.world2object;
         self.p.iter().fold(BBox::new(), |b, p| b.unioned_with(w2o.t(p)))
-    }
-
-    fn world_bound(&self) -> BBox {
-        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with_ref(p))
     }
 
     // Cannot intersect meshes directly.
@@ -337,6 +342,7 @@ mod tests {
     use super::*;
 
     use bbox::BBox;
+    use bbox::HasBounds;
     use diff_geom::DifferentialGeometry;
     use geometry::point::Point;
     use geometry::vector::Vector;
