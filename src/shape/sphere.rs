@@ -3,6 +3,7 @@ use bbox::HasBounds;
 use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
+use intersection::Intersectable;
 use ray::Ray;
 use shape::shape::FromShape;
 use shape::shape::IntoShape;
@@ -119,21 +120,14 @@ impl HasBounds for Sphere {
     }
 }
 
-impl<'a> IsShape<'a> for Sphere {
-    fn get_shape(&'a self) -> &'a Shape { &self.shape }
-    fn object_bound(&self) -> BBox {
-        BBox::new_with(
-            Point::new_with(-self.radius, -self.radius, self.z_min),
-            Point::new_with(self.radius, self.radius, self.z_max))
-    }
-
-    fn intersect_p(&self, r: &Ray) -> bool {
+impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Sphere {
+    fn intersect_p(&'a self, r: &Ray) -> bool {
         // Transform ray to object space
         let ray = self.get_shape().world2object.t(r);
         self.get_intersection_point(&ray).is_some()
     }
 
-    fn intersect(&self, r: &Ray) -> Option<ShapeIntersection> {
+    fn intersect(&'a self, r: &Ray) -> Option<ShapeIntersection> {
         // Transform ray to object space
         let ray = self.get_shape().world2object.t(r);
 
@@ -174,6 +168,16 @@ impl<'a> IsShape<'a> for Sphere {
                             dpdu, dpdv, d2pduu, d2pduv, d2pdvv);
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
     }
+}
+
+
+impl<'a> IsShape<'a> for Sphere {
+    fn get_shape(&'a self) -> &'a Shape { &self.shape }
+    fn object_bound(&self) -> BBox {
+        BBox::new_with(
+            Point::new_with(-self.radius, -self.radius, self.z_min),
+            Point::new_with(self.radius, self.radius, self.z_max))
+    }
 
     fn area(&self) -> f32 {
         self.phi_max * self.radius * (self.z_max - self.z_min)
@@ -186,6 +190,7 @@ mod tests {
     use geometry::normal::Normal;
     use geometry::point::Point;
     use geometry::vector::Vector;
+    use intersection::Intersectable;
     use ray::Ray;
     use shape::shape::Shape;
     use shape::shape::IsShape;

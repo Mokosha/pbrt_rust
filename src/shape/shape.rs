@@ -1,8 +1,6 @@
 use bbox::BBox;
 use bbox::HasBounds;
 use diff_geom::DifferentialGeometry;
-use ray::Ray;
-use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 
 use std::sync::atomic::AtomicIsize;
@@ -63,7 +61,11 @@ pub trait IntoShape { }
 pub trait FromShape<T: IntoShape> { }
 
 pub trait IsShape<'a, T : FromShape<Self> = Self>
-    : FromShape<Self> + Sized + IntoShape + HasBounds {
+    : FromShape<Self>
+    + Sized
+    + IntoShape
+    + HasBounds
+{
     fn get_shape(&'a self) -> &'a Shape;
 
     fn object_bound(&'a self) -> BBox;
@@ -72,14 +74,6 @@ pub trait IsShape<'a, T : FromShape<Self> = Self>
     fn can_intersect(&'a self) -> bool { true }
 
     fn refine(&'a mut self) -> Vec<T> {
-        unimplemented!();
-    }
-
-    fn intersect(&'a self, _: &Ray) -> Option<ShapeIntersection> {
-        unimplemented!();
-    }
-    
-    fn intersect_p(&'a self, _: &Ray) -> bool {
         unimplemented!();
     }
 

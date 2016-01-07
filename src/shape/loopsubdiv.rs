@@ -11,7 +11,6 @@ use geometry::normal::Normalize;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use shape::mesh::Mesh;
-use shape::mesh::Triangle;
 use shape::shape::FromShape;
 use shape::shape::IntoShape;
 use shape::shape::IsShape;
@@ -401,7 +400,7 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
         let mut v = self.vertices.clone();
         
         let mut vtx_id = self.max_vert_id;
-        for i in 0..self.n_levels {
+        for _ in 0..self.n_levels {
             // Update f and v for next level of subdivision
             let mut new_vertices = Vec::new();
 
@@ -617,6 +616,7 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
         let mut used_vert_id = 0;
         for vert in v.iter() {
             used_verts.insert(vert.clone(), used_vert_id);
+            used_vert_id = used_vert_id + 1;
         }
 
         let mut indices = Vec::with_capacity(f.len() * 3);

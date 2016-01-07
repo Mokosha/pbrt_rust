@@ -4,6 +4,7 @@ use bbox::BBox;
 use bbox::HasBounds;
 use geometry::point::Point;
 use geometry::vector::Vector;
+use intersection::Intersectable;
 use ray::Ray;
 use shape::shape::FromShape;
 use shape::shape::IntoShape;
@@ -106,14 +107,7 @@ impl HasBounds for Cylinder {
     }
 }
 
-impl<'a> IsShape<'a> for Cylinder {
-    fn get_shape(&'a self) -> &'a Shape { &self.shape }
-    fn object_bound(&self) -> BBox {
-        BBox::new_with(
-            Point::new_with(-self.radius, -self.radius, self.z_min),
-            Point::new_with(self.radius, self.radius, self.z_max))
-    }
-
+impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Cylinder {
     fn intersect_p(&self, r: &Ray) -> bool {
         // Transform ray to object space
         let ray = self.get_shape().world2object.t(r);
@@ -151,6 +145,15 @@ impl<'a> IsShape<'a> for Cylinder {
 
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
     }
+}
+
+impl<'a> IsShape<'a> for Cylinder {
+    fn get_shape(&'a self) -> &'a Shape { &self.shape }
+    fn object_bound(&self) -> BBox {
+        BBox::new_with(
+            Point::new_with(-self.radius, -self.radius, self.z_min),
+            Point::new_with(self.radius, self.radius, self.z_max))
+    }
 
     fn area(&self) -> f32 {
         // Unroll the rectangle
@@ -167,6 +170,7 @@ mod tests {
     use geometry::point::Point;
     use geometry::normal::Normalize;
     use geometry::vector::Vector;
+    use intersection::Intersectable;
     use ray::Ray;
     use shape::shape::IsShape;
     use shape::shape::Shape;

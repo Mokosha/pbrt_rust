@@ -4,6 +4,7 @@ use diff_geom::DifferentialGeometry;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use geometry::normal::Normal;
+use intersection::Intersectable;
 use ray::Ray;
 use shape::shape::FromShape;
 use shape::shape::IntoShape;
@@ -81,15 +82,7 @@ impl HasBounds for Disk {
     }
 }
 
-impl<'a> IsShape<'a> for Disk {
-    fn get_shape(&'a self) -> &'a Shape { &self.shape }
-
-    fn object_bound(&self) -> BBox {
-        BBox::new_with(
-            Point::new_with(-self.radius, -self.radius, self.height),
-            Point::new_with(self.radius, self.radius, self.height))
-    }
-
+impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Disk {
     fn intersect_p(&self, r: &Ray) -> bool {
         // Transform ray to object space
         let ray = self.get_shape().world2object.t(r);
@@ -131,6 +124,16 @@ impl<'a> IsShape<'a> for Disk {
 
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
     }
+}
+
+impl<'a> IsShape<'a> for Disk {
+    fn get_shape(&'a self) -> &'a Shape { &self.shape }
+
+    fn object_bound(&self) -> BBox {
+        BBox::new_with(
+            Point::new_with(-self.radius, -self.radius, self.height),
+            Point::new_with(self.radius, self.radius, self.height))
+    }
 
     fn area(&self) -> f32 {
         let r2 = self.radius * self.radius;
@@ -148,6 +151,7 @@ mod tests {
     use geometry::point::Point;
     use geometry::normal::Normal;
     use geometry::vector::Vector;
+    use intersection::Intersectable;
     use ray::Ray;
     use shape::shape::IsShape;
     use shape::shape::Shape;

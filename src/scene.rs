@@ -1,7 +1,8 @@
 use bbox::BBox;
 use bbox::Union;
 use bbox::HasBounds;
-use intersection;
+use intersection::Intersectable;
+use intersection::Intersection;
 use light::Light;
 use primitive::Primitive;
 use primitive::GeometricPrimitive;
@@ -44,6 +45,20 @@ impl HasBounds for Scene {
     }
 }
 
+impl<'a> Intersectable<'a> for Scene {
+    fn intersect(&'a self, ray : &ray::Ray) -> Option<Intersection<'a>> {
+        match self {
+            &Scene::GeometricPrimitiveScene(ref b) => b.aggregate.intersect(ray)
+        }
+    }
+
+    fn intersect_p(&'a self, ray : &ray::Ray) -> bool {
+        match self {
+            &Scene::GeometricPrimitiveScene(ref b) => b.aggregate.intersect_p(ray)
+        }
+    }
+}
+
 impl Scene {
     pub fn new() -> Scene {
         Scene::GeometricPrimitiveScene(SceneBase::<GeometricPrimitive>::new())
@@ -55,17 +70,5 @@ impl Scene {
         }
     }
     
-    pub fn intersect(&self, ray : &ray::Ray,
-                 isect : &mut intersection::Intersection) -> bool {
-        match self {
-            &Scene::GeometricPrimitiveScene(ref b) => b.aggregate.intersect(ray, isect)
-        }
-    }
-
-    pub fn intersect_p(&self, ray : &ray::Ray) -> bool {
-        match self {
-            &Scene::GeometricPrimitiveScene(ref b) => b.aggregate.intersect_p(ray)
-        }
-    }
     // Scene Public methods 23
 }

@@ -10,6 +10,7 @@ use geometry::normal::Normalize;
 use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
+use intersection::Intersectable;
 use ray::Ray;
 use shape::shape::FromShape;
 use shape::shape::IntoShape;
@@ -130,18 +131,7 @@ impl<'a> HasBounds for Triangle<'a> {
     }
 }
 
-impl<'a> IsShape<'a> for Triangle<'a> {
-    fn get_shape(&'a self) -> &'a Shape { &self.mesh.shape }
-
-    fn object_bound(&self) -> BBox {
-        let (p1, p2, p3) = self.get_vertices();
-
-        let w2o = &(self.get_shape().world2object);
-        BBox::from(w2o.t(p1))
-            .unioned_with(w2o.t(p2))
-            .unioned_with(w2o.t(p3))
-    }
-
+impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle<'a> {
     fn intersect_p(&self, r: &Ray) -> bool {
         self.get_intersection_point(r).is_some()
     }
@@ -197,6 +187,19 @@ impl<'a> IsShape<'a> for Triangle<'a> {
         }
 
         Some(ShapeIntersection::new(t, t * 5e-4, dg))
+    }
+}
+
+impl<'a> IsShape<'a> for Triangle<'a> {
+    fn get_shape(&'a self) -> &'a Shape { &self.mesh.shape }
+
+    fn object_bound(&self) -> BBox {
+        let (p1, p2, p3) = self.get_vertices();
+
+        let w2o = &(self.get_shape().world2object);
+        BBox::from(w2o.t(p1))
+            .unioned_with(w2o.t(p2))
+            .unioned_with(w2o.t(p3))
     }
 
     fn area(&self) -> f32 {
@@ -346,6 +349,7 @@ mod tests {
     use diff_geom::DifferentialGeometry;
     use geometry::point::Point;
     use geometry::vector::Vector;
+    use intersection::Intersectable;
     use ray::Ray;
     use shape::shape::IsShape;
     use transform::transform::Transform;
@@ -369,7 +373,7 @@ mod tests {
 
         // If we rotate it about y by 90 degrees then it should be OK as well
         let xf = Transform::rotate_y(90.0);
-        let mut mesh2 = Mesh::new(xf.clone(), xf.inverse(), false,
+        let mesh2 = Mesh::new(xf.clone(), xf.inverse(), false,
                               &TET_TRIS, &TET_PTS, None, None, None, None);
 
         assert_eq!(mesh2.vertex_index, TET_TRIS.to_vec());

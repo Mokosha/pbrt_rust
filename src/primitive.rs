@@ -1,7 +1,7 @@
 use bbox::BBox;
 use bbox::HasBounds;
-use intersection;
-use ray;
+use intersection::Intersection;
+use ray::Ray;
 
 use std::sync::atomic::AtomicIsize;
 
@@ -18,15 +18,9 @@ impl PrimitiveBase {
 
 pub trait Primitive : HasBounds {
     fn new() -> Self;
-    
-    fn intersect(&self, ray : &ray::Ray,
-                 isect : &mut intersection::Intersection) -> bool {
-        false
-    }    
-
-    fn intersect_p(&self, ray : &ray::Ray) -> bool {
-        false
-    }
+    fn intersect(&self, ray : &Ray) -> Option<Intersection>;
+    fn intersect_p(&self, ray : &Ray) -> bool;
+    fn can_intersect(&self) -> bool;
 }
 
 pub struct GeometricPrimitive {
@@ -43,4 +37,8 @@ impl Primitive for GeometricPrimitive {
             base: PrimitiveBase::new()
         }
     }
+
+    fn intersect(&self, ray : &Ray) -> Option<Intersection> { None }
+    fn intersect_p(&self, ray : &Ray) -> bool { false }
+    fn can_intersect(&self) -> bool { false }
 }

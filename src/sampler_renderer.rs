@@ -7,6 +7,7 @@ use integrator::Integrator;
 use integrator::VolumeIntegrator;
 use integrator::SurfaceIntegrator;
 use intersection::Intersection;
+use intersection::Intersectable;
 use ray;
 use rng::RNG;
 use rng::PseudoRNG;
@@ -204,7 +205,8 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Rende
         let mut local_isect = Intersection::new();
         let mut local_trans = Spectrum::from_value(0f32);
         let li =
-            if scene.intersect(&ray.ray, &mut local_isect) {
+            if let Some(scene_isect) = scene.intersect(&ray.ray) {
+                local_isect = scene_isect;
                 self.surface_integrator.li(scene, self, ray, &mut local_isect, sample, rng)
             } else {
                 // Handle ray that doesn't intersect any geometry
