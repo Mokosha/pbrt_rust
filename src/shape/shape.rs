@@ -70,9 +70,6 @@ impl<'a> ShapeIntersection<'a> {
     }
 }
 
-pub trait IntoShape { }
-pub trait FromShape<T: IntoShape> { }
-
 #[derive(Debug, Clone, PartialEq)]
 enum Shape<'a> {
     Sphere(Sphere),
