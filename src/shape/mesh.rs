@@ -410,8 +410,8 @@ mod tests {
     #[test]
     fn it_can_be_refined_to_triangles() {
         let xf = Transform::rotate_y(90.0);
-        let mut mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                                 &TET_TRIS, &TET_PTS, None, None, None, None);
+        let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
         let tris = mesh.refine();
 
         assert_eq!(tris.len(), 4);
@@ -424,8 +424,8 @@ mod tests {
     #[test]
     fn its_triangles_have_object_space_bounds() {
         let xf = Transform::rotate_y(90.0);
-        let mut mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                                 &TET_TRIS, &TET_PTS, None, None, None, None);
+        let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
         let tris = mesh.refine();
         assert_eq!(tris[3].object_bound(),
                    BBox::new_with(Point::new(), Point::new_with(0.0, 1.0, 1.0)));
@@ -440,8 +440,8 @@ mod tests {
     #[test]
     fn its_triangles_have_world_space_bounds() {
         let xf = Transform::rotate_y(90.0);
-        let mut mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                                 &TET_TRIS, &TET_PTS, None, None, None, None);
+        let mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
         let tris = mesh.refine();
         assert!((tris[3].world_bound().p_min - Point::new()).length_squared() < 1e-6);
         assert!((tris[3].world_bound().p_max -
@@ -462,8 +462,8 @@ mod tests {
 
     #[test]
     fn its_triangles_can_be_intersected() {
-        let mut mesh = Mesh::new(Transform::new(), Transform::new(), false,
-                                 &TET_TRIS, &TET_PTS, None, None, None, None);
+        let mesh = Mesh::new(Transform::new(), Transform::new(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
         let tris = mesh.refine();
 
         assert!(tris[0].intersect_p(&Ray::new_with(
@@ -491,8 +491,8 @@ mod tests {
 
     #[test]
     fn its_triangles_have_surface_area() {
-        let mut mesh = Mesh::new(Transform::new(), Transform::new(), false,
-                                 &TET_TRIS, &TET_PTS, None, None, None, None);
+        let mesh = Mesh::new(Transform::new(), Transform::new(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
         let tris = mesh.refine();
 
         assert_eq!(tris[1].area(), 0.5);
@@ -500,8 +500,8 @@ mod tests {
         assert_eq!(tris[3].area(), 0.5);
 
         let xf = Transform::scale(2.0, 2.0, 2.0);
-        let mut xf_mesh = Mesh::new(xf.clone(), xf.inverse(), false,
-                                    &TET_TRIS, &TET_PTS, None, None, None, None);
+        let xf_mesh = Mesh::new(xf.clone(), xf.inverse(), false,
+                                &TET_TRIS, &TET_PTS, None, None, None, None);
         let xf_tris = xf_mesh.refine();
 
         assert_eq!(xf_tris[1].area(), 2.0);
@@ -512,8 +512,8 @@ mod tests {
     #[test]
     #[ignore]
     fn its_triangles_have_shading_geometry() {
-        let mut mesh = Mesh::new(Transform::new(), Transform::new(), false,
-                                 &TET_TRIS, &TET_PTS, None, None, None, None);
+        let mesh = Mesh::new(Transform::new(), Transform::new(), false,
+                             &TET_TRIS, &TET_PTS, None, None, None, None);
         let tris = mesh.refine();
 
         assert_eq!(tris[0].get_shading_geometry(&Transform::new(),

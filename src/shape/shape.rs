@@ -71,7 +71,7 @@ impl<'a> ShapeIntersection<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum Shape<'a> {
+pub enum Shape<'a> {
     Sphere(Sphere),
     Disk(Disk),
     Cylinder(Cylinder),
