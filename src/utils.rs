@@ -20,6 +20,7 @@ pub trait Clamp : Copy+PartialOrd {
     }
 }
 
+// These need no actual implementation since we can just use the default...
 impl Clamp for f32 { }
 impl Clamp for f64 { }
 impl Clamp for i8  { }
