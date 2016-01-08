@@ -122,12 +122,12 @@ impl<'a> Refinable<'a> for Shape<'a> {
 impl<'a> Shape<'a> {
     pub fn base(&'a self) -> &'a ShapeBase {
         match self {
-            &Shape::Sphere(ref s) => &s.base(),
-            &Shape::Disk(ref d) => &d.base(),
-            &Shape::Cylinder(ref c) => &c.base(),
-            &Shape::Triangle(ref t) => &t.base(),
-            &Shape::TriangleMesh(ref m) => &m.base(),
-            &Shape::LoopSubdiv(ref m) => &m.base()
+            &Shape::Sphere(ref s) => s.base(),
+            &Shape::Disk(ref d) => d.base(),
+            &Shape::Cylinder(ref c) => c.base(),
+            &Shape::Triangle(ref t) => t.base(),
+            &Shape::TriangleMesh(ref m) => m.base(),
+            &Shape::LoopSubdiv(ref m) => m.base()
         }
     }
 
