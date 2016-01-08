@@ -221,7 +221,11 @@ impl AnimatedTransform {
 
     pub fn motion_bounds(&self, b: &BBox, use_inverse: bool) -> BBox {
         if !self.actually_animated {
-            return self.start_transform.inverse().t(b);
+            return if use_inverse {
+                self.start_transform.inverse().t(b)
+            } else {
+                self.start_transform.t(b)
+            };
         }
 
         let num_steps = 128;

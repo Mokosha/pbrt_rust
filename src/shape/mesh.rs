@@ -151,7 +151,7 @@ impl<'a> Triangle<'a> {
             let ts = ss.cross(&Vector::from(ns.clone()));
             if ts.length_squared() > 0f32 {
                 (ts.clone().normalize(),
-                 ts.cross(&Vector::from(ns.clone())))
+                 ns.cross(&Vector::from(ts.clone())))
             } else {
                 coordinate_system(&Vector::from(ns))
             }

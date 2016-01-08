@@ -115,9 +115,8 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Disk {
         let dpdu = (self.phi_max / (2.0 * ::std::f32::consts::PI)) *
             Vector::new_with(-self.phi_max * p_hit.y,
                               self.phi_max * p_hit.x, 0.0);
-        let dpdv = ((self.radius - self.inner_radius) /
-                    (self.radius * (1.0 - v))) *
-            Vector::new_with(-p_hit.x, -p_hit.y, 0.0);
+        let dpdv = ((self.inner_radius - self.radius) / dist) *
+            Vector::new_with(p_hit.x, p_hit.y, 0.0);
 
         let o2w = &(self.base().object2world);
         let mut dg = DifferentialGeometry::new_with(
