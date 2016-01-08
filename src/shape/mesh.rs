@@ -11,11 +11,9 @@ use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
 use intersection::Intersectable;
+use primitive::Refinable;
 use ray::Ray;
-use shape::shape::FromShape;
-use shape::shape::IntoShape;
-use shape::shape::IsShape;
-use shape::shape::Shape;
+use shape::shape::ShapeBase;
 use shape::shape::ShapeIntersection;
 use texture::Texture;
 use transform::transform::ApplyTransform;
@@ -25,24 +23,13 @@ use geometry::vector::coordinate_system;
 use utils::solve_linear_system_2x2;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Mesh {
-    shape: Shape,
-    vertex_index: Vec<usize>,
-    p: Vec<Point>,
-    n: Option<Vec<Normal>>,
-    s: Option<Vec<Vector>>,
-    uvs: Option<Vec<f32>>,
-    atex: Option<Rc<Texture<f32>>>
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct Triangle<'a> {
     mesh: &'a Mesh,
     v: [usize; 3]
 }
 
 impl<'a> Triangle<'a> {
-    pub fn get_vertices(&self) -> (&'a Point, &'a Point, &'a Point) {
+    fn get_vertices(&self) -> (&'a Point, &'a Point, &'a Point) {
         let p1 = &(self.mesh.p[self.v[0]]);
         let p2 = &(self.mesh.p[self.v[1]]);
         let p3 = &(self.mesh.p[self.v[2]]);
@@ -50,7 +37,7 @@ impl<'a> Triangle<'a> {
         (p1, p2, p3)
     }
 
-    pub fn get_intersection_point(&self, r: &Ray) -> Option<(f32, f32, f32)> {
+    fn get_intersection_point(&self, r: &Ray) -> Option<(f32, f32, f32)> {
         // Compute s1
         let (p1, p2, p3) = self.get_vertices();
 
@@ -83,7 +70,7 @@ impl<'a> Triangle<'a> {
         if t < r.mint || t > r.maxt { None } else { Some((t, b1, b2)) }
     }
 
-    pub fn get_uvs(&self) -> [[f32; 2]; 3] {
+    fn get_uvs(&self) -> [[f32; 2]; 3] {
         if let Some(uvs) = self.mesh.uvs.as_ref() {
             [[uvs[2 * self.v[0]],
               uvs[2 * self.v[0] + 1]],
@@ -97,119 +84,26 @@ impl<'a> Triangle<'a> {
              [1.0, 1.0]]
         }
     }
-}
 
-impl Mesh {
-    pub fn new(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
-               _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
-               uv: Option<&[f32]>, _atex: Option<Rc<Texture<f32>>>) -> Mesh {
-        assert!(vi.len() % 3 == 0);
-        let xf = o2w.clone();
-        Mesh {
-            shape: Shape::new(o2w, w2o, ro),
-            vertex_index: vi.to_vec(),
-            p: _p.iter().map(|x| xf.t(x)).collect(),
-            n: _n.map(|v| v.to_vec()),
-            s: _s.map(|v| v.to_vec()),
-            uvs: uv.map(|v| v.to_vec()),
-            atex: _atex.map(|t| t.clone())
-        }
-    }
-}
+    pub fn base(&'a self) -> &'a ShapeBase { &(self.mesh).base() }
 
-impl<'a> FromShape<Triangle<'a>> for Triangle<'a> { }
-impl<'a> IntoShape for Triangle<'a> { }
-
-impl<'a> HasBounds for Triangle<'a> {
-    fn world_bound(&self) -> BBox {
+    pub fn object_bound(&self) -> BBox {
         let (p1, p2, p3) = self.get_vertices();
 
-        BBox::new()
-            .unioned_with_ref(p1)
-            .unioned_with_ref(p2)
-            .unioned_with_ref(p3)
-    }
-}
-
-impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle<'a> {
-    fn intersect_p(&self, r: &Ray) -> bool {
-        self.get_intersection_point(r).is_some()
-    }
-
-    fn intersect(&self, r: &Ray) -> Option<ShapeIntersection> {
-        let (t, b1, b2) = {
-            match self.get_intersection_point(r) {
-                None => return None,
-                Some(t) => t
-            }
-        };
-
-        let (p1, p2, p3) = self.get_vertices();
-        let uvs = self.get_uvs();
-
-        // Compute deltas for triangle partial derivatives
-        let du1 = uvs[0][0] - uvs[2][0];
-        let du2 = uvs[1][0] - uvs[2][0];
-        let dv1 = uvs[0][1] - uvs[2][1];
-        let dv2 = uvs[1][1] - uvs[2][1];
-
-        let dp1 = p1 - p3;
-        let dp2 = p2 - p3;
-
-        // Compute triangle partial derivatives
-        let (dpdu, dpdv) = {
-            let determinant = du1 * dv2 - dv1 * du2;
-            if determinant == 0.0 {
-                // Handle zero determinant for triangle partial
-                // derivatives matrix
-                coordinate_system(&((p3 - p1).cross(&(p2 - p1)).normalize()))
-            } else {
-                let inv_det = 1.0 / determinant;
-                (( dv2 * &dp1 - dv1 * &dp2) * inv_det,
-                 (-du2 * &dp1 + du1 * &dp2) * inv_det)
-            }
-        };
-
-        // Interpolate (u, v) triangle parametric coordinates
-        let b0 = 1.0 - b1 - b2;
-        let tu = b0 * uvs[0][0] + b1 * uvs[1][0] + b2 * uvs[2][0];
-        let tv = b0 * uvs[0][1] + b1 * uvs[1][1] + b2 * uvs[2][1];
-
-        // Test intersection against alpha texture, if present
-        let dg = DifferentialGeometry::new_with(
-            r.point_at(t), dpdu, dpdv, Normal::new(), Normal::new(), tu, tv,
-            Some(self.get_shape()));
-
-        if let Some(tex_ref) = self.mesh.atex.as_ref().map(|t| t.clone()) {
-            if (*tex_ref).evaluate(&dg) == 0.0 {
-                return None
-            }
-        }
-
-        Some(ShapeIntersection::new(t, t * 5e-4, dg))
-    }
-}
-
-impl<'a> IsShape<'a> for Triangle<'a> {
-    fn get_shape(&'a self) -> &'a Shape { &self.mesh.shape }
-
-    fn object_bound(&self) -> BBox {
-        let (p1, p2, p3) = self.get_vertices();
-
-        let w2o = &(self.get_shape().world2object);
+        let w2o = &(self.base().world2object);
         BBox::from(w2o.t(p1))
             .unioned_with(w2o.t(p2))
             .unioned_with(w2o.t(p3))
     }
 
-    fn area(&self) -> f32 {
+    pub fn area(&self) -> f32 {
         let (p1, p2, p3) = self.get_vertices();
         0.5 * (p2 - p1).cross(&(p3 - p1)).length()
     }
 
-    fn get_shading_geometry<'b>(&self, o2w: &Transform,
-                                dg: DifferentialGeometry<'b>)
-                                -> DifferentialGeometry<'b> {
+    pub fn get_shading_geometry<'b>(&'b self, o2w: &Transform,
+                                    dg: DifferentialGeometry<'b>)
+                                    -> DifferentialGeometry<'b> {
         if self.mesh.n.is_none() && self.mesh.s.is_none() {
             return dg;
         }
@@ -298,35 +192,73 @@ impl<'a> IsShape<'a> for Triangle<'a> {
     }
 }
 
-impl<'a> FromShape<Mesh> for Mesh { }
-impl<'a> FromShape<Mesh> for Triangle<'a> { }
-impl IntoShape for Mesh { }
-
-impl HasBounds for Mesh {
+impl<'a> HasBounds for Triangle<'a> {
     fn world_bound(&self) -> BBox {
-        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with_ref(p))
+        let (p1, p2, p3) = self.get_vertices();
+
+        BBox::new()
+            .unioned_with_ref(p1)
+            .unioned_with_ref(p2)
+            .unioned_with_ref(p3)
     }
 }
 
-impl<'a> IsShape<'a, Triangle<'a>> for Mesh {
-    fn get_shape(&'a self) -> &'a Shape { &(self.shape) }
-    fn object_bound(&self) -> BBox {
-        let w2o = &self.shape.world2object;
-        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with(w2o.t(p)))
+impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle<'a> {
+    fn intersect_p(&self, r: &Ray) -> bool {
+        self.get_intersection_point(r).is_some()
     }
 
-    // Cannot intersect meshes directly.
-    fn can_intersect(&self) -> bool { false }
-
-    fn refine(&'a mut self) -> Vec<Triangle<'a>> {
-        let mut indices = self.vertex_index.clone();
-        let mut tris = Vec::new();
-        while let (Some(v1), Some(v2), Some(v3)) =
-            (indices.pop(), indices.pop(), indices.pop()) {
-                tris.push( Triangle { mesh: self, v: [v1, v2, v3] });
+    fn intersect(&self, r: &Ray) -> Option<ShapeIntersection> {
+        let (t, b1, b2) = {
+            match self.get_intersection_point(r) {
+                None => return None,
+                Some(t) => t
             }
+        };
 
-        tris
+        let (p1, p2, p3) = self.get_vertices();
+        let uvs = self.get_uvs();
+
+        // Compute deltas for triangle partial derivatives
+        let du1 = uvs[0][0] - uvs[2][0];
+        let du2 = uvs[1][0] - uvs[2][0];
+        let dv1 = uvs[0][1] - uvs[2][1];
+        let dv2 = uvs[1][1] - uvs[2][1];
+
+        let dp1 = p1 - p3;
+        let dp2 = p2 - p3;
+
+        // Compute triangle partial derivatives
+        let (dpdu, dpdv) = {
+            let determinant = du1 * dv2 - dv1 * du2;
+            if determinant == 0.0 {
+                // Handle zero determinant for triangle partial
+                // derivatives matrix
+                coordinate_system(&((p3 - p1).cross(&(p2 - p1)).normalize()))
+            } else {
+                let inv_det = 1.0 / determinant;
+                (( dv2 * &dp1 - dv1 * &dp2) * inv_det,
+                 (-du2 * &dp1 + du1 * &dp2) * inv_det)
+            }
+        };
+
+        // Interpolate (u, v) triangle parametric coordinates
+        let b0 = 1.0 - b1 - b2;
+        let tu = b0 * uvs[0][0] + b1 * uvs[1][0] + b2 * uvs[2][0];
+        let tv = b0 * uvs[0][1] + b1 * uvs[1][1] + b2 * uvs[2][1];
+
+        // Test intersection against alpha texture, if present
+        let dg = DifferentialGeometry::new_with(
+            r.point_at(t), dpdu, dpdv, Normal::new(), Normal::new(), tu, tv,
+            Some(self.base()));
+
+        if let Some(tex_ref) = self.mesh.atex.as_ref().map(|t| t.clone()) {
+            if (*tex_ref).evaluate(&dg) == 0.0 {
+                return None
+            }
+        }
+
+        Some(ShapeIntersection::new(t, t * 5e-4, dg))
     }
 }
 
@@ -340,6 +272,63 @@ impl<'a> ::std::ops::Index<usize> for Triangle<'a> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Mesh {
+    base: ShapeBase,
+    vertex_index: Vec<usize>,
+    p: Vec<Point>,
+    n: Option<Vec<Normal>>,
+    s: Option<Vec<Vector>>,
+    uvs: Option<Vec<f32>>,
+    atex: Option<Rc<Texture<f32>>>
+}
+
+impl Mesh {
+    pub fn new(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
+               _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
+               uv: Option<&[f32]>, _atex: Option<Rc<Texture<f32>>>) -> Mesh {
+        assert!(vi.len() % 3 == 0);
+        let xf = o2w.clone();
+        Mesh {
+            base: ShapeBase::new(o2w, w2o, ro),
+            vertex_index: vi.to_vec(),
+            p: _p.iter().map(|x| xf.t(x)).collect(),
+            n: _n.map(|v| v.to_vec()),
+            s: _s.map(|v| v.to_vec()),
+            uvs: uv.map(|v| v.to_vec()),
+            atex: _atex.map(|t| t.clone())
+        }
+    }
+
+    pub fn base<'a>(&'a self) -> &'a ShapeBase { &self.base }
+
+    pub fn object_bound(&self) -> BBox {
+        let w2o = &self.base.world2object;
+        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with(w2o.t(p)))
+    }
+}
+
+impl<'a> Refinable<'a, Triangle<'a>> for Mesh {
+    fn refine(&'a self) -> Vec<Triangle<'a>> {
+        let mut indices = self.vertex_index.clone();
+        let mut tris = Vec::new();
+        while let (Some(v1), Some(v2), Some(v3)) =
+            (indices.pop(), indices.pop(), indices.pop()) {
+                tris.push( Triangle { mesh: self, v: [v1, v2, v3] });
+            }
+
+        tris
+    }
+
+    fn is_refined(&'a self) -> bool { false }
+}
+
+impl HasBounds for Mesh {
+    fn world_bound(&self) -> BBox {
+        self.p.iter().fold(BBox::new(), |b, p| b.unioned_with_ref(p))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -350,8 +339,8 @@ mod tests {
     use geometry::point::Point;
     use geometry::vector::Vector;
     use intersection::Intersectable;
+    use primitive::Refinable;
     use ray::Ray;
-    use shape::shape::IsShape;
     use transform::transform::Transform;
 
     // Tetrahedron

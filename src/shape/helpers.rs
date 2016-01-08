@@ -1,5 +1,5 @@
 use diff_geom::DifferentialGeometry;
-use shape::shape::Shape;
+use shape::shape::ShapeBase;
 use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
@@ -13,7 +13,7 @@ use transform::transform::ApplyTransform;
 // Modern differential geometry of curves and surfaces
 // ISBN: 0849378729
 
-pub fn compute_dg<'a>(shape: &'a Shape, u: f32, v: f32, p_hit: Point,
+pub fn compute_dg<'a>(shape: &'a ShapeBase, u: f32, v: f32, p_hit: Point,
                       dpdu: Vector, dpdv: Vector,
                       d2pduu: Vector, d2pduv: Vector, d2pdvv: Vector)
                       -> DifferentialGeometry<'a> {

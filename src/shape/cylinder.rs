@@ -6,10 +6,7 @@ use geometry::point::Point;
 use geometry::vector::Vector;
 use intersection::Intersectable;
 use ray::Ray;
-use shape::shape::FromShape;
-use shape::shape::IntoShape;
-use shape::shape::IsShape;
-use shape::shape::Shape;
+use shape::shape::ShapeBase;
 use shape::shape::ShapeIntersection;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
@@ -20,7 +17,7 @@ use shape::helpers::compute_dg;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Cylinder {
-    shape: Shape,
+    base: ShapeBase,
     radius: f32,
     z_min: f32,
     z_max: f32,
@@ -31,7 +28,7 @@ impl Cylinder {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool,
                rad: f32, z0: f32, z1: f32, pm: f32) -> Cylinder {
         Cylinder {
-            shape: Shape::new(o2w, w2o, ro),
+            base: ShapeBase::new(o2w, w2o, ro),
             radius: rad,
             z_min: z0.min(z1),
             z_max: z0.max(z1),
@@ -96,27 +93,37 @@ impl Cylinder {
 
         return Some((t_hit, p_hit.1))
     }
-}
 
-impl IntoShape for Cylinder { }
-impl FromShape<Cylinder> for Cylinder { }
+    pub fn base<'a>(&'a self) -> &'a ShapeBase { &self.base }
+
+    pub fn object_bound(&self) -> BBox {
+        BBox::new_with(
+            Point::new_with(-self.radius, -self.radius, self.z_min),
+            Point::new_with(self.radius, self.radius, self.z_max))
+    }
+
+    pub fn area(&self) -> f32 {
+        // Unroll the rectangle
+        (self.z_max - self.z_min) * self.phi_max * self.radius
+    }
+}
 
 impl HasBounds for Cylinder {
     fn world_bound(&self) -> BBox {
-        self.get_shape().object2world.xf(self.object_bound())
+        self.base().object2world.xf(self.object_bound())
     }
 }
 
 impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Cylinder {
     fn intersect_p(&self, r: &Ray) -> bool {
         // Transform ray to object space
-        let ray = self.get_shape().world2object.t(r);
+        let ray = self.base().world2object.t(r);
         self.get_intersection_point(&ray).is_some()
     }
 
     fn intersect(&self, r: &Ray) -> Option<ShapeIntersection> {
         // Transform ray to object space
-        let ray = self.get_shape().world2object.t(r);
+        let ray = self.base().world2object.t(r);
 
         let (t_hit, phi) = {
             let hit = self.get_intersection_point(&ray);
@@ -140,24 +147,10 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Cylinder {
         let d2pdvv = Vector::new();
 
         // Initialize DifferentialGeometry from parametric information
-        let dg = compute_dg(self.get_shape(), u, v, p_hit,
+        let dg = compute_dg(self.base(), u, v, p_hit,
                             dpdu, dpdv, d2pduu, d2pduv, d2pdvv);
 
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
-    }
-}
-
-impl<'a> IsShape<'a> for Cylinder {
-    fn get_shape(&'a self) -> &'a Shape { &self.shape }
-    fn object_bound(&self) -> BBox {
-        BBox::new_with(
-            Point::new_with(-self.radius, -self.radius, self.z_min),
-            Point::new_with(self.radius, self.radius, self.z_max))
-    }
-
-    fn area(&self) -> f32 {
-        // Unroll the rectangle
-        (self.z_max - self.z_min) * self.phi_max * self.radius
     }
 }
 
@@ -172,8 +165,7 @@ mod tests {
     use geometry::vector::Vector;
     use intersection::Intersectable;
     use ray::Ray;
-    use shape::shape::IsShape;
-    use shape::shape::Shape;
+    use shape::shape::ShapeBase;
     use transform::transform::Transform;
     use utils::Degrees;
 
@@ -183,7 +175,7 @@ mod tests {
         assert_eq!(Cylinder::new(xf.clone(), xf.inverse(), false,
                                  3.2, 14.0, -3.0, 16.0),
                    Cylinder {
-                       shape: Shape::new(xf.clone(), xf.inverse(), false),
+                       base: ShapeBase::new(xf.clone(), xf.inverse(), false),
                        radius: 3.2,
                        z_min: -3.0,
                        z_max: 14.0,
@@ -327,7 +319,7 @@ mod tests {
         assert!((shape_int.dg.p -
                  Point::new_with(0.0, sqrt2_2, sqrt2_2)).length_squared() < 1e-6);
 
-        assert_eq!(shape_int.dg.shape.unwrap(), c.get_shape());
+        assert_eq!(shape_int.dg.shape.unwrap(), c.base());
         assert!((Vector::from(shape_int.dg.nn) -
                  Vector::new_with(0.0, 1.0, 1.0).normalize()).length_squared() < 1e-6);
 

@@ -1,8 +1,8 @@
 mod helpers;
 
-pub mod cylinder;
-pub mod disk;
-pub mod loopsubdiv;
-pub mod mesh;
+mod cylinder;
+mod disk;
+mod loopsubdiv;
+mod mesh;
 pub mod shape;
-pub mod sphere;
+mod sphere;

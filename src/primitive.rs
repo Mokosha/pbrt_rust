@@ -16,6 +16,11 @@ impl PrimitiveBase {
         prim_id: NEXT_PRIM_ID.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed) } }
 }
 
+pub trait Refinable<'a, T = Self> {
+    fn is_refined(&'a self) -> bool;
+    fn refine(&'a self) -> Vec<T>;
+}
+
 pub trait Primitive : HasBounds {
     fn new() -> Self;
     fn intersect(&self, ray : &Ray) -> Option<Intersection>;

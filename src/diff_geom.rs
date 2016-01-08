@@ -2,7 +2,7 @@ use geometry::normal::Normal;
 use geometry::normal::Normalize;
 use geometry::point::Point;
 use geometry::vector::Vector;
-use shape::shape::Shape;
+use shape::shape::ShapeBase;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct DifferentialGeometry<'a> {
@@ -10,7 +10,7 @@ pub struct DifferentialGeometry<'a> {
     pub nn: Normal,
     pub u: f32,
     pub v: f32,
-    pub shape: Option<&'a Shape>,
+    pub shape: Option<&'a ShapeBase>,
     pub dpdu: Vector,
     pub dpdv: Vector,
     pub dndu: Normal,
@@ -34,7 +34,7 @@ impl<'a> DifferentialGeometry<'a> {
 
     pub fn new_with(_p: Point, _dpdu: Vector, _dpdv: Vector,
                     _dndu: Normal, _dndv: Normal, _u: f32, _v: f32,
-                    _shape: Option<&'a Shape>) -> DifferentialGeometry<'a> {
+                    _shape: Option<&'a ShapeBase>) -> DifferentialGeometry<'a> {
         let mut norm = _dpdu.clone().cross(&_dpdv).normalize();
         if let Some(s) = _shape {
             if s.reverse_orientation ^ s.transform_swaps_handedness {

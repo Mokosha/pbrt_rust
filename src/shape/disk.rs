@@ -6,10 +6,7 @@ use geometry::vector::Vector;
 use geometry::normal::Normal;
 use intersection::Intersectable;
 use ray::Ray;
-use shape::shape::FromShape;
-use shape::shape::IntoShape;
-use shape::shape::IsShape;
-use shape::shape::Shape;
+use shape::shape::ShapeBase;
 use shape::shape::ShapeIntersection;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
@@ -18,7 +15,7 @@ use utils::Degrees;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Disk {
-    shape: Shape,
+    base: ShapeBase,
     height: f32,
     radius: f32,
     inner_radius: f32,
@@ -29,7 +26,7 @@ impl Disk {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool,
                ht: f32, r: f32, ri: f32, t_max: f32) -> Disk {
         Disk {
-            shape: Shape::new(o2w, w2o, ro),
+            base: ShapeBase::new(o2w, w2o, ro),
             height: ht,
             radius: r,
             inner_radius: ri,
@@ -71,27 +68,38 @@ impl Disk {
 
         if phi > self.phi_max { None } else { Some((t_hit, phi)) }
     }
-}
 
-impl IntoShape for Disk { }
-impl FromShape<Disk> for Disk { }
+    pub fn base<'a>(&'a self) -> &'a ShapeBase { &self.base }
+
+    pub fn object_bound(&self) -> BBox {
+        BBox::new_with(
+            Point::new_with(-self.radius, -self.radius, self.height),
+            Point::new_with(self.radius, self.radius, self.height))
+    }
+
+    pub fn area(&self) -> f32 {
+        let r2 = self.radius * self.radius;
+        let ir2 = self.inner_radius * self.inner_radius;
+        0.5 * self.phi_max * (r2 - ir2)
+    }
+}
 
 impl HasBounds for Disk {
     fn world_bound(&self) -> BBox {
-        self.get_shape().object2world.xf(self.object_bound())
+        self.base().object2world.xf(self.object_bound())
     }
 }
 
 impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Disk {
     fn intersect_p(&self, r: &Ray) -> bool {
         // Transform ray to object space
-        let ray = self.get_shape().world2object.t(r);
+        let ray = self.base().world2object.t(r);
         self.get_intersection_point(&ray).is_some()
     }
 
     fn intersect(&self, r: &Ray) -> Option<ShapeIntersection> {
         // Transform ray to object space
-        let ray = self.get_shape().world2object.t(r);
+        let ray = self.base().world2object.t(r);
 
         let (t_hit, phi) = {
             let hit = self.get_intersection_point(&ray);
@@ -111,10 +119,10 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Disk {
                     (self.radius * (1.0 - v))) *
             Vector::new_with(-p_hit.x, -p_hit.y, 0.0);
 
-        let o2w = &(self.get_shape().object2world);
+        let o2w = &(self.base().object2world);
         let mut dg = DifferentialGeometry::new_with(
             o2w.xf(p_hit), o2w.xf(dpdu), o2w.xf(dpdv), o2w.xf(Normal::new()),
-            o2w.xf(Normal::new()), u, v, Some(self.get_shape()));
+            o2w.xf(Normal::new()), u, v, Some(self.base()));
 
         if ray.o.z > 0.0 {
             dg.nn = o2w.xf(Normal::new_with(0.0, 0.0, 1.0));
@@ -123,22 +131,6 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Disk {
         }
 
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
-    }
-}
-
-impl<'a> IsShape<'a> for Disk {
-    fn get_shape(&'a self) -> &'a Shape { &self.shape }
-
-    fn object_bound(&self) -> BBox {
-        BBox::new_with(
-            Point::new_with(-self.radius, -self.radius, self.height),
-            Point::new_with(self.radius, self.radius, self.height))
-    }
-
-    fn area(&self) -> f32 {
-        let r2 = self.radius * self.radius;
-        let ir2 = self.inner_radius * self.inner_radius;
-        0.5 * self.phi_max * (r2 - ir2)
     }
 }
 
@@ -153,8 +145,7 @@ mod tests {
     use geometry::vector::Vector;
     use intersection::Intersectable;
     use ray::Ray;
-    use shape::shape::IsShape;
-    use shape::shape::Shape;
+    use shape::shape::ShapeBase;
     use transform::transform::Transform;
 
     #[test]
@@ -162,7 +153,7 @@ mod tests {
         assert_eq!(Disk::new(Transform::new(), Transform::new(), false,
                              0.0, 1.0, 0.5, 360.0),
                    Disk {
-                       shape: Shape::new(Transform::new(), Transform::new(), false),
+                       base: ShapeBase::new(Transform::new(), Transform::new(), false),
                        height: 0.0,
                        radius: 1.0,
                        inner_radius: 0.5,
@@ -172,7 +163,7 @@ mod tests {
         let xf = Transform::scale(1.0, 2.0, 3.0);
         assert_eq!(Disk::new(xf.clone(), xf.inverse(), false, 2.0, 0.0, 1.0, 90.0),
                    Disk {
-                       shape: Shape::new(xf.clone(), xf.inverse(), false),
+                       base: ShapeBase::new(xf.clone(), xf.inverse(), false),
                        height: 2.0,
                        radius: 0.0,
                        inner_radius: 1.0,

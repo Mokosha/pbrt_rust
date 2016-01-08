@@ -5,11 +5,8 @@ use geometry::vector::Dot;
 use geometry::vector::Vector;
 use intersection::Intersectable;
 use ray::Ray;
-use shape::shape::FromShape;
-use shape::shape::IntoShape;
-use shape::shape::Shape;
+use shape::shape::ShapeBase;
 use shape::shape::ShapeIntersection;
-use shape::shape::IsShape;
 use transform::transform::Transform;
 use transform::transform::ApplyTransform;
 use utils::Degrees;
@@ -19,7 +16,7 @@ use shape::helpers::compute_dg;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Sphere {
-    shape: Shape,
+    base: ShapeBase,
     radius: f32,
     phi_max: f32,
     z_min: f32,
@@ -37,7 +34,7 @@ impl Sphere {
         let thetamin = (zmin / rad).acos();
         let thetamax = (zmax / rad).acos();
         Sphere {
-            shape: Shape::new(o2w, w2o, ro),
+            base: ShapeBase::new(o2w, w2o, ro),
             radius: rad,
             z_min: zmin,
             z_max: zmax,
@@ -109,27 +106,36 @@ impl Sphere {
 
         Some((t_hit, test.1))
     }
-}
 
-impl IntoShape for Sphere { }
-impl FromShape<Sphere> for Sphere { }
+    pub fn base<'a>(&'a self) -> &'a ShapeBase { &self.base }
+
+    pub fn object_bound(&self) -> BBox {
+        BBox::new_with(
+            Point::new_with(-self.radius, -self.radius, self.z_min),
+            Point::new_with(self.radius, self.radius, self.z_max))
+    }
+
+    pub fn area(&self) -> f32 {
+        self.phi_max * self.radius * (self.z_max - self.z_min)
+    }
+}
 
 impl HasBounds for Sphere {
     fn world_bound(&self) -> BBox {
-        self.get_shape().object2world.xf(self.object_bound())
+        self.base().object2world.xf(self.object_bound())
     }
 }
 
 impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Sphere {
     fn intersect_p(&'a self, r: &Ray) -> bool {
         // Transform ray to object space
-        let ray = self.get_shape().world2object.t(r);
+        let ray = self.base().world2object.t(r);
         self.get_intersection_point(&ray).is_some()
     }
 
     fn intersect(&'a self, r: &Ray) -> Option<ShapeIntersection> {
         // Transform ray to object space
-        let ray = self.get_shape().world2object.t(r);
+        let ray = self.base().world2object.t(r);
 
         let (t_hit, phi) = {
             let hit = self.get_intersection_point(&ray);
@@ -164,23 +170,9 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Sphere {
             (self.theta_max - self.theta_min) *
             Vector::from(p_hit.clone());
 
-        let dg = compute_dg(self.get_shape(), u, v, p_hit,
+        let dg = compute_dg(self.base(), u, v, p_hit,
                             dpdu, dpdv, d2pduu, d2pduv, d2pdvv);
         Some(ShapeIntersection::new(t_hit, t_hit * 5e-4, dg))
-    }
-}
-
-
-impl<'a> IsShape<'a> for Sphere {
-    fn get_shape(&'a self) -> &'a Shape { &self.shape }
-    fn object_bound(&self) -> BBox {
-        BBox::new_with(
-            Point::new_with(-self.radius, -self.radius, self.z_min),
-            Point::new_with(self.radius, self.radius, self.z_max))
-    }
-
-    fn area(&self) -> f32 {
-        self.phi_max * self.radius * (self.z_max - self.z_min)
     }
 }
 
@@ -192,8 +184,7 @@ mod tests {
     use geometry::vector::Vector;
     use intersection::Intersectable;
     use ray::Ray;
-    use shape::shape::Shape;
-    use shape::shape::IsShape;
+    use shape::shape::ShapeBase;
     use transform::transform::Transform;
 
     use std::f32::consts::PI;
@@ -203,7 +194,7 @@ mod tests {
         assert_eq!(Sphere::new(Transform::new(), Transform::new(),
                                false, 1.0, -1.0, 1.0, 360.0),
                    Sphere {
-                       shape: Shape::new(Transform::new(), Transform::new(), false),
+                       base: ShapeBase::new(Transform::new(), Transform::new(), false),
                        radius: 1.0,
                        z_min: -1.0,
                        z_max: 1.0,
@@ -221,9 +212,6 @@ mod tests {
         let xf = Transform::translate(&Vector::new_with(1.0, 2.0, 1.0));
         let xf_inv = xf.inverse();
         let s = Sphere::new(xf, xf_inv, false, 1.0, -1.0, 1.0, 360.0);
-
-        // A full sphere should be able to be intersected at will...
-        assert!(s.can_intersect());
 
         // !FIXME! We need to actually investigate that our ray hits
         // where we think it does rather than it just hits at all...
@@ -250,7 +238,6 @@ mod tests {
         let xf2_inv = xf2.inverse();
         let s2 = Sphere::new(xf2.clone(), xf2_inv.clone(), false, 0.75, -0.5, 0.75, 180.0);
         let straight_down = Ray::new_with(Point::new(), Vector::new_with(0.0, -1.0, 0.0), 0.0);
-        assert!(s2.can_intersect());
 
         // Check against z-bounds
         assert!(!Sphere::new(xf2.clone(), xf2_inv.clone(), false, 0.75, -0.75, -0.5, 180.0)
@@ -290,7 +277,7 @@ mod tests {
         assert_eq!(shape_int.t_hit, 0.5);
         assert_eq!(shape_int.ray_epsilon, 0.5 * 5e-4);
         assert_eq!(shape_int.dg.p, Point::new_with(0.0, -0.5, 0.0));
-        assert_eq!(shape_int.dg.shape.unwrap(), s.get_shape());
+        assert_eq!(shape_int.dg.shape.unwrap(), s.base());
 
         let expected_normal = Normal::new_with(0.0, 1.0, 0.0);
         assert_eq!(shape_int.dg.nn.x, expected_normal.x);

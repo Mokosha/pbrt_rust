@@ -10,11 +10,9 @@ use geometry::normal::Normal;
 use geometry::normal::Normalize;
 use geometry::point::Point;
 use geometry::vector::Vector;
+use primitive::Refinable;
 use shape::mesh::Mesh;
-use shape::shape::FromShape;
-use shape::shape::IntoShape;
-use shape::shape::IsShape;
-use shape::shape::Shape;
+use shape::shape::ShapeBase;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 
@@ -36,6 +34,7 @@ fn beta(valence: usize) -> f32 {
 // we had something like a RcVec that lets us create a whole reference counted
 // vector and then give out Weak references to the internal elements.
 
+#[derive(Debug, Clone)]
 struct SDVertex {
     p: Point,
     id: usize,  // We need this for ordering edges properly
@@ -149,10 +148,25 @@ impl SDVertex {
     }
 }
 
+#[derive(Debug)]
 struct SDFace {
     v: [Weak<SDVertex>; 3],
     f: [Option<Weak<SDFace>>; 3],
     children: [Option<Weak<SDFace>>; 4],
+}
+
+impl ::std::clone::Clone for SDFace {
+    fn clone(&self) -> SDFace {
+        SDFace {
+            v: [self.v[0].clone(), self.v[1].clone(), self.v[2].clone()],
+            f: [self.f[0].clone(), self.f[1].clone(), self.f[2].clone()],
+            children: [
+                self.children[0].clone(),
+                self.children[1].clone(),
+                self.children[2].clone(),
+                self.children[3].clone()]
+        }
+    }
 }
 
 impl ::std::cmp::PartialEq for SDFace {
@@ -210,6 +224,7 @@ impl SDFace {
     }
 }
 
+#[derive(Debug)]
 struct SDEdge {
     v: [Weak<SDVertex>; 2],
     f: [Option<Weak<SDFace>>; 2],
@@ -249,8 +264,9 @@ impl SDEdge {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct LoopSubdiv {
-    shape: Shape,
+    base: ShapeBase,
     n_levels: usize,
     vertices: Vec<Rc<SDVertex>>,
     faces: Vec<Rc<SDFace>>,
@@ -366,36 +382,23 @@ impl LoopSubdiv {
         }
 
         LoopSubdiv {
-            shape: Shape::new(o2w, w2o, ro),
+            base: ShapeBase::new(o2w, w2o, ro),
             n_levels: nl,
             vertices: verts,
             faces: faces,
             max_vert_id: vert_id
         }
     }
-}
 
-impl IntoShape for LoopSubdiv { }
-impl FromShape<LoopSubdiv> for Mesh { }
-impl FromShape<LoopSubdiv> for LoopSubdiv { }
+    pub fn base<'a>(&'a self) -> &'a ShapeBase { &self.base }
 
-impl HasBounds for LoopSubdiv {
-    fn world_bound(&self) -> BBox {
-        let o2w = &self.get_shape().object2world;
-        self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with(o2w.t(&v.p)))
-    }
-}
-
-impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
-    fn get_shape(&'a self) -> &'a Shape { &self.shape }
-    fn object_bound(&self) -> BBox {
+    pub fn object_bound(&self) -> BBox {
         self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with_ref(&v.p))
     }
+}
 
-    // Cannot intersect meshes directly.
-    fn can_intersect(&self) -> bool { false }
-
-    fn refine(&'a mut self) -> Vec<Mesh> {
+impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
+    fn refine(&'a self) -> Vec<Mesh> {
         let mut f = self.faces.clone();
         let mut v = self.vertices.clone();
         
@@ -626,14 +629,22 @@ impl<'a> IsShape<'a, Mesh> for LoopSubdiv {
             }
         }
 
-        self.max_vert_id = vtx_id;
-        vec![Mesh::new(self.shape.object2world.clone(),
-                       self.shape.world2object.clone(),
-                       self.shape.reverse_orientation,
+        vec![Mesh::new(self.base.object2world.clone(),
+                       self.base.world2object.clone(),
+                       self.base.reverse_orientation,
                        &*indices.into_boxed_slice(),
                        &*p_limit.into_boxed_slice(),
                        Some(&*ns.into_boxed_slice()),
                        None, None, None)]
+    }
+
+    fn is_refined(&'a self) -> bool { false }
+}
+
+impl HasBounds for LoopSubdiv {
+    fn world_bound(&self) -> BBox {
+        let o2w = &self.base().object2world;
+        self.vertices.iter().fold(BBox::new(), |b, v| b.unioned_with(o2w.t(&v.p)))
     }
 }
 
@@ -647,7 +658,6 @@ mod tests {
     use super::*;
 
     use geometry::point::Point;
-    use shape::shape::IsShape;
     use transform::transform::Transform;
 
     // Tetrahedron
@@ -685,12 +695,5 @@ mod tests {
     #[test]
     fn it_can_be_refined() {
         unimplemented!();
-    }
-
-    #[ignore]
-    #[test]
-    fn it_cant_be_intersected() {
-        assert!(!LoopSubdiv::new(Transform::new(), Transform::new(), false,
-                                 &TET_TRIS, &TET_PTS, 1).can_intersect());
     }
 }
