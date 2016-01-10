@@ -1,13 +1,9 @@
-// Make mod file for primitives
-
-
-
 use bbox::BBox;
 use bbox::HasBounds;
 use intersection::Intersectable;
 use intersection::Intersection;
 use ray::Ray;
-use shape::shape::Shape;
+use shape::Shape;
 
 use std::sync::atomic::AtomicIsize;
 

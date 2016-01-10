@@ -5,9 +5,8 @@ use intersection::Intersectable;
 use intersection::Intersection;
 use light::Light;
 use primitive::Primitive;
-use primitive::GeometricPrimitive;
 use ray::Ray;
-use shape::shape::Shape;
+use shape::Shape;
 use transform::transform::Transform;
 use volume_region::VolumeRegion;
 

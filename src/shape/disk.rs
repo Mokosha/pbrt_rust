@@ -6,8 +6,8 @@ use geometry::vector::Vector;
 use geometry::normal::Normal;
 use intersection::Intersectable;
 use ray::Ray;
-use shape::shape::ShapeBase;
-use shape::shape::ShapeIntersection;
+use shape::ShapeBase;
+use shape::ShapeIntersection;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 use utils::Clamp;
@@ -144,7 +144,7 @@ mod tests {
     use geometry::vector::Vector;
     use intersection::Intersectable;
     use ray::Ray;
-    use shape::shape::ShapeBase;
+    use shape::ShapeBase;
     use transform::transform::Transform;
 
     #[test]

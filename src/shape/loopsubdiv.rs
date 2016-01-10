@@ -12,7 +12,7 @@ use geometry::point::Point;
 use geometry::vector::Vector;
 use primitive::Refinable;
 use shape::mesh::Mesh;
-use shape::shape::ShapeBase;
+use shape::ShapeBase;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 

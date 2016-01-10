@@ -1,5 +1,5 @@
 use diff_geom::DifferentialGeometry;
-use shape::shape::ShapeBase;
+use shape::ShapeBase;
 use geometry::point::Point;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
