@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::rc::{Rc, Weak};
+use std::sync::{Arc, Weak};
 use std::hash::{Hash, Hasher};
 use std::collections::HashMap;
 
@@ -81,11 +81,11 @@ impl SDVertex {
 
         if self.boundary {
             // Compute valence of boundary vertex
-            let mut first_face : Rc<SDFace> = sf;
-            let mut f : Option<Rc<SDFace>> = first_face.prev_face(self);
+            let mut first_face : Arc<SDFace> = sf;
+            let mut f : Option<Arc<SDFace>> = first_face.prev_face(self);
 
             while f != None {
-                let face : Rc<SDFace> = f.unwrap();
+                let face : Arc<SDFace> = f.unwrap();
                 first_face = face.clone();
                 f = face.prev_face(self);
             }
@@ -196,11 +196,11 @@ impl SDFace {
         panic!("Basic logic error in SDFace::vnum()");
     }
 
-    fn next_face(&self, v: &SDVertex) -> Option<Rc<SDFace>> {
+    fn next_face(&self, v: &SDVertex) -> Option<Arc<SDFace>> {
         self.f[self.vnum(v)].clone().map(|fr| fr.upgrade().unwrap())
     }
 
-    fn prev_face(&self, v: &SDVertex) -> Option<Rc<SDFace>> {
+    fn prev_face(&self, v: &SDVertex) -> Option<Arc<SDFace>> {
         self.f[prev(self.vnum(v))].clone().map(|fr| fr.upgrade().unwrap())
     }
 
@@ -268,8 +268,8 @@ impl SDEdge {
 pub struct LoopSubdiv {
     base: ShapeBase,
     n_levels: usize,
-    vertices: Vec<Rc<SDVertex>>,
-    faces: Vec<Rc<SDFace>>,
+    vertices: Vec<Arc<SDVertex>>,
+    faces: Vec<Arc<SDFace>>,
     max_vert_id: usize
 }
 
@@ -283,7 +283,7 @@ impl LoopSubdiv {
             let mut vs = Vec::new();
 
             for p in points {
-                vs.push(Rc::new(SDVertex::new(vert_id, p)));
+                vs.push(Arc::new(SDVertex::new(vert_id, p)));
                 vert_id += 1;
             }
 
@@ -293,21 +293,21 @@ impl LoopSubdiv {
         // Allocate faces
         debug_assert_eq!((vertex_indices.len() % 3), 0);
         let num_faces = vertex_indices.len() / 3;
-        let mut faces: Vec<Rc<SDFace>> = {
+        let mut faces: Vec<Arc<SDFace>> = {
             let mut vert_idxs = vertex_indices.iter();
 
             (0..num_faces).map(|_| {
                 let v0 = *vert_idxs.next().unwrap();
                 let v1 = *vert_idxs.next().unwrap();
                 let v2 = *vert_idxs.next().unwrap();
-                let f = Rc::new(SDFace::new(
-                    Rc::downgrade(&verts[v0]),
-                    Rc::downgrade(&verts[v1]),
-                    Rc::downgrade(&verts[v2])));
+                let f = Arc::new(SDFace::new(
+                    Arc::downgrade(&verts[v0]),
+                    Arc::downgrade(&verts[v1]),
+                    Arc::downgrade(&verts[v2])));
 
-                Rc::get_mut(&mut verts[v0]).unwrap().start_face = Some(Rc::downgrade(&f));
-                Rc::get_mut(&mut verts[v1]).unwrap().start_face = Some(Rc::downgrade(&f));
-                Rc::get_mut(&mut verts[v2]).unwrap().start_face = Some(Rc::downgrade(&f));
+                Arc::get_mut(&mut verts[v0]).unwrap().start_face = Some(Arc::downgrade(&f));
+                Arc::get_mut(&mut verts[v1]).unwrap().start_face = Some(Arc::downgrade(&f));
+                Arc::get_mut(&mut verts[v2]).unwrap().start_face = Some(Arc::downgrade(&f));
 
                 f
             }).collect()
@@ -333,15 +333,15 @@ impl LoopSubdiv {
                         assert!(e.f0_edge_num < 4);
 
                         // Handle previously seen edge
-                        Rc::get_mut(&mut e.f[0].as_mut().unwrap().upgrade().unwrap())
-                            .unwrap().f[e.f0_edge_num] = Some(Rc::downgrade(f));
-                        Rc::get_mut(f).as_mut().unwrap().f[edge_num] = e.f[0].clone();
+                        Arc::get_mut(&mut e.f[0].as_mut().unwrap().upgrade().unwrap())
+                            .unwrap().f[e.f0_edge_num] = Some(Arc::downgrade(f));
+                        Arc::get_mut(f).as_mut().unwrap().f[edge_num] = e.f[0].clone();
                     }
                     edges.remove(&key);
                 } else {
                     // Handle new edge
                     let mut e = SDEdge::new(f.v[v0].clone(), f.v[v1].clone());
-                    e.f[0] = Some(Rc::downgrade(f));
+                    e.f[0] = Some(Arc::downgrade(f));
                     e.f0_edge_num = edge_num;
                     edges.insert(key, e);
                 }
@@ -376,8 +376,8 @@ impl LoopSubdiv {
                 is_boundary
             };
 
-            Rc::get_mut(v).unwrap().boundary = boundary;
-            Rc::get_mut(v).unwrap().regular =
+            Arc::get_mut(v).unwrap().boundary = boundary;
+            Arc::get_mut(v).unwrap().regular =
                 (!v.boundary && v.valence() == 6) || (v.boundary && v.valence() == 4);
         }
 
@@ -422,13 +422,13 @@ impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
                     }
                 };
 
-                let mut new_vtx = Rc::new(SDVertex::new(vtx_id, &p));
+                let mut new_vtx = Arc::new(SDVertex::new(vtx_id, &p));
                 vtx_id += 1;
 
-                Rc::get_mut(&mut new_vtx).unwrap().boundary = vtx.boundary;
-                Rc::get_mut(&mut new_vtx).unwrap().regular = vtx.regular;
+                Arc::get_mut(&mut new_vtx).unwrap().boundary = vtx.boundary;
+                Arc::get_mut(&mut new_vtx).unwrap().regular = vtx.regular;
 
-                Rc::get_mut(vtx).unwrap().child = Some(Rc::downgrade(&new_vtx));
+                Arc::get_mut(vtx).unwrap().child = Some(Arc::downgrade(&new_vtx));
                 new_vertices.push(new_vtx);
             }
 
@@ -470,13 +470,13 @@ impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
                         };
 
                         // Create and initialize new odd vertex
-                        let mut vert = Rc::new(SDVertex::new(vtx_id, &pos));
+                        let mut vert = Arc::new(SDVertex::new(vtx_id, &pos));
                         vtx_id += 1;
 
-                        Rc::get_mut(&mut vert).unwrap().boundary = boundary;
-                        Rc::get_mut(&mut vert).unwrap().regular = true;
+                        Arc::get_mut(&mut vert).unwrap().boundary = boundary;
+                        Arc::get_mut(&mut vert).unwrap().regular = true;
 
-                        edge_verts.insert(edge, Rc::downgrade(&vert));
+                        edge_verts.insert(edge, Arc::downgrade(&vert));
                         new_vertices.push(vert);
                     }
                 }
@@ -493,22 +493,22 @@ impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
                 }).collect();
 
                 // Allocate new faces...
-                let f1 = Rc::new(SDFace::new(f.v[0].clone(), cvs[0].clone(), cvs[2].clone()));
-                let f2 = Rc::new(SDFace::new(cvs[0].clone(), f.v[1].clone(), cvs[1].clone()));
-                let f3 = Rc::new(SDFace::new(cvs[2].clone(), cvs[1].clone(), f.v[2].clone()));
-                let f4 = Rc::new(SDFace::new(cvs[0].clone(), cvs[1].clone(), cvs[2].clone()));
+                let f1 = Arc::new(SDFace::new(f.v[0].clone(), cvs[0].clone(), cvs[2].clone()));
+                let f2 = Arc::new(SDFace::new(cvs[0].clone(), f.v[1].clone(), cvs[1].clone()));
+                let f3 = Arc::new(SDFace::new(cvs[2].clone(), cvs[1].clone(), f.v[2].clone()));
+                let f4 = Arc::new(SDFace::new(cvs[0].clone(), cvs[1].clone(), cvs[2].clone()));
 
                 // Set f4 as the start face for all of the child vertices...
                 for cv in cvs.iter_mut() {
-                    Rc::get_mut(&mut cv.upgrade().unwrap()).unwrap().start_face = Some(Rc::downgrade(&f4))
+                    Arc::get_mut(&mut cv.upgrade().unwrap()).unwrap().start_face = Some(Arc::downgrade(&f4))
                 }
 
                 // Set f1-f4 as the children for this face...
-                Rc::get_mut(f).unwrap().children = [
-                    Some(Rc::downgrade(&f1)),
-                    Some(Rc::downgrade(&f2)),
-                    Some(Rc::downgrade(&f3)),
-                    Some(Rc::downgrade(&f4))];
+                Arc::get_mut(f).unwrap().children = [
+                    Some(Arc::downgrade(&f1)),
+                    Some(Arc::downgrade(&f2)),
+                    Some(Arc::downgrade(&f3)),
+                    Some(Arc::downgrade(&f4))];
 
                 // Add each face to the list of new faces..
                 new_faces.push(f1);
@@ -521,7 +521,7 @@ impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
             /* Update even vertex face pointers */
             for vert in v.iter_mut() {
                 let vert_num = vert.start_face.clone().unwrap().upgrade().unwrap().vnum(vert);
-                Rc::get_mut(&mut vert.child.clone().unwrap().upgrade().unwrap()).unwrap().start_face =
+                Arc::get_mut(&mut vert.child.clone().unwrap().upgrade().unwrap()).unwrap().start_face =
                     vert.start_face.clone().unwrap().upgrade().unwrap().children[vert_num].clone()
             }
 
@@ -529,9 +529,9 @@ impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
             for face in f.iter_mut() {
                 for k in 0..3 {
                     // Update f pointers for siblings
-                    Rc::get_mut(&mut face.children[3].clone().unwrap().upgrade().unwrap()).unwrap().f[k] =
+                    Arc::get_mut(&mut face.children[3].clone().unwrap().upgrade().unwrap()).unwrap().f[k] =
                         face.children[next(k)].clone();
-                    Rc::get_mut(&mut face.children[k].clone().unwrap().upgrade().unwrap()).unwrap().f[next(k)] =
+                    Arc::get_mut(&mut face.children[k].clone().unwrap().upgrade().unwrap()).unwrap().f[next(k)] =
                         face.children[3].clone();
                     
                     // Update children f pointers for neighbor children
@@ -539,19 +539,19 @@ impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
                     let mut f2 = face.f[k].clone();
                     if let Some(f2_wref) = f2 {
                         let f2_ref = f2_wref.upgrade().unwrap();
-                        Rc::get_mut(&mut child_ref).unwrap().f[k] =
+                        Arc::get_mut(&mut child_ref).unwrap().f[k] =
                             f2_ref.children[f2_ref.vnum(face.v[k].upgrade().unwrap().as_ref())].clone();
                     } else {
-                        Rc::get_mut(&mut child_ref).unwrap().f[k] = None;
+                        Arc::get_mut(&mut child_ref).unwrap().f[k] = None;
                     }
 
                     f2 = face.f[prev(k)].clone();
                     if let Some(f2_wref) = f2 {
                         let f2_ref = f2_wref.upgrade().unwrap();
-                        Rc::get_mut(&mut child_ref).unwrap().f[prev(k)] =
+                        Arc::get_mut(&mut child_ref).unwrap().f[prev(k)] =
                             f2_ref.children[f2_ref.vnum(face.v[k].upgrade().unwrap().as_ref())].clone();
                     } else {
-                        Rc::get_mut(&mut child_ref).unwrap().f[prev(k)] = None;
+                        Arc::get_mut(&mut child_ref).unwrap().f[prev(k)] = None;
                     }
                 }
             }
@@ -573,7 +573,7 @@ impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
         }).collect();
 
         for (k, vert) in v.iter_mut().enumerate() {
-            Rc::get_mut(vert).unwrap().p = p_limit[k].clone();
+            Arc::get_mut(vert).unwrap().p = p_limit[k].clone();
         }
 
         // Compute vertex tangents on limit surface
@@ -615,7 +615,7 @@ impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
         }).collect();
 
         // Create TriangleMesh from subdivision mesh
-        let mut used_verts: HashMap<Rc<SDVertex>, usize> = HashMap::new();
+        let mut used_verts: HashMap<Arc<SDVertex>, usize> = HashMap::new();
         let mut used_vert_id = 0;
         for vert in v.iter() {
             used_verts.insert(vert.clone(), used_vert_id);

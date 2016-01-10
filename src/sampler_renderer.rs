@@ -20,16 +20,21 @@ use spectrum::Spectrum;
 use std::ops::BitAnd;
 use std::iter::Iterator;
 use std::sync::{RwLock, Arc};
+use std::marker::PhantomData;
 
-pub struct SamplerRenderer<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> {
+pub struct SamplerRenderer<'a, Surf : SurfaceIntegrator<'a>+Send+Sync, Vol : VolumeIntegrator<'a>+Send+Sync> {
     sampler: sampler::Sampler,
     camera: camera::Camera,
     surface_integrator: Surf,
     volume_integrator: Vol,
     // SamplerRenderer Private Data
+
+    phantom: PhantomData<&'a usize>
 }
 
-impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> SamplerRenderer<Surf, Vol> {
+impl<'a, Surf : SurfaceIntegrator<'a>+Send+Sync,
+     Vol : VolumeIntegrator<'a>+Send+Sync>
+    SamplerRenderer<'a, Surf, Vol> {
     pub fn new(
         sampler: sampler::Sampler, cam: camera::Camera,
         surf: Surf, vol: Vol) -> Self {
@@ -37,32 +42,36 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Sampl
             sampler: sampler,
             camera: cam,
             surface_integrator: surf,
-            volume_integrator: vol
+            volume_integrator: vol,
+            phantom: PhantomData
         }
     }
 
-    pub fn new_empty() -> SamplerRenderer<EmptyIntegrator, EmptyIntegrator> {
+    pub fn new_empty() -> SamplerRenderer<'a, EmptyIntegrator, EmptyIntegrator> {
         SamplerRenderer {
             sampler: sampler::Sampler,
             camera: camera::Camera::new(512, 512),
             surface_integrator: EmptyIntegrator::new(),
             volume_integrator: EmptyIntegrator::new(),
+            phantom: PhantomData
         }
     }
 }
 
-struct SamplerRendererTaskData<'a, Surf : SurfaceIntegrator+Send+Sync+'a, Vol : VolumeIntegrator+Send+Sync+'a> {
-    scene: &'a scene::Scene,
-    renderer: &'a mut SamplerRenderer<Surf, Vol>,
-    sample: &'a mut sampler::Sample
+struct SamplerRendererTaskData<'a, 'b, Surf : 'a+SurfaceIntegrator<'a>+Send+Sync+, Vol : 'a+VolumeIntegrator<'a>+Send+Sync+> {
+    scene: &'a scene::Scene<'a>,
+    renderer: &'a mut SamplerRenderer<'a, Surf, Vol>,
+    sample: &'b mut sampler::Sample
 }
 
-impl<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync>
-    SamplerRendererTaskData<'a, Surf, Vol> {
-        fn new(scene: &'a scene::Scene,
-               renderer: &'a mut SamplerRenderer<Surf, Vol>,
-               sample: &'a mut sampler::Sample) ->
-            SamplerRendererTaskData<'a, Surf, Vol> {
+impl<'a, 'b,
+     Surf : SurfaceIntegrator<'a>+Send+Sync,
+     Vol : VolumeIntegrator<'a>+Send+Sync>
+    SamplerRendererTaskData<'a, 'b, Surf, Vol> {
+        fn new(scene: &'a scene::Scene<'a>,
+               renderer: &'a mut SamplerRenderer<'a, Surf, Vol>,
+               sample: &'b mut sampler::Sample) ->
+            SamplerRendererTaskData<'a, 'b, Surf, Vol> {
                 SamplerRendererTaskData {
                     scene: scene,
                     renderer: renderer,
@@ -71,8 +80,8 @@ impl<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync>
             }
     }
 
-fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync>(
-    data : Arc<RwLock<SamplerRendererTaskData<'a, Surf, Vol>>>, task_idx: i32, num_tasks: i32) {
+fn run_task<'a, 'b, Surf : SurfaceIntegrator<'a>+Send+Sync, Vol : VolumeIntegrator<'a>+Send+Sync>(
+    data : Arc<RwLock<SamplerRendererTaskData<'a, 'b, Surf, Vol>>>, task_idx: i32, num_tasks: i32) {
     // Get sub-sampler for SamplerRendererTask
     let mut sampler = {
         if let Some(s) = data.read().unwrap().renderer.sampler.get_sub_sampler(task_idx, num_tasks)
@@ -162,8 +171,11 @@ fn run_task<'a, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+
     println!("Got sample {} fo task {} of {}", sample, task_idx, num_tasks);
 }
 
-impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Renderer for SamplerRenderer<Surf, Vol> {
-    fn render(&mut self, scene : &scene::Scene) {
+impl<'a,
+     Surf : SurfaceIntegrator<'a>+Send+Sync,
+     Vol : VolumeIntegrator<'a>+Send+Sync>
+    Renderer<'a> for SamplerRenderer<'a, Surf, Vol> {
+    fn render(&'a mut self, scene : &'a scene::Scene<'a>) {
         // Allow integrators to do preprocessing for the scene
         self.surface_integrator.preprocess(scene, &(self.camera));
         self.volume_integrator.preprocess(scene, &(self.camera));
@@ -197,7 +209,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Rende
     }
 
     fn li<T:RNG>(
-        &self, scene: &scene::Scene, ray: &ray::RayDifferential,
+        &self, scene: &scene::Scene<'a>, ray: &ray::RayDifferential,
         sample: &sampler::Sample, rng: &mut T,
         isect: &mut Option<Intersection>,
         spect: &mut Option<Spectrum>) -> Spectrum {
@@ -221,7 +233,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> Rende
     }
 
     fn transmittance<T:RNG>(
-        &self, scene: &scene::Scene, ray: &ray::RayDifferential,
+        &self, scene: &scene::Scene<'a>, ray: &ray::RayDifferential,
         sample: &sampler::Sample, rng: &mut T) -> Spectrum {
         let mut local_trans = Spectrum::from_value(0f32);
         self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans)

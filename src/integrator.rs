@@ -11,10 +11,10 @@ use sampler::Sample;
 use scene::Scene;
 use spectrum::Spectrum;
 
-fn process_specular<T: RNG, R: Renderer>(
+fn process_specular<'a, T: RNG, R: Renderer<'a>>(
     ray: &RayDifferential, bsdf: &BSDF,
     rng: &mut T, isect: &Intersection, renderer: &R,
-    scene: &Scene, sample: &Sample, sample_type: u32) -> Spectrum {
+    scene: &Scene<'a>, sample: &Sample, sample_type: u32) -> Spectrum {
     let wo = -(&ray.ray.d);
     let p = &(bsdf.dg_shading.p);
     let n = &(bsdf.dg_shading.nn);
@@ -32,33 +32,33 @@ fn process_specular<T: RNG, R: Renderer>(
     }
 }
 
-pub fn specular_reflect<T: RNG, R: Renderer>(
+pub fn specular_reflect<'a, T: RNG, R: Renderer<'a>>(
     ray: &RayDifferential, bsdf: &BSDF,
     rng: &mut T, isect: &Intersection, renderer: &R,
-    scene: &Scene, sample: &Sample) -> Spectrum {
+    scene: &Scene<'a>, sample: &Sample) -> Spectrum {
     process_specular(ray, bsdf, rng, isect, renderer, scene, sample,
                      bsdf::BSDF_REFLECTION | bsdf::BSDF_SPECULAR)
 }
 
-pub fn specular_transmit<T: RNG, R: Renderer>(
+pub fn specular_transmit<'a, T: RNG, R: Renderer<'a>>(
     ray: &RayDifferential, bsdf: &BSDF,
     rng: &mut T, isect: &Intersection, renderer: &R,
-    scene: &Scene, sample: &Sample) -> Spectrum {
+    scene: &Scene<'a>, sample: &Sample) -> Spectrum {
     process_specular(ray, bsdf, rng, isect, renderer, scene, sample,
                      bsdf::BSDF_TRANSMISSION | bsdf::BSDF_SPECULAR)
 }
 
-pub trait Integrator {
-    fn preprocess(&mut self, scene: &Scene, camera: &Camera) { }
+pub trait Integrator<'a> {
+    fn preprocess(&mut self, scene: &Scene<'a>, camera: &Camera) { }
 }
 
-pub trait SurfaceIntegrator : Integrator {
-    fn li<T:RNG, R:Renderer>(&self, &Scene, &R, &RayDifferential,
+pub trait SurfaceIntegrator<'a> : Integrator<'a> {
+    fn li<T:RNG, R:Renderer<'a>>(&self, &Scene<'a>, &R, &RayDifferential,
                              &mut Intersection, &Sample, &mut T) -> Spectrum;
 }
 
-pub trait VolumeIntegrator : Integrator {
-    fn li<T:RNG, R:Renderer>(&self, &Scene, &R, &RayDifferential,
+pub trait VolumeIntegrator<'a> : Integrator<'a> {
+    fn li<T:RNG, R:Renderer<'a>>(&self, &Scene<'a>, &R, &RayDifferential,
                              &Sample, &mut T, &mut Spectrum) -> Spectrum;
 }
 
@@ -70,16 +70,16 @@ impl EmptyIntegrator {
     pub fn new() -> EmptyIntegrator { EmptyIntegrator }
 }
 
-impl Integrator for EmptyIntegrator { }
-impl SurfaceIntegrator for EmptyIntegrator {
-    fn li<T:RNG, R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
+impl<'a> Integrator<'a> for EmptyIntegrator { }
+impl<'a> SurfaceIntegrator<'a> for EmptyIntegrator {
+    fn li<T:RNG, R:Renderer<'a>>(&self, _: &Scene<'a>, _: &R, _: &RayDifferential,
                              _: &mut Intersection, _: &Sample, _: &mut T) -> Spectrum {
         Spectrum::from_value(0f32)
     }
 }
 
-impl VolumeIntegrator for EmptyIntegrator {
-    fn li<T:RNG, R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
+impl<'a> VolumeIntegrator<'a> for EmptyIntegrator {
+    fn li<T:RNG, R:Renderer<'a>>(&self, _: &Scene<'a>, _: &R, _: &RayDifferential,
                              _: &Sample, _: &mut T, _: &mut Spectrum) -> Spectrum {
         Spectrum::from_value(0f32)
     }

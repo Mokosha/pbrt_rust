@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::atomic::AtomicIsize;
 
 use bbox::BBox;
@@ -148,7 +148,7 @@ impl<'a> Shape<'a> {
 
     pub fn triangle_mesh(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
                          _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
-                         uv: Option<&[f32]>, _atex: Option<Rc<Texture<f32>>>) -> Shape<'a> {
+                         uv: Option<&[f32]>, _atex: Option<Arc<Texture<f32>>>) -> Shape<'a> {
         Shape::TriangleMesh( Mesh::new(o2w, w2o, ro, vi, _p, _n, _s, uv, _atex) )
     }
 

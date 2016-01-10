@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::convert::AsRef;
 
 use bbox::BBox;
@@ -151,7 +151,7 @@ impl<'a> Triangle<'a> {
             let ts = ss.cross(&Vector::from(ns.clone()));
             if ts.length_squared() > 0f32 {
                 (ts.clone().normalize(),
-                 ns.cross(&Vector::from(ts.clone())))
+                 Vector::from(ns).cross(&Vector::from(ts)))
             } else {
                 coordinate_system(&Vector::from(ns))
             }
@@ -280,13 +280,13 @@ pub struct Mesh {
     n: Option<Vec<Normal>>,
     s: Option<Vec<Vector>>,
     uvs: Option<Vec<f32>>,
-    atex: Option<Rc<Texture<f32>>>
+    atex: Option<Arc<Texture<f32>>>
 }
 
 impl Mesh {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
                _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
-               uv: Option<&[f32]>, _atex: Option<Rc<Texture<f32>>>) -> Mesh {
+               uv: Option<&[f32]>, _atex: Option<Arc<Texture<f32>>>) -> Mesh {
         assert!(vi.len() % 3 == 0);
         let xf = o2w.clone();
         Mesh {

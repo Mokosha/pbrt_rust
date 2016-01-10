@@ -32,14 +32,14 @@ impl WhittedIntegrator {
     }
 }
 
-impl Integrator for WhittedIntegrator { }
-impl SurfaceIntegrator for WhittedIntegrator {
-    fn li<T : RNG, R : Renderer>(&self, scene: &Scene,
-                             renderer: &R,
-                             rayd: &RayDifferential,
-                             isect: &mut Intersection,
-                             sample: &Sample,
-                             rng: &mut T) -> Spectrum {
+impl<'a> Integrator<'a> for WhittedIntegrator { }
+impl<'a> SurfaceIntegrator<'a> for WhittedIntegrator {
+    fn li<T : RNG, R : Renderer<'a>>(&self, scene: &Scene<'a>,
+                                 renderer: &R,
+                                 rayd: &RayDifferential,
+                                 isect: &mut Intersection,
+                                 sample: &Sample,
+                                 rng: &mut T) -> Spectrum {
         // Compute emitted and reflected light at ray intersection point
         // Evaluate BSDF at hit point
         let ray = &rayd.ray;
