@@ -23,26 +23,26 @@ use geometry::vector::coordinate_system;
 use utils::solve_linear_system_2x2;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Triangle<'a> {
-    mesh: &'a Mesh,
+pub struct Triangle {
+    mesh: Arc<Mesh>,
     v: [usize; 3]
 }
 
-impl<'a> Triangle<'a> {
-    fn get_vertices(&self) -> (&'a Point, &'a Point, &'a Point) {
+impl Triangle {
+    fn get_vertices(&self) -> (Point, Point, Point) {
         let p1 = &(self.mesh.p[self.v[0]]);
         let p2 = &(self.mesh.p[self.v[1]]);
         let p3 = &(self.mesh.p[self.v[2]]);
 
-        (p1, p2, p3)
+        (p1.clone(), p2.clone(), p3.clone())
     }
 
     fn get_intersection_point(&self, r: &Ray) -> Option<(f32, f32, f32)> {
         // Compute s1
         let (p1, p2, p3) = self.get_vertices();
 
-        let e1 = p2 - p1;
-        let e2 = p3 - p1;
+        let e1 = &p2 - &p1;
+        let e2 = &p3 - &p1;
         let s1 = r.d.clone().cross(&e2);
         let divisor = s1.dot(&e1);
         if divisor == 0f32 {
@@ -85,20 +85,20 @@ impl<'a> Triangle<'a> {
         }
     }
 
-    pub fn base(&'a self) -> &'a ShapeBase { &(self.mesh).base() }
+    pub fn base<'a>(&'a self) -> &'a ShapeBase { self.mesh.base() }
 
     pub fn object_bound(&self) -> BBox {
         let (p1, p2, p3) = self.get_vertices();
 
         let w2o = &(self.base().world2object);
-        BBox::from(w2o.t(p1))
-            .unioned_with(w2o.t(p2))
-            .unioned_with(w2o.t(p3))
+        BBox::from(w2o.xf(p1))
+            .unioned_with(w2o.xf(p2))
+            .unioned_with(w2o.xf(p3))
     }
 
     pub fn area(&self) -> f32 {
         let (p1, p2, p3) = self.get_vertices();
-        0.5 * (p2 - p1).cross(&(p3 - p1)).length()
+        0.5 * (&p2 - &p1).cross(&(&p3 - &p1)).length()
     }
 
     pub fn get_shading_geometry<'b>(&'b self, o2w: &Transform,
@@ -192,18 +192,18 @@ impl<'a> Triangle<'a> {
     }
 }
 
-impl<'a> HasBounds for Triangle<'a> {
+impl HasBounds for Triangle {
     fn world_bound(&self) -> BBox {
         let (p1, p2, p3) = self.get_vertices();
 
         BBox::new()
-            .unioned_with_ref(p1)
-            .unioned_with_ref(p2)
-            .unioned_with_ref(p3)
+            .unioned_with(p1)
+            .unioned_with(p2)
+            .unioned_with(p3)
     }
 }
 
-impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle<'a> {
+impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle {
     fn intersect_p(&self, r: &Ray) -> bool {
         self.get_intersection_point(r).is_some()
     }
@@ -225,8 +225,8 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle<'a> {
         let dv1 = uvs[0][1] - uvs[2][1];
         let dv2 = uvs[1][1] - uvs[2][1];
 
-        let dp1 = p1 - p3;
-        let dp2 = p2 - p3;
+        let dp1 = &p1 - &p3;
+        let dp2 = &p2 - &p3;
 
         // Compute triangle partial derivatives
         let (dpdu, dpdv) = {
@@ -234,7 +234,7 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle<'a> {
             if determinant == 0.0 {
                 // Handle zero determinant for triangle partial
                 // derivatives matrix
-                coordinate_system(&((p3 - p1).cross(&(p2 - p1)).normalize()))
+                coordinate_system(&((&p3 - &p1).cross(&(&p2 - &p1)).normalize()))
             } else {
                 let inv_det = 1.0 / determinant;
                 (( dv2 * &dp1 - dv1 * &dp2) * inv_det,
@@ -262,7 +262,7 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle<'a> {
     }
 }
 
-impl<'a> ::std::ops::Index<usize> for Triangle<'a> {
+impl ::std::ops::Index<usize> for Triangle {
     type Output = Point;
     fn index(&self, i: usize) -> &Point {
         match i {
@@ -308,19 +308,20 @@ impl Mesh {
     }
 }
 
-impl<'a> Refinable<'a, Triangle<'a>> for Mesh {
-    fn refine(&'a self) -> Vec<Triangle<'a>> {
-        let mut indices = self.vertex_index.clone();
+impl Refinable<Triangle> for Mesh {
+    fn refine(self) -> Vec<Triangle> {
+        let m = Arc::new(self);
+        let mut indices = m.vertex_index.clone();
         let mut tris = Vec::new();
         while let (Some(v1), Some(v2), Some(v3)) =
             (indices.pop(), indices.pop(), indices.pop()) {
-                tris.push( Triangle { mesh: self, v: [v1, v2, v3] });
+                tris.push( Triangle { mesh: m.clone(), v: [v1, v2, v3] });
             }
 
         tris
     }
 
-    fn is_refined(&'a self) -> bool { false }
+    fn is_refined(&self) -> bool { false }
 }
 
 impl HasBounds for Mesh {

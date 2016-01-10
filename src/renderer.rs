@@ -5,17 +5,17 @@ use spectrum::Spectrum;
 use scene;
 use intersection;
 
-pub trait Renderer<'a> {
-    fn render(&'a mut self, &'a scene::Scene<'a>);
+pub trait Renderer {
+    fn render(&mut self, &scene::Scene);
 
     fn li<T:RNG>(
-        &self, &scene::Scene<'a>, &ray::RayDifferential,
+        &self, &scene::Scene, &ray::RayDifferential,
         &sampler::Sample, &mut T,
         &mut Option<intersection::Intersection>,
         &mut Option<Spectrum>) -> Spectrum;
 
     fn li_simple<T:RNG>(
-        &self, scene: &scene::Scene<'a>, ray: &ray::RayDifferential,
+        &self, scene: &scene::Scene, ray: &ray::RayDifferential,
         sample: &sampler::Sample, rng: &mut T,
         ) -> Spectrum {
         let mut dummy_isect = None;
@@ -24,7 +24,7 @@ pub trait Renderer<'a> {
     }
 
     fn transmittance<T:RNG>(
-        &self, &scene::Scene<'a>, &ray::RayDifferential,
+        &self, &scene::Scene, &ray::RayDifferential,
         &sampler::Sample, &mut T) -> Spectrum;
 
     // Rnderer Interface

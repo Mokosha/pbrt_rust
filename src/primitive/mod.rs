@@ -22,18 +22,18 @@ impl PrimitiveBase {
         prim_id: NEXT_PRIM_ID.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed) } }
 }
 
-pub trait Refinable<'a, T = Self> {
-    fn is_refined(&'a self) -> bool;
-    fn refine(&'a self) -> Vec<T>;
+pub trait Refinable<T = Self> {
+    fn is_refined(&self) -> bool;
+    fn refine(self) -> Vec<T>;
 }
 
-pub struct GeometricPrimitive<'a> {
+pub struct GeometricPrimitive {
     base: PrimitiveBase,
-    s: Shape<'a>
+    s: Shape
 }
 
-impl<'a> GeometricPrimitive<'a> {
-    pub fn new(_s: Shape<'a>) -> GeometricPrimitive<'a> {
+impl GeometricPrimitive {
+    pub fn new(_s: Shape) -> GeometricPrimitive {
         GeometricPrimitive {
             base: PrimitiveBase::new(),
             s: _s
@@ -41,21 +41,21 @@ impl<'a> GeometricPrimitive<'a> {
     }
 }
 
-impl<'a> HasBounds for GeometricPrimitive<'a> {
+impl HasBounds for GeometricPrimitive {
     fn world_bound(&self) -> BBox { BBox::new() }
 }
 
-pub enum Primitive<'a> {
-    Geometric(GeometricPrimitive<'a>)
+pub enum Primitive {
+    Geometric(GeometricPrimitive)
 }
 
-impl<'a> Primitive<'a> {
-    pub fn geometric(s: Shape<'a>) -> Primitive<'a> {
+impl Primitive {
+    pub fn geometric(s: Shape) -> Primitive {
         Primitive::Geometric(GeometricPrimitive::new(s))
     }
 }
 
-impl<'a> HasBounds for Primitive<'a> {
+impl HasBounds for Primitive {
     fn world_bound(&self) -> BBox {
         match self {
             &Primitive::Geometric(ref prim) => { prim.world_bound() }
@@ -63,7 +63,7 @@ impl<'a> HasBounds for Primitive<'a> {
     }
 }
 
-impl<'a> Intersectable<'a> for Primitive<'a> {
+impl<'a> Intersectable<'a> for Primitive {
     fn intersect(&'a self, ray : &Ray) -> Option<Intersection<'a>> {
         None
     }

@@ -71,16 +71,16 @@ impl<'a> ShapeIntersection<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Shape<'a> {
+pub enum Shape {
     Sphere(Sphere),
     Disk(Disk),
     Cylinder(Cylinder),
-    Triangle(Triangle<'a>),
+    Triangle(Triangle),
     TriangleMesh(Mesh),
     LoopSubdiv(LoopSubdiv)
 }
 
-impl<'a> HasBounds for Shape<'a> {
+impl HasBounds for Shape {
     fn world_bound(&self) -> BBox {
         match self {
             &Shape::Sphere(ref s) => s.world_bound(),
@@ -93,9 +93,9 @@ impl<'a> HasBounds for Shape<'a> {
     }
 }
 
-impl<'a> Refinable<'a> for Shape<'a> {
+impl Refinable for Shape {
     // Default is all shapes can intersect..
-    fn is_refined(&'a self) -> bool {
+    fn is_refined(&self) -> bool {
         match self {
             &Shape::Sphere(_) => true,
             &Shape::Disk(_) => true,
@@ -106,21 +106,20 @@ impl<'a> Refinable<'a> for Shape<'a> {
         }
     }
 
-    fn refine(&'a self) -> Vec<Shape<'a>> {
+    fn refine(self) -> Vec<Shape> {
         match self {
-            &Shape::Sphere(ref s) => vec![Shape::Sphere(s.clone())],
-            &Shape::Disk(ref d) => vec![Shape::Disk(d.clone())],
-            &Shape::Cylinder(ref c) => vec![Shape::Cylinder(c.clone())],
-            &Shape::Triangle(ref t) => vec![Shape::Triangle(t.clone())],
-            &Shape::TriangleMesh(ref m) =>
-                m.refine().iter().cloned().map(Shape::Triangle).collect(),
-            &Shape::LoopSubdiv(ref m) => m.refine().iter().cloned().map(Shape::TriangleMesh).collect()
+            Shape::Sphere(s) => vec![Shape::Sphere(s)],
+            Shape::Disk(d) => vec![Shape::Disk(d)],
+            Shape::Cylinder(c) => vec![Shape::Cylinder(c)],
+            Shape::Triangle(t) => vec![Shape::Triangle(t)],
+            Shape::TriangleMesh(m) => m.refine().iter().cloned().map(Shape::Triangle).collect(),
+            Shape::LoopSubdiv(m) => m.refine().iter().cloned().map(Shape::TriangleMesh).collect()
         }
     }
 }
 
-impl<'a> Shape<'a> {
-    pub fn base(&'a self) -> &'a ShapeBase {
+impl Shape {
+    pub fn base<'a>(&'a self) -> &'a ShapeBase {
         match self {
             &Shape::Sphere(ref s) => s.base(),
             &Shape::Disk(ref d) => d.base(),
@@ -132,32 +131,32 @@ impl<'a> Shape<'a> {
     }
 
     pub fn sphere(o2w: Transform, w2o: Transform, ro: bool,
-                  rad: f32, z0: f32, z1: f32, pm: f32) -> Shape<'a> {
+                  rad: f32, z0: f32, z1: f32, pm: f32) -> Shape {
         Shape::Sphere( Sphere::new(o2w, w2o, ro, rad, z0, z1, pm) )
     }
 
     pub fn cylinder(o2w: Transform, w2o: Transform, ro: bool,
-                    rad: f32, z0: f32, z1: f32, pm: f32) -> Shape<'a> {
+                    rad: f32, z0: f32, z1: f32, pm: f32) -> Shape {
         Shape::Cylinder( Cylinder::new(o2w, w2o, ro, rad, z0, z1, pm) )
     }
 
     pub fn disk(o2w: Transform, w2o: Transform, ro: bool,
-                ht: f32, r: f32, ri: f32, t_max: f32) -> Shape<'a> {
+                ht: f32, r: f32, ri: f32, t_max: f32) -> Shape {
         Shape::Disk( Disk::new(o2w, w2o, ro, ht, r, ri, t_max) )
     }
 
     pub fn triangle_mesh(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
                          _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
-                         uv: Option<&[f32]>, _atex: Option<Arc<Texture<f32>>>) -> Shape<'a> {
+                         uv: Option<&[f32]>, _atex: Option<Arc<Texture<f32>>>) -> Shape {
         Shape::TriangleMesh( Mesh::new(o2w, w2o, ro, vi, _p, _n, _s, uv, _atex) )
     }
 
     pub fn loop_subdiv(o2w: Transform, w2o: Transform, ro: bool,
-                       vertex_indices: &[usize], points: &[Point], nl: usize) -> Shape<'a> {
+                       vertex_indices: &[usize], points: &[Point], nl: usize) -> Shape {
         Shape::LoopSubdiv( LoopSubdiv::new(o2w, w2o, ro, vertex_indices, points, nl) )
     }
 
-    pub fn object_bound(&'a self) -> BBox {
+    pub fn object_bound(&self) -> BBox {
         match self {
             &Shape::Sphere(ref s) => s.object_bound(),
             &Shape::Disk(ref d) => d.object_bound(),
@@ -168,9 +167,9 @@ impl<'a> Shape<'a> {
         }
     }
 
-    pub fn get_shading_geometry(&'a self, o2w: &Transform,
-                            dg: DifferentialGeometry<'a>)
-                            -> DifferentialGeometry<'a> {
+    pub fn get_shading_geometry<'a>(&'a self, o2w: &Transform,
+                                    dg: DifferentialGeometry<'a>)
+                                    -> DifferentialGeometry<'a> {
         match self {
             &Shape::Triangle(ref t) => t.get_shading_geometry(o2w, dg),
             _ => dg
@@ -183,7 +182,7 @@ impl<'a> Shape<'a> {
             &Shape::Disk(ref d) => d.area(),
             &Shape::Cylinder(ref c) => c.area(),
             &Shape::Triangle(ref t) => t.area(),
-            _ => self.refine().iter().fold(0f32, |a, t| a + t.area())
+            _ => self.clone().refine().iter().fold(0f32, |a, t| a + t.area())
         }
     }
 }

@@ -15,8 +15,8 @@ pub struct Sample {
 pub struct Sampler;
 
 impl Sample {
-    pub fn new<'a, Surf : SurfaceIntegrator<'a>, Vol : VolumeIntegrator<'a>>(
-        sampler: &Sampler, surf: &Surf, vol: &Vol, scene: &scene::Scene<'a>, idx: i32)
+    pub fn new<Surf : SurfaceIntegrator, Vol : VolumeIntegrator>(
+        sampler: &Sampler, surf: &Surf, vol: &Vol, scene: &scene::Scene, idx: i32)
         -> Sample { Sample { idx: idx } }
 }
 

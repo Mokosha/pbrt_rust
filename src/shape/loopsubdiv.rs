@@ -397,8 +397,9 @@ impl LoopSubdiv {
     }
 }
 
-impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
-    fn refine(&'a self) -> Vec<Mesh> {
+impl Refinable<Mesh> for LoopSubdiv {
+    fn is_refined(&self) -> bool { false }
+    fn refine(self) -> Vec<Mesh> {
         let mut f = self.faces.clone();
         let mut v = self.vertices.clone();
         
@@ -637,8 +638,6 @@ impl<'a> Refinable<'a, Mesh> for LoopSubdiv {
                        Some(&*ns.into_boxed_slice()),
                        None, None, None)]
     }
-
-    fn is_refined(&'a self) -> bool { false }
 }
 
 impl HasBounds for LoopSubdiv {

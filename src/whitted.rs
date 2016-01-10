@@ -32,9 +32,9 @@ impl WhittedIntegrator {
     }
 }
 
-impl<'a> Integrator<'a> for WhittedIntegrator { }
-impl<'a> SurfaceIntegrator<'a> for WhittedIntegrator {
-    fn li<T : RNG, R : Renderer<'a>>(&self, scene: &Scene<'a>,
+impl Integrator for WhittedIntegrator { }
+impl SurfaceIntegrator for WhittedIntegrator {
+    fn li<T : RNG, R : Renderer>(&self, scene: &Scene,
                                  renderer: &R,
                                  rayd: &RayDifferential,
                                  isect: &mut Intersection,

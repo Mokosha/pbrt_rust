@@ -11,15 +11,15 @@ use shape::shape::Shape;
 use transform::transform::Transform;
 use volume_region::VolumeRegion;
 
-pub struct Scene<'a> {
-    aggregate : Primitive<'a>,
+pub struct Scene {
+    aggregate : Primitive,
     lights : Vec<Light>,
     volume_region : Option<VolumeRegion>,
     // Scene Public data 23
 }
 
-impl<'a> Scene<'a> {
-    pub fn new() -> Scene<'a> {
+impl Scene {
+    pub fn new() -> Scene {
         Scene {
             aggregate: Primitive::geometric(Shape::sphere(
                 Transform::new(), Transform::new(), false, 1.0, -1.0, 1.0, 360.0)),
@@ -28,14 +28,14 @@ impl<'a> Scene<'a> {
         }
     }
 
-    pub fn lights(&'a self) -> &'a Vec<Light> {
+    pub fn lights<'a>(&'a self) -> &'a Vec<Light> {
         &self.lights
     }
 
     // Scene Public methods 23
 }
 
-impl<'a> HasBounds for Scene<'a> {
+impl HasBounds for Scene {
     fn world_bound(&self) -> BBox {
         if let Some(volume) = self.volume_region {
             let agg_box = &(self.aggregate).world_bound();
@@ -46,7 +46,7 @@ impl<'a> HasBounds for Scene<'a> {
     }
 }
 
-impl<'a> Intersectable<'a> for Scene<'a> {
+impl<'a> Intersectable<'a> for Scene {
     fn intersect(&'a self, ray : &Ray) -> Option<Intersection<'a>> {
         self.aggregate.intersect(ray)
     }
