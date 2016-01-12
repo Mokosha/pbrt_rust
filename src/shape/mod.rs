@@ -16,6 +16,7 @@ use geometry::normal::Normal;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use primitive::Refinable;
+use primitive::FullyRefinable;
 use texture::Texture;
 use transform::transform::Transform;
 
@@ -125,6 +126,8 @@ impl Refinable for Shape {
         }
     }
 }
+
+impl FullyRefinable for Shape { }
 
 impl Shape {
     pub fn base<'a>(&'a self) -> &'a ShapeBase {

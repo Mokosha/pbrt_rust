@@ -23,6 +23,24 @@ pub trait Refinable<T = Self> {
     fn refine(self) -> Vec<T>;
 }
 
+pub trait FullyRefinable : Refinable<Self>+Sized {
+    fn fully_refine(self) -> Vec<Self> {
+        let mut todo = self.refine();
+        let mut done = Vec::new();
+
+        while let Some(x) = todo.pop() {
+            if x.is_refined() {
+                done.push(x);
+            } else {
+                let mut rx = x.refine();
+                todo.append(&mut rx);
+            }
+        }
+
+        done
+    }
+}
+
 pub struct GeometricPrimitive {
     base: PrimitiveBase,
     s: Shape
