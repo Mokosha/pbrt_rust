@@ -1,3 +1,5 @@
+mod geometric;
+
 use area_light::AreaLight;
 use bbox::BBox;
 use bbox::HasBounds;
@@ -7,6 +9,8 @@ use intersection::Intersectable;
 use intersection::Intersection;
 use ray::Ray;
 use shape::Shape;
+
+use primitive::geometric::GeometricPrimitive;
 
 use std::sync::atomic::AtomicUsize;
 
@@ -47,25 +51,6 @@ pub trait FullyRefinable : Refinable<Self>+Sized {
 
         done
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct GeometricPrimitive {
-    base: PrimitiveBase,
-    s: Shape
-}
-
-impl GeometricPrimitive {
-    pub fn new(_s: Shape) -> GeometricPrimitive {
-        GeometricPrimitive {
-            base: PrimitiveBase::new(),
-            s: _s
-        }
-    }
-}
-
-impl HasBounds for GeometricPrimitive {
-    fn world_bound(&self) -> BBox { BBox::new() }
 }
 
 #[derive(Clone, Debug, PartialEq)]
