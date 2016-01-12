@@ -1,5 +1,8 @@
+use area_light::AreaLight;
 use bbox::BBox;
 use bbox::HasBounds;
+use bsdf::BSDF;
+use bsdf::BSSDF;
 use intersection::Intersectable;
 use intersection::Intersection;
 use ray::Ray;
@@ -73,6 +76,18 @@ pub enum Primitive {
 impl Primitive {
     pub fn geometric(s: Shape) -> Primitive {
         Primitive::Geometric(GeometricPrimitive::new(s))
+    }
+
+    pub fn area_light(&self) -> Option<AreaLight> {
+        None
+    }
+
+    pub fn get_bsdf<'a>(&'a self) -> Option<BSDF<'a>> {
+        None
+    }
+
+    pub fn get_bssdf<'a>(&'a self) -> Option<BSSDF<'a>> {
+        None
     }
 }
 

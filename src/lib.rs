@@ -1,5 +1,6 @@
 extern crate scoped_threadpool;
 
+pub mod area_light;
 pub mod bbox;
 pub mod bsdf;
 pub mod camera;

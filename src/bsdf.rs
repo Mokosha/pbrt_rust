@@ -34,6 +34,10 @@ impl<'a> BSDF<'a> {
         }
 }
 
+pub struct BSSDF<'a> {
+    pd: ::std::marker::PhantomData<&'a usize>
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
