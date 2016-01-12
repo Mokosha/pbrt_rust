@@ -7,7 +7,7 @@ mod mesh;
 mod sphere;
 
 use std::sync::Arc;
-use std::sync::atomic::AtomicIsize;
+use std::sync::atomic::AtomicUsize;
 
 use bbox::BBox;
 use bbox::HasBounds;
@@ -33,10 +33,10 @@ pub struct ShapeBase {
     pub world2object: Transform,
     pub reverse_orientation: bool,
     pub transform_swaps_handedness: bool,
-    pub shape_id: isize
+    pub shape_id: usize
 }
 
-static NEXT_SHAPE_ID: AtomicIsize = ::std::sync::atomic::ATOMIC_ISIZE_INIT;
+static NEXT_SHAPE_ID: AtomicUsize = ::std::sync::atomic::ATOMIC_USIZE_INIT;
 
 impl ShapeBase {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool) -> ShapeBase {
@@ -207,7 +207,6 @@ mod tests {
     #[test]
     fn it_can_be_created() {
         let some_shape = ShapeBase::new(Transform::new(), Transform::new(), false);
-        assert!(some_shape.shape_id >= 0);
         assert_eq!(ShapeBase::new(Transform::new(), Transform::new(), false),
                    ShapeBase {
                        object2world: Transform::new(),

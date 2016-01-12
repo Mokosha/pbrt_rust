@@ -5,13 +5,13 @@ use intersection::Intersection;
 use ray::Ray;
 use shape::Shape;
 
-use std::sync::atomic::AtomicIsize;
+use std::sync::atomic::AtomicUsize;
 
 pub struct PrimitiveBase {
-    pub prim_id: isize
+    pub prim_id: usize
 }
 
-static NEXT_PRIM_ID: AtomicIsize = ::std::sync::atomic::ATOMIC_ISIZE_INIT;
+static NEXT_PRIM_ID: AtomicUsize = ::std::sync::atomic::ATOMIC_USIZE_INIT;
 
 impl PrimitiveBase {
     pub fn new() -> PrimitiveBase { PrimitiveBase {
