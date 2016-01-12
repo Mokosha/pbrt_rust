@@ -7,6 +7,7 @@ use shape::Shape;
 
 use std::sync::atomic::AtomicUsize;
 
+#[derive(Clone, Debug)]
 pub struct PrimitiveBase {
     pub prim_id: usize
 }
@@ -16,6 +17,10 @@ static NEXT_PRIM_ID: AtomicUsize = ::std::sync::atomic::ATOMIC_USIZE_INIT;
 impl PrimitiveBase {
     pub fn new() -> PrimitiveBase { PrimitiveBase {
         prim_id: NEXT_PRIM_ID.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed) } }
+}
+
+impl ::std::cmp::PartialEq for PrimitiveBase {
+    fn eq(&self, _: &PrimitiveBase) -> bool { true }
 }
 
 pub trait Refinable<T = Self> {
@@ -41,6 +46,7 @@ pub trait FullyRefinable : Refinable<Self>+Sized {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct GeometricPrimitive {
     base: PrimitiveBase,
     s: Shape
@@ -59,6 +65,7 @@ impl HasBounds for GeometricPrimitive {
     fn world_bound(&self) -> BBox { BBox::new() }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Primitive {
     Geometric(GeometricPrimitive)
 }
