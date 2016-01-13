@@ -113,34 +113,26 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
 
             // Evaluate radiance along camera ray
             if ray_weight > 0f32 {
-                let mut ts: Option<Spectrum> = None;
-                let mut isect: Option<Intersection> = None;
-
                 // !FIXME! I think this synchronization is a bit too coarse grained
-                let ls =
-                    ray_weight *
-                    data.read().unwrap().renderer.li(scene, &ray, &(samples[i]), &mut rng, &mut isect, &mut ts);
+                let (mut ls, isect, ts) = data.read().unwrap().renderer.li(scene, &ray, &(samples[i]), &mut rng);
+                ls = ls * ray_weight;
 
                 if !ls.is_valid() { panic!("Invalid radiance value!"); }
                 l_s.push(ls);
 
-                if let Some(ts_val) = ts {
-                    t_s.push(ts_val);
-                } else {
-                    t_s.push(Spectrum::from_value(0f32));
-                }
+                t_s.push(ts);
                 
                 if let Some(isect_val) = isect {
                     isects.push(isect_val);
                 } else {
                     // Empty intersection
-                    isects.push(Intersection::new());
+                    // isects.push(Intersection::new());
                 }
             } else {
                 l_s.push(Spectrum::from_value(0f32));
                 t_s.push(Spectrum::from_value(0f32));
                 // Empty intersection
-                isects.push(Intersection::new());
+                // isects.push(Intersection::new());
             }
         }
 
@@ -167,8 +159,7 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
     println!("Got sample {} fo task {} of {}", sample, task_idx, num_tasks);
 }
 
-impl<'a,
-     Surf : SurfaceIntegrator+Send+Sync,
+impl<Surf : SurfaceIntegrator+Send+Sync,
      Vol : VolumeIntegrator+Send+Sync>
     Renderer for SamplerRenderer<Surf, Vol> {
     fn render(&mut self, scene : &scene::Scene) {
@@ -204,28 +195,23 @@ impl<'a,
         // Clean up after rendering and store final image    
     }
 
-    fn li<T:RNG>(
-        &self, scene: &scene::Scene, ray: &ray::RayDifferential,
-        sample: &sampler::Sample, rng: &mut T,
-        isect: &mut Option<Intersection>,
-        spect: &mut Option<Spectrum>) -> Spectrum {
+    fn li<'a, T:RNG>(
+        &self, scene: &'a scene::Scene, ray: &ray::RayDifferential,
+        sample: &sampler::Sample, rng: &mut T) -> (Spectrum, Option<Intersection<'a>>, Spectrum) {
         // Allocate variables for isect and T if needed
-        let mut local_isect = Intersection::new();
-        let mut local_trans = Spectrum::from_value(0f32);
-        let li =
-            if let Some(scene_isect) = scene.intersect(&ray.ray) {
-                local_isect = scene_isect;
-                self.surface_integrator.li(scene, self, ray, &mut local_isect, sample, rng)
+        let (isect, li) =
+            if let Some(mut scene_isect) = scene.intersect(&ray.ray) {
+                let l = self.surface_integrator.li(scene, self, ray, &mut scene_isect, sample, rng);
+                (Some(scene_isect), l)
             } else {
                 // Handle ray that doesn't intersect any geometry
-                scene.lights().iter().fold(Spectrum::from_value(0f32), |acc, light| acc + light.le(ray))
+                (None, scene.lights().iter().fold(Spectrum::from_value(0f32), |acc, light| acc + light.le(ray)))
             };
+
+        let mut local_trans = Spectrum::from_value(0f32);
         let lvi = self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans);
 
-        isect.as_mut().map(|_| { local_isect });
-        spect.as_mut().map(|_| { local_trans });
-
-        local_trans * li + lvi
+        (local_trans * li + lvi, isect, local_trans)
     }
 
     fn transmittance<T:RNG>(

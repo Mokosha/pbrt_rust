@@ -19,21 +19,6 @@ pub struct Intersection<'a> {
 }
 
 impl<'a> Intersection<'a> {
-    // !FIXME! We should get rid of this when we generate intersections
-    // based on actually intersecting things in the future...
-    pub fn new() -> Intersection<'a> {
-        Intersection {
-            dg: DifferentialGeometry::new(),
-            primitive: None,
-            world_to_object: Transform::new(),
-            object_to_world: Transform::new(),
-            shape_id: 0,
-            primitive_id: 0,
-            ray_epsilon: 0f32,
-            bsdf: BSDF::new()
-        }
-    }
-
     pub fn new_with(_dg: DifferentialGeometry<'a>, w2o: Transform,
                     o2w: Transform, sid: usize, pid: usize, ray_eps: f32) -> Intersection<'a> {
         Intersection {
