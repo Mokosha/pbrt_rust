@@ -9,6 +9,7 @@ pub mod geometry;
 pub mod intersection;
 pub mod integrator;
 pub mod light;
+pub mod material;
 pub mod primitive;
 pub mod quaternion;
 pub mod ray;

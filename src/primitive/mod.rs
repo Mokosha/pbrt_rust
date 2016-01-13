@@ -7,6 +7,7 @@ use bsdf::BSDF;
 use bsdf::BSSDF;
 use intersection::Intersectable;
 use intersection::Intersection;
+use material::Material;
 use ray::Ray;
 use shape::Shape;
 
@@ -60,7 +61,7 @@ pub enum Primitive {
 
 impl Primitive {
     pub fn geometric(s: Shape) -> Primitive {
-        Primitive::Geometric(GeometricPrimitive::new(s))
+        Primitive::Geometric(GeometricPrimitive::new(s, Material))
     }
 
     pub fn area_light(&self) -> Option<AreaLight> {
@@ -86,11 +87,22 @@ impl HasBounds for Primitive {
 
 impl<'a> Intersectable<'a> for Primitive {
     fn intersect(&'a self, ray : &Ray) -> Option<Intersection<'a>> {
-        None
+        let mut isect = match self {
+            &Primitive::Geometric(ref prim) => { prim.intersect(ray) }
+        };
+
+        isect.as_mut().map(|t| {
+            t.primitive = Some(self)
+        });
+        isect
     }
 
     fn intersect_p(&'a self, ray : &Ray) -> bool {
-        false
+        match self {
+            &Primitive::Geometric(ref prim) => {
+                prim.intersect_p(ray)
+            }
+        }
     }
 }
 

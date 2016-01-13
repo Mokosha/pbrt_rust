@@ -34,6 +34,20 @@ impl<'a> Intersection<'a> {
         }
     }
 
+    pub fn new_with(_dg: DifferentialGeometry<'a>, w2o: Transform,
+                    o2w: Transform, sid: usize, pid: usize, ray_eps: f32) -> Intersection<'a> {
+        Intersection {
+            dg: _dg,
+            primitive: None,
+            world_to_object: w2o,
+            object_to_world: o2w,
+            shape_id: sid,
+            primitive_id: pid,
+            ray_epsilon: ray_eps,
+            bsdf: BSDF::new()
+        }
+    }
+
     pub fn get_bsdf(&self) -> &BSDF<'a> { &self.bsdf }
     pub fn le(&self, dir: &Vector) -> Spectrum { Spectrum::from_value(0f32) }
 }
