@@ -105,6 +105,3 @@ impl<'a> Intersectable<'a> for Primitive {
         }
     }
 }
-
-
-

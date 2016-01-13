@@ -120,6 +120,8 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
                 if !ls.is_valid() { panic!("Invalid radiance value!"); }
                 l_s.push(ls);
 
+                // !FIXME! I think there are times when we don't generate transmissive
+                // values, and these times we shouldn't add them to the list...
                 t_s.push(ts);
                 
                 if let Some(isect_val) = isect {
