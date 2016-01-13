@@ -138,8 +138,8 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Shape {
             &Shape::Disk(ref d) => d.intersect(ray),
             &Shape::Cylinder(ref c) => c.intersect(ray),
             &Shape::Triangle(ref t) => t.intersect(ray),
-            &Shape::TriangleMesh(ref m) => None,
-            &Shape::LoopSubdiv(ref m) => None
+            &Shape::TriangleMesh(_) => None,
+            &Shape::LoopSubdiv(_) => None
         }
     }
 
@@ -149,8 +149,8 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Shape {
             &Shape::Disk(ref d) => d.intersect_p(ray),
             &Shape::Cylinder(ref c) => c.intersect_p(ray),
             &Shape::Triangle(ref t) => t.intersect_p(ray),
-            &Shape::TriangleMesh(ref m) => false,
-            &Shape::LoopSubdiv(ref m) => false
+            &Shape::TriangleMesh(_) => false,
+            &Shape::LoopSubdiv(_) => false
         }
     }
 }
