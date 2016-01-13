@@ -15,8 +15,10 @@ use diff_geom::DifferentialGeometry;
 use geometry::normal::Normal;
 use geometry::point::Point;
 use geometry::vector::Vector;
+use intersection::Intersectable;
 use primitive::Refinable;
 use primitive::FullyRefinable;
+use ray::Ray;
 use texture::Texture;
 use transform::transform::Transform;
 
@@ -128,6 +130,30 @@ impl Refinable for Shape {
 }
 
 impl FullyRefinable for Shape { }
+
+impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Shape {
+    fn intersect(&'a self, ray : &Ray) -> Option<ShapeIntersection<'a>> {
+        match self {
+            &Shape::Sphere(ref s) => s.intersect(ray),
+            &Shape::Disk(ref d) => d.intersect(ray),
+            &Shape::Cylinder(ref c) => c.intersect(ray),
+            &Shape::Triangle(ref t) => t.intersect(ray),
+            &Shape::TriangleMesh(ref m) => None,
+            &Shape::LoopSubdiv(ref m) => None
+        }
+    }
+
+    fn intersect_p(&'a self, ray : &Ray) -> bool {
+        match self {
+            &Shape::Sphere(ref s) => s.intersect_p(ray),
+            &Shape::Disk(ref d) => d.intersect_p(ray),
+            &Shape::Cylinder(ref c) => c.intersect_p(ray),
+            &Shape::Triangle(ref t) => t.intersect_p(ray),
+            &Shape::TriangleMesh(ref m) => false,
+            &Shape::LoopSubdiv(ref m) => false
+        }
+    }
+}
 
 impl Shape {
     pub fn base<'a>(&'a self) -> &'a ShapeBase {
