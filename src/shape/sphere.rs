@@ -60,14 +60,14 @@ impl Sphere {
         };
 
         // Compute intersection distance along ray
-        if t0 > ray.maxt || t1 < ray.mint {
+        if t0 > ray.maxt() || t1 < ray.mint() {
             return None
         }
 
         let mut t_hit = t0;
-        if t0 < ray.mint {
+        if t0 < ray.mint() {
             t_hit = t1;
-            if t_hit > ray.maxt {
+            if t_hit > ray.maxt() {
                 return None;
             }
         }
@@ -96,7 +96,7 @@ impl Sphere {
         let mut test = get_hit(t_hit);
         if hit_is_invalid(&test) {
             if t_hit == t1 { return None; }
-            if t1 > ray.maxt { return None; }
+            if t1 > ray.maxt() { return None; }
             t_hit = t1;
             test = get_hit(t_hit);
             if hit_is_invalid(&test) {

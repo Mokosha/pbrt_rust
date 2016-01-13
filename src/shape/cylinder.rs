@@ -51,14 +51,14 @@ impl Cylinder {
         };
 
         // Compute intersection distance along ray
-        if t0 > r.maxt || t1 < r.mint {
+        if t0 > r.maxt() || t1 < r.mint() {
             return None
         }
 
         let mut t_hit = t0;
-        if t0 < r.mint {
+        if t0 < r.mint() {
             t_hit = t1;
-            if t_hit > r.maxt {
+            if t_hit > r.maxt() {
                 return None;
             }
         }
@@ -85,7 +85,7 @@ impl Cylinder {
         let mut p_hit = get_hit(t_hit);
         if invalid_hit(&p_hit) {
             if t_hit == t1 { return None; }
-            if t1 > r.maxt { return None; }
+            if t1 > r.maxt() { return None; }
             t_hit = t1;
             p_hit = get_hit(t_hit);
             if invalid_hit(&p_hit) { return None; }

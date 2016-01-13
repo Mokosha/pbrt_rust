@@ -67,7 +67,7 @@ impl Triangle {
         // Compute t to intersection point
         let t = e2.dot(&s2) * inv_divisor;
 
-        if t < r.mint || t > r.maxt { None } else { Some((t, b1, b2)) }
+        if t < r.mint() || t > r.maxt() { None } else { Some((t, b1, b2)) }
     }
 
     fn get_uvs(&self) -> [[f32; 2]; 3] {

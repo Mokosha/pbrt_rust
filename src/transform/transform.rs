@@ -597,16 +597,16 @@ mod tests {
             Point::new_with(1.0, 1.0, 1.0), Vector::new_with(0.0, 0.0, -1.0), 0.0);
 
         assert_eq!(tr.o, tr_expected.o);
-        assert!((tr.d - tr_expected.d).length_squared() < 1e-6);
-        assert_eq!(tr.mint, tr_expected.mint);
-        assert_eq!(tr.maxt, tr_expected.maxt);
+        assert!((&tr.d - &tr_expected.d).length_squared() < 1e-6);
+        assert_eq!(tr.mint(), tr_expected.mint());
+        assert_eq!(tr.maxt(), tr_expected.maxt());
         assert_eq!(tr.time, tr_expected.time);
         assert_eq!(tr.depth, tr_expected.depth);
 
         assert_eq!(trd.ray.o, trd_expected.ray.o);
-        assert!((trd.ray.d - trd_expected.ray.d).length_squared() < 1e-6);
-        assert_eq!(trd.ray.mint, trd_expected.ray.mint);
-        assert_eq!(trd.ray.maxt, trd_expected.ray.maxt);
+        assert!((&trd.ray.d - &trd_expected.ray.d).length_squared() < 1e-6);
+        assert_eq!(trd.ray.mint(), trd_expected.ray.mint());
+        assert_eq!(trd.ray.maxt(), trd_expected.ray.maxt());
         assert_eq!(trd.ray.time, trd_expected.ray.time);
         assert_eq!(trd.ray.depth, trd_expected.ray.depth);
     }

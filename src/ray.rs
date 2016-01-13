@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use geometry::point::Point;
 use geometry::vector::Vector;
 use std::f32;
@@ -7,10 +9,10 @@ use time::Time;
 pub struct Ray {
     pub o: Point,
     pub d: Vector,
-    pub mint: f32,
-    pub maxt: f32,
     pub time: Time,
-    pub depth: i32
+    pub depth: i32,
+    mint: RefCell<f32>,
+    maxt: RefCell<f32>
 }
 
 impl Ray {
@@ -18,10 +20,10 @@ impl Ray {
         Ray {
             o: Point::new(),
             d: Vector::new(),
-            mint: 0f32,
-            maxt: f32::MAX,
             time: Time::from(0f32),
-            depth: 0
+            depth: 0,
+            mint: RefCell::new(0.0),
+            maxt: RefCell::new(f32::MAX)
         }
     }
 
@@ -29,10 +31,10 @@ impl Ray {
         Ray {
             o: origin,
             d: dir,
-            mint: start,
-            maxt: f32::MAX,
             time: Time::from(0f32),
-            depth: 0
+            depth: 0,
+            mint: RefCell::new(start),
+            maxt: RefCell::new(f32::MAX)
         }
     }
 
@@ -40,15 +42,19 @@ impl Ray {
         Ray {
             o: origin,
             d: dir,
-            mint: start,
-            maxt: self.maxt,
             time: self.time,
-            depth: self.depth + 1
+            depth: self.depth + 1,
+            mint: RefCell::new(start),
+            maxt: self.maxt.clone()
         }
     }
 
-    pub fn set_mint(&mut self, t: f32) { self.mint = t }
-    pub fn set_maxt(&mut self, t: f32) { self.maxt = t }
+    pub fn set_mint(&self, t: f32) { *(self.mint.borrow_mut()) = t; }
+    pub fn mint(&self) -> f32 { *(self.mint.borrow()) }
+
+    pub fn set_maxt(&self, t: f32) { *(self.maxt.borrow_mut()) = t; }
+    pub fn maxt(&self) -> f32 { *(self.maxt.borrow()) }
+
     pub fn set_time(&mut self, t: f32) { self.time = Time::from(t) }
     pub fn set_depth(&mut self, d: i32) { self.depth = d }
 
@@ -125,6 +131,7 @@ impl ::std::convert::From<Ray> for RayDifferential {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
     use geometry::point::Point;
     use geometry::vector::Vector;
     use time::Time;
@@ -134,10 +141,10 @@ mod tests {
         assert_eq!(Ray::new(), Ray {
             o: Point::new(),
             d: Vector::new(),
-            mint: 0.0,
-            maxt: ::std::f32::MAX,
             time: Time::from(0.0),
-            depth: 0
+            depth: 0,
+            mint: RefCell::new(0.0),
+            maxt: RefCell::new(::std::f32::MAX)
         });
 
         let o = Point::new_with(1.0, 2.0, 3.0);
@@ -146,10 +153,10 @@ mod tests {
         assert_eq!(r, Ray {
             o: o.clone(),
             d: d.clone(),
-            mint: 2.0,
-            maxt: ::std::f32::MAX,
             time: Time::from(0.0),
-            depth: 0
+            depth: 0,
+            mint: RefCell::new(2.0),
+            maxt: RefCell::new(::std::f32::MAX)
         });
 
         assert_eq!(r.into(Point::new_with(0.1, 1.0, 10.0),
@@ -157,10 +164,10 @@ mod tests {
                    Ray {
                        o: Point::new_with(0.1, 1.0, 10.0),
                        d: Vector::new_with(1.0, 1.0, 1.0),
-                       mint: 1.0,
-                       maxt: ::std::f32::MAX,
                        time: Time::from(0.0),
-                       depth: 1
+                       depth: 1,
+                       mint: RefCell::new(1.0),
+                       maxt: RefCell::new(::std::f32::MAX)
                    });
     }
 

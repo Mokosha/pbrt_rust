@@ -44,7 +44,7 @@ impl Disk {
         }
 
         let t_hit = (self.height - r.o.z) / r.d.z;
-        if t_hit < r.mint || t_hit > r.maxt {
+        if t_hit < r.mint() || t_hit > r.maxt() {
             return None;
         }
 
