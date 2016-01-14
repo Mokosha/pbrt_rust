@@ -2,17 +2,14 @@ use std::sync::Arc;
 
 use bbox::BBox;
 use bbox::HasBounds;
-use diff_geom::DifferentialGeometry;
 use geometry::normal::Normalize;
 use intersection::Intersectable;
 use intersection::Intersection;
-use material::Material;
 use primitive::Primitive;
 use primitive::PrimitiveBase;
 use primitive::Refinable;
 use ray::Ray;
 use transform::animated::AnimatedTransform;
-use transform::transform::Transform;
 use transform::transform::ApplyTransform;
 
 #[derive(Clone, Debug, PartialEq)]

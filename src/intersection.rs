@@ -38,6 +38,6 @@ impl<'a> Intersection<'a> {
 }
 
 pub trait Intersectable<'a, T = Intersection<'a>> {
-    fn intersect(&'a self, ray : &Ray) -> Option<T> { None }
-    fn intersect_p(&'a self, ray : &Ray) -> bool { false }
+    fn intersect(&'a self, &Ray) -> Option<T>;
+    fn intersect_p(&'a self, &Ray) -> bool;
 }
