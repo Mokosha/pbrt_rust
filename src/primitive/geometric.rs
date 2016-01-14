@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use area_light::AreaLight;
 use bbox::BBox;
 use bbox::HasBounds;
@@ -5,6 +7,8 @@ use intersection::Intersectable;
 use intersection::Intersection;
 use material::Material;
 use primitive::PrimitiveBase;
+use primitive::FullyRefinable;
+use primitive::Refinable;
 use ray::Ray;
 use shape::Shape;
 
@@ -12,8 +16,8 @@ use shape::Shape;
 pub struct GeometricPrimitive {
     base: PrimitiveBase,
     s: Shape,
-    m: Material,
-    area_light: Option<AreaLight>
+    m: Arc<Material>,
+    area_light: Arc<Option<AreaLight>>
 }
 
 impl GeometricPrimitive {
@@ -21,8 +25,8 @@ impl GeometricPrimitive {
         GeometricPrimitive {
             base: PrimitiveBase::new(),
             s: _s,
-            m: _m,
-            area_light: None
+            m: Arc::new(_m),
+            area_light: Arc::new(None)
         }
     }
 
@@ -30,9 +34,13 @@ impl GeometricPrimitive {
         GeometricPrimitive {
             base: PrimitiveBase::new(),
             s: _s,
-            m: _m,
-            area_light: Some(al)
+            m: Arc::new(_m),
+            area_light: Arc::new(Some(al))
         }
+    }
+
+    pub fn area_light(&self) -> Option<AreaLight> {
+        self.area_light.as_ref().clone()
     }
 }
 
@@ -56,5 +64,23 @@ impl<'a> Intersectable<'a> for GeometricPrimitive {
 }
 
 impl HasBounds for GeometricPrimitive {
-    fn world_bound(&self) -> BBox { BBox::new() }
+    fn world_bound(&self) -> BBox { self.s.world_bound() }
 }
+
+impl Refinable for GeometricPrimitive {
+    fn refine(self) -> Vec<GeometricPrimitive> {
+        let GeometricPrimitive { base, s, m, area_light } = self;
+        s.refine().iter().cloned().map(|ss| {
+            GeometricPrimitive {
+                base: PrimitiveBase::new(),
+                s: ss,
+                m: m.clone(),
+                area_light: area_light.clone()
+            }
+        }).collect()
+    }
+
+    fn is_refined(&self) -> bool { self.s.is_refined() }
+}
+
+impl FullyRefinable for GeometricPrimitive { }

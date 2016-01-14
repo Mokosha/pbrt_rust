@@ -65,7 +65,9 @@ impl Primitive {
     }
 
     pub fn area_light(&self) -> Option<AreaLight> {
-        None
+        match self {
+            &Primitive::Geometric(ref p) => p.area_light().clone()
+        }
     }
 
     pub fn get_bsdf<'a>(&'a self) -> Option<BSDF<'a>> {
@@ -105,3 +107,20 @@ impl<'a> Intersectable<'a> for Primitive {
         }
     }
 }
+
+impl Refinable for Primitive {
+    fn refine(self) -> Vec<Primitive> {
+        match self {
+            Primitive::Geometric(p) =>
+                p.refine().iter().cloned().map(Primitive::Geometric).collect(),
+        }
+    }
+
+    fn is_refined(&self) -> bool {
+        match self {
+            &Primitive::Geometric(ref p) => p.is_refined()
+        }
+    }
+}
+
+impl FullyRefinable for Primitive { }
