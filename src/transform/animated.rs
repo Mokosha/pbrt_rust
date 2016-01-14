@@ -136,7 +136,7 @@ impl AnimatedTransform {
         }
     }
 
-    fn interpolate(&self, time: f32) -> Transform {
+    pub fn interpolate(&self, time: f32) -> Transform {
         // Handle boundary conditions for matrix interpolation
         if !self.actually_animated || time <= self.start_time {
             return self.start_transform.clone();

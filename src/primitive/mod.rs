@@ -1,4 +1,5 @@
 mod geometric;
+mod transformed;
 
 use area_light::AreaLight;
 use bbox::BBox;
