@@ -34,7 +34,7 @@ impl<'a> BSDF<'a> {
         }
 }
 
-pub struct BSSDF<'a> {
+pub struct BSSRDF<'a> {
     pd: ::std::marker::PhantomData<&'a usize>
 }
 

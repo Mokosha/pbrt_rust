@@ -3,6 +3,9 @@ use std::sync::Arc;
 use area_light::AreaLight;
 use bbox::BBox;
 use bbox::HasBounds;
+use bsdf::BSDF;
+use bsdf::BSSRDF;
+use diff_geom::DifferentialGeometry;
 use intersection::Intersectable;
 use intersection::Intersection;
 use material::Material;
@@ -11,6 +14,7 @@ use primitive::FullyRefinable;
 use primitive::Refinable;
 use ray::Ray;
 use shape::Shape;
+use transform::transform::Transform;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeometricPrimitive {
@@ -41,6 +45,18 @@ impl GeometricPrimitive {
 
     pub fn area_light(&self) -> Option<AreaLight> {
         self.area_light.as_ref().clone()
+    }
+
+    pub fn get_bsdf<'a>(&'a self, dg: DifferentialGeometry<'a>,
+                        o2w: &Transform) -> Option<BSDF<'a>> {
+        let dgs = self.s.get_shading_geometry(o2w, dg.clone());
+        self.m.get_bsdf(dg, dgs)
+    }
+
+    pub fn get_bssrdf<'a>(&'a self, dg: DifferentialGeometry<'a>,
+                          o2w: &Transform) -> Option<BSSRDF<'a>> {
+        let dgs = self.s.get_shading_geometry(o2w, dg.clone());
+        self.m.get_bssrdf(dg, dgs)
     }
 }
 

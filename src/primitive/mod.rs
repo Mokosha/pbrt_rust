@@ -4,12 +4,14 @@ use area_light::AreaLight;
 use bbox::BBox;
 use bbox::HasBounds;
 use bsdf::BSDF;
-use bsdf::BSSDF;
+use bsdf::BSSRDF;
+use diff_geom::DifferentialGeometry;
 use intersection::Intersectable;
 use intersection::Intersection;
 use material::Material;
 use ray::Ray;
 use shape::Shape;
+use transform::transform::Transform;
 
 use primitive::geometric::GeometricPrimitive;
 
@@ -70,12 +72,18 @@ impl Primitive {
         }
     }
 
-    pub fn get_bsdf<'a>(&'a self) -> Option<BSDF<'a>> {
-        None
+    pub fn get_bsdf<'a>(&'a self, dg: DifferentialGeometry<'a>,
+                        o2w: &Transform) -> Option<BSDF<'a>> {
+        match self {
+            &Primitive::Geometric(ref p) => p.get_bsdf(dg, o2w),
+        }
     }
 
-    pub fn get_bssdf<'a>(&'a self) -> Option<BSSDF<'a>> {
-        None
+    pub fn get_bssrdf<'a>(&'a self, dg: DifferentialGeometry<'a>,
+                          o2w: &Transform) -> Option<BSSRDF<'a>> {
+        match self {
+            &Primitive::Geometric(ref p) => p.get_bssrdf(dg, o2w),
+        }
     }
 }
 
