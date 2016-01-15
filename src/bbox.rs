@@ -1,6 +1,8 @@
 use geometry::point::Point;
 use geometry::vector::Vector;
+use intersection::Intersectable;
 use std::f32;
+use ray::Ray;
 use utils::Lerp;
 
 pub trait Union<T = Self> : Sized {
@@ -11,6 +13,10 @@ pub trait Union<T = Self> : Sized {
     fn unioned_with(self, v: T) -> Self {
         self.union(&v)
     }
+}
+
+pub trait HasBounds {
+    fn world_bound(&self) -> BBox;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -169,8 +175,30 @@ impl Union for BBox {
     }
 }
 
-pub trait HasBounds {
-    fn world_bound(&self) -> BBox;
+impl<'a> Intersectable<'a, (f32, f32)> for BBox {
+    fn intersect(&'a self, r: &Ray) -> Option<(f32, f32)> {
+        let mut t0 = r.mint();
+        let mut t1 = r.maxt();
+
+        for i in 0..3 {
+            let inv_ray_dir = 1f32 / r.d[i];
+            let (t_near, t_far) = {
+                let mut t_a = (self.p_min[i] - r.o[i]) * inv_ray_dir;
+                let mut t_b = (self.p_max[i] - r.o[i]) * inv_ray_dir;
+
+                if t_a > t_b { ::std::mem::swap(&mut t_a, &mut t_b); }
+
+                (t_a, t_b)
+            };
+
+            t0 = t_near.max(t0);
+            t1 = t_far.min(t1);
+
+            if t0 > t1 { return None; }
+        }
+
+        Some((t0, t1))
+    }
 }
 
 impl HasBounds for BBox {
@@ -181,7 +209,10 @@ impl HasBounds for BBox {
 mod tests {
     use super::*;
     use geometry::point::Point;
+    use geometry::normal::Normalize;
     use geometry::vector::Vector;
+    use intersection::Intersectable;
+    use ray::Ray;
     use std::f32;
 
     #[test]
@@ -509,5 +540,70 @@ mod tests {
             Point::new_with(1f32, 1f32, 1f32));
         bbox[0] = Point::new();
         println!("This should never appear: {:?}", bbox[14]);
+    }
+
+    #[test]
+    fn it_can_be_intersected() {
+        let simple = BBox::new_with(
+            Point::new_with(-1f32, -1f32, -1f32),
+            Point::new_with(1f32, 1f32, 1f32));
+
+        assert_eq!(Some((1f32, 3f32)), simple.intersect(&Ray::new_with(
+            Point::new_with(2.0, 0.0, 0.0), Vector::new_with(-1.0, 0.0, 0.0), 0.0)));
+
+        assert_eq!(Some((1f32, 3f32)), simple.intersect(&Ray::new_with(
+            Point::new_with(-2.0, 0.0, 0.0), Vector::new_with(1.0, 0.0, 0.0), 0.0)));
+
+        assert_eq!(None, simple.intersect(&Ray::new_with(
+            Point::new_with(2.0, 0.0, 0.0), Vector::new_with(1.0, 0.0, 0.0), 0.0)));
+
+        assert_eq!(None, simple.intersect(&Ray::new_with(
+            Point::new_with(-2.0, 0.0, 0.0), Vector::new_with(-1.0, 0.0, 0.0), 0.0)));
+
+        assert_eq!(Some((1f32, 3f32)), simple.intersect(&Ray::new_with(
+            Point::new_with(0.0, 2.0, 0.0), Vector::new_with(0.0, -1.0, 0.0), 0.0)));
+
+        assert_eq!(Some((1f32, 3f32)), simple.intersect(&Ray::new_with(
+            Point::new_with(0.0, -2.0, 0.0), Vector::new_with(0.0, 1.0, 0.0), 0.0)));
+
+        assert_eq!(None, simple.intersect(&Ray::new_with(
+            Point::new_with(0.0, 2.0, 0.0), Vector::new_with(0.0, 1.0, 0.0), 0.0)));
+
+        assert_eq!(None, simple.intersect(&Ray::new_with(
+            Point::new_with(0.0, -2.0, 0.0), Vector::new_with(0.0, -1.0, 0.0), 0.0)));
+
+        assert_eq!(Some((1f32, 3f32)), simple.intersect(&Ray::new_with(
+            Point::new_with(0.0, 0.0, 2.0), Vector::new_with(0.0, 0.0, -1.0), 0.0)));
+
+        assert_eq!(Some((1f32, 3f32)), simple.intersect(&Ray::new_with(
+            Point::new_with(0.0, 0.0, -2.0), Vector::new_with(0.0, 0.0, 1.0), 0.0)));
+
+        assert_eq!(None, simple.intersect(&Ray::new_with(
+            Point::new_with(0.0, 0.0, 2.0), Vector::new_with(0.0, 0.0, 1.0), 0.0)));
+
+        assert_eq!(None, simple.intersect(&Ray::new_with(
+            Point::new_with(0.0, 0.0, -2.0), Vector::new_with(0.0, 0.0, -1.0), 0.0)));
+
+        let (diag1, diag2) = simple.intersect(&Ray::new_with(
+            Point::new_with(-1f32, -1f32, -1f32), Vector::new_with(1f32, 1f32, 1f32).normalize(), 0.0)).unwrap();
+        assert_eq!(diag1, 0f32);
+        assert!((diag2 - 12f32.sqrt()).abs() < 1e-6);
+
+        // Graze the box
+        let (off1, off2) = simple.intersect(&Ray::new_with(
+            Point::new_with(1.5, 0.5, 0.5), Vector::new_with(-0.5, 0.0, 0.5), 0.0)).unwrap();
+        assert_eq!(off1, 1.0);
+        assert_eq!(off2, 1.0);
+
+        // Graze the box at an angle...
+        let (off3, off4) = simple.intersect(&Ray::new_with(
+            Point::new_with(1.5, 0.5, 0.5), Vector::new_with(-0.5, -0.5, 0.5), 0.0)).unwrap();
+        assert_eq!((off3, off4), (1.0, 1.0));
+
+        // What if we start from inside the box?
+        assert_eq!(Some((2f32, 3f32)), simple.intersect(&Ray::new_with(
+            Point::new_with(2.0, 0.0, 0.0), Vector::new_with(-1.0, 0.0, 0.0), 2.0)));
+
+        // !FIXME! Maybe add more tests with a different bounding box...
     }
 }
