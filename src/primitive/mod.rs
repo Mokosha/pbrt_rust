@@ -1,3 +1,4 @@
+mod aggregates;
 mod geometric;
 mod transformed;
 
