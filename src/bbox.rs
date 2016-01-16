@@ -77,7 +77,7 @@ impl BBox {
         dx * dy * dz
     }
 
-    pub fn max_extent(&self) -> i32 {
+    pub fn max_extent(&self) -> usize {
         let d = &(self.p_max) - &(self.p_min);
         if d.x > d.y && d.x > d.z {
             0

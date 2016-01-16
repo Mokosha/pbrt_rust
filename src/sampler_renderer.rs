@@ -20,7 +20,6 @@ use spectrum::Spectrum;
 use std::ops::BitAnd;
 use std::iter::Iterator;
 use std::sync::{RwLock, Arc};
-use std::marker::PhantomData;
 
 pub struct SamplerRenderer<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> {
     sampler: sampler::Sampler,
@@ -189,7 +188,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
             Pool::new(num_cpus as u32).scoped(|scope| {
                 for i in 0..num_tasks {
                     let data = task_data_shared.clone();
-                    unsafe { scope.execute(move || run_task(data, i, num_tasks)); }
+                    scope.execute(move || run_task(data, i, num_tasks));
                 }
             });
         }
