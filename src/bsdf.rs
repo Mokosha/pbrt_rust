@@ -13,12 +13,12 @@ impl BSDFSample {
 }
 
 #[derive(Debug, Clone)]
-pub struct BSDF<'a> {
-    pub dg_shading: DifferentialGeometry<'a>
+pub struct BSDF {
+    pub dg_shading: DifferentialGeometry
 }
 
-impl<'a> BSDF<'a> {
-    pub fn new() -> BSDF<'a> {
+impl BSDF {
+    pub fn new() -> BSDF {
         BSDF {
             dg_shading: DifferentialGeometry::new()
         }
@@ -34,9 +34,7 @@ impl<'a> BSDF<'a> {
         }
 }
 
-pub struct BSSRDF<'a> {
-    pd: ::std::marker::PhantomData<&'a usize>
-}
+pub struct BSSRDF;
 
 #[cfg(test)]
 mod tests {

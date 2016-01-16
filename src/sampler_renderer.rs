@@ -198,7 +198,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
 
     fn li<'a, T:RNG>(
         &self, scene: &'a scene::Scene, ray: &ray::RayDifferential,
-        sample: &sampler::Sample, rng: &mut T) -> (Spectrum, Option<Intersection<'a>>, Spectrum) {
+        sample: &sampler::Sample, rng: &mut T) -> (Spectrum, Option<Intersection>, Spectrum) {
         // Allocate variables for isect and T if needed
         let (isect, li) =
             if let Some(mut scene_isect) = scene.intersect(&ray.ray) {

@@ -5,20 +5,20 @@ use geometry::vector::Vector;
 use shape::ShapeBase;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct DifferentialGeometry<'a> {
+pub struct DifferentialGeometry {
     pub p: Point,
     pub nn: Normal,
     pub u: f32,
     pub v: f32,
-    pub shape: Option<&'a ShapeBase>,
+    pub shape: Option<ShapeBase>,
     pub dpdu: Vector,
     pub dpdv: Vector,
     pub dndu: Normal,
     pub dndv: Normal
 }
 
-impl<'a> DifferentialGeometry<'a> {
-    pub fn new() -> DifferentialGeometry<'a> {
+impl DifferentialGeometry {
+    pub fn new() -> DifferentialGeometry {
         DifferentialGeometry {
             p: Point::new(),
             nn: Normal::new(),
@@ -34,9 +34,9 @@ impl<'a> DifferentialGeometry<'a> {
 
     pub fn new_with(_p: Point, _dpdu: Vector, _dpdv: Vector,
                     _dndu: Normal, _dndv: Normal, _u: f32, _v: f32,
-                    _shape: Option<&'a ShapeBase>) -> DifferentialGeometry<'a> {
+                    _shape: Option<ShapeBase>) -> DifferentialGeometry {
         let mut norm = _dpdu.clone().cross(&_dpdv).normalize();
-        if let Some(s) = _shape {
+        if let &Some(ref s) = &_shape {
             if s.reverse_orientation ^ s.transform_swaps_handedness {
                 norm = norm * -1f32;
             }

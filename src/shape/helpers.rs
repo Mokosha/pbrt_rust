@@ -13,10 +13,10 @@ use transform::transform::ApplyTransform;
 // Modern differential geometry of curves and surfaces
 // ISBN: 0849378729
 
-pub fn compute_dg<'a>(shape: &'a ShapeBase, u: f32, v: f32, p_hit: Point,
-                      dpdu: Vector, dpdv: Vector,
-                      d2pduu: Vector, d2pduv: Vector, d2pdvv: Vector)
-                      -> DifferentialGeometry<'a> {
+pub fn compute_dg(shape: &ShapeBase, u: f32, v: f32, p_hit: Point,
+                  dpdu: Vector, dpdv: Vector,
+                  d2pduu: Vector, d2pduv: Vector, d2pdvv: Vector)
+                  -> DifferentialGeometry {
     // Compute coefficients for final forms
     let _ee = dpdu.dot(&dpdu);
     let _ff = dpdu.dot(&dpdv);
@@ -38,5 +38,5 @@ pub fn compute_dg<'a>(shape: &'a ShapeBase, u: f32, v: f32, p_hit: Point,
 
     DifferentialGeometry::new_with(
         o2w.xf(p_hit), o2w.xf(dpdu), o2w.xf(dpdv), o2w.xf(dndu),
-        o2w.xf(dndv), u, v, Some(shape))
+        o2w.xf(dndv), u, v, Some(shape.clone()))
 }

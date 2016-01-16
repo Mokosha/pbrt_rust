@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bsdf::BSDF;
 use diff_geom::DifferentialGeometry;
 use geometry::vector::Vector;
@@ -7,20 +9,20 @@ use spectrum::Spectrum;
 use transform::transform::Transform;
 
 #[derive(Debug, Clone)]
-pub struct Intersection<'a> {
-    pub dg: DifferentialGeometry<'a>,
-    pub primitive: Option<&'a Primitive>, // !FIXME! This shouldn't be an option.
+pub struct Intersection {
+    pub dg: DifferentialGeometry,
+    pub primitive: Option<Arc<Primitive>>, // !FIXME! This shouldn't be an option.
     pub world_to_object: Transform,
     pub object_to_world: Transform,
     pub shape_id: usize,
     pub primitive_id: usize,
     pub ray_epsilon: f32,
-    bsdf: BSDF<'a>
+    bsdf: BSDF
 }
 
-impl<'a> Intersection<'a> {
-    pub fn new_with(_dg: DifferentialGeometry<'a>, w2o: Transform,
-                    o2w: Transform, sid: usize, pid: usize, ray_eps: f32) -> Intersection<'a> {
+impl Intersection {
+    pub fn new_with(_dg: DifferentialGeometry, w2o: Transform,
+                    o2w: Transform, sid: usize, pid: usize, ray_eps: f32) -> Intersection {
         Intersection {
             dg: _dg,
             primitive: None,
@@ -33,13 +35,13 @@ impl<'a> Intersection<'a> {
         }
     }
 
-    pub fn get_bsdf(&self) -> &BSDF<'a> { &self.bsdf }
+    pub fn get_bsdf(&self) -> &BSDF { &self.bsdf }
     pub fn le(&self, dir: &Vector) -> Spectrum { Spectrum::from_value(0f32) }
 }
 
-pub trait Intersectable<'a, T = Intersection<'a>> {
-    fn intersect(&'a self, &Ray) -> Option<T>;
-    fn intersect_p(&'a self, r: &Ray) -> bool {
+pub trait Intersectable<T = Intersection> {
+    fn intersect(&self, &Ray) -> Option<T>;
+    fn intersect_p(&self, r: &Ray) -> bool {
         self.intersect(r).is_some()
     }
 }

@@ -101,9 +101,9 @@ impl Triangle {
         0.5 * (&p2 - &p1).cross(&(&p3 - &p1)).length()
     }
 
-    pub fn get_shading_geometry<'b>(&'b self, o2w: &Transform,
-                                    dg: DifferentialGeometry<'b>)
-                                    -> DifferentialGeometry<'b> {
+    pub fn get_shading_geometry(&self, o2w: &Transform,
+                                dg: DifferentialGeometry)
+                                -> DifferentialGeometry {
         if self.mesh.n.is_none() && self.mesh.s.is_none() {
             return dg;
         }
@@ -203,7 +203,7 @@ impl HasBounds for Triangle {
     }
 }
 
-impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle {
+impl Intersectable<ShapeIntersection> for Triangle {
     fn intersect_p(&self, r: &Ray) -> bool {
         self.get_intersection_point(r).is_some()
     }
@@ -250,7 +250,7 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Triangle {
         // Test intersection against alpha texture, if present
         let dg = DifferentialGeometry::new_with(
             r.point_at(t), dpdu, dpdv, Normal::new(), Normal::new(), tu, tv,
-            Some(self.base()));
+            Some(self.base().clone()));
 
         if let Some(tex_ref) = self.mesh.atex.as_ref().map(|t| t.clone()) {
             if (*tex_ref).evaluate(&dg) == 0.0 {

@@ -114,7 +114,7 @@ impl HasBounds for Cylinder {
     }
 }
 
-impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Cylinder {
+impl Intersectable<ShapeIntersection> for Cylinder {
     fn intersect_p(&self, r: &Ray) -> bool {
         // Transform ray to object space
         let ray = self.base().world2object.t(r);
@@ -319,7 +319,7 @@ mod tests {
         assert!((shape_int.dg.p -
                  Point::new_with(0.0, sqrt2_2, sqrt2_2)).length_squared() < 1e-6);
 
-        assert_eq!(shape_int.dg.shape.unwrap(), c.base());
+        assert_eq!(shape_int.dg.shape.as_ref().unwrap(), c.base());
         assert!((Vector::from(shape_int.dg.nn) -
                  Vector::new_with(0.0, 1.0, 1.0).normalize()).length_squared() < 1e-6);
 

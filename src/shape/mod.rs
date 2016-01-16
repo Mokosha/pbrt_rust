@@ -64,15 +64,15 @@ impl ::std::cmp::PartialEq for ShapeBase {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct ShapeIntersection<'a> {
+pub struct ShapeIntersection {
     pub t_hit: f32,
     pub ray_epsilon: f32,
-    pub dg: DifferentialGeometry<'a>
+    pub dg: DifferentialGeometry
 }
 
-impl<'a> ShapeIntersection<'a> {
-    pub fn new(t: f32, eps: f32, dgeom: DifferentialGeometry<'a>)
-           -> ShapeIntersection<'a> {
+impl ShapeIntersection {
+    pub fn new(t: f32, eps: f32, dgeom: DifferentialGeometry)
+           -> ShapeIntersection {
         ShapeIntersection {
             t_hit: t,
             ray_epsilon: eps,
@@ -131,8 +131,8 @@ impl Refinable for Shape {
 
 impl FullyRefinable for Shape { }
 
-impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Shape {
-    fn intersect(&'a self, ray : &Ray) -> Option<ShapeIntersection<'a>> {
+impl Intersectable<ShapeIntersection> for Shape {
+    fn intersect(&self, ray : &Ray) -> Option<ShapeIntersection> {
         match self {
             &Shape::Sphere(ref s) => s.intersect(ray),
             &Shape::Disk(ref d) => d.intersect(ray),
@@ -143,7 +143,7 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Shape {
         }
     }
 
-    fn intersect_p(&'a self, ray : &Ray) -> bool {
+    fn intersect_p(&self, ray : &Ray) -> bool {
         match self {
             &Shape::Sphere(ref s) => s.intersect_p(ray),
             &Shape::Disk(ref d) => d.intersect_p(ray),
@@ -204,9 +204,9 @@ impl Shape {
         }
     }
 
-    pub fn get_shading_geometry<'a>(&'a self, o2w: &Transform,
-                                    dg: DifferentialGeometry<'a>)
-                                    -> DifferentialGeometry<'a> {
+    pub fn get_shading_geometry(&self, o2w: &Transform,
+                                dg: DifferentialGeometry)
+                                -> DifferentialGeometry {
         match self {
             &Shape::Triangle(ref t) => t.get_shading_geometry(o2w, dg),
             _ => dg

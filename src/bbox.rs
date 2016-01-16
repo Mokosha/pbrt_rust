@@ -175,8 +175,8 @@ impl Union for BBox {
     }
 }
 
-impl<'a> Intersectable<'a, (f32, f32)> for BBox {
-    fn intersect(&'a self, r: &Ray) -> Option<(f32, f32)> {
+impl Intersectable<(f32, f32)> for BBox {
+    fn intersect(&self, r: &Ray) -> Option<(f32, f32)> {
         let mut t0 = r.mint();
         let mut t1 = r.maxt();
 

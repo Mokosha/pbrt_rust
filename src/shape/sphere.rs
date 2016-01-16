@@ -126,14 +126,14 @@ impl HasBounds for Sphere {
     }
 }
 
-impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Sphere {
-    fn intersect_p(&'a self, r: &Ray) -> bool {
+impl Intersectable<ShapeIntersection> for Sphere {
+    fn intersect_p(&self, r: &Ray) -> bool {
         // Transform ray to object space
         let ray = self.base().world2object.t(r);
         self.get_intersection_point(&ray).is_some()
     }
 
-    fn intersect(&'a self, r: &Ray) -> Option<ShapeIntersection> {
+    fn intersect(&self, r: &Ray) -> Option<ShapeIntersection> {
         // Transform ray to object space
         let ray = self.base().world2object.t(r);
 
@@ -277,7 +277,7 @@ mod tests {
         assert_eq!(shape_int.t_hit, 0.5);
         assert_eq!(shape_int.ray_epsilon, 0.5 * 5e-4);
         assert_eq!(shape_int.dg.p, Point::new_with(0.0, -0.5, 0.0));
-        assert_eq!(shape_int.dg.shape.unwrap(), s.base());
+        assert_eq!(shape_int.dg.shape.as_ref().unwrap(), s.base());
 
         let expected_normal = Normal::new_with(0.0, 1.0, 0.0);
         assert_eq!(shape_int.dg.nn.x, expected_normal.x);

@@ -9,7 +9,6 @@ use diff_geom::DifferentialGeometry;
 use intersection::Intersectable;
 use intersection::Intersection;
 use material::Material;
-use primitive::PrimitiveBase;
 use primitive::FullyRefinable;
 use primitive::Refinable;
 use ray::Ray;
@@ -18,7 +17,6 @@ use transform::transform::Transform;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeometricPrimitive {
-    base: PrimitiveBase,
     s: Shape,
     m: Arc<Material>,
     area_light: Arc<Option<AreaLight>>
@@ -27,7 +25,6 @@ pub struct GeometricPrimitive {
 impl GeometricPrimitive {
     pub fn new(_s: Shape, _m: Material) -> GeometricPrimitive {
         GeometricPrimitive {
-            base: PrimitiveBase::new(),
             s: _s,
             m: Arc::new(_m),
             area_light: Arc::new(None)
@@ -36,7 +33,6 @@ impl GeometricPrimitive {
 
     pub fn new_lit(_s: Shape, _m: Material, al: AreaLight) -> GeometricPrimitive {
         GeometricPrimitive {
-            base: PrimitiveBase::new(),
             s: _s,
             m: Arc::new(_m),
             area_light: Arc::new(Some(al))
@@ -47,21 +43,21 @@ impl GeometricPrimitive {
         self.area_light.as_ref().clone()
     }
 
-    pub fn get_bsdf<'a>(&'a self, dg: DifferentialGeometry<'a>,
-                        o2w: &Transform) -> Option<BSDF<'a>> {
+    pub fn get_bsdf(&self, dg: DifferentialGeometry,
+                    o2w: &Transform) -> Option<BSDF> {
         let dgs = self.s.get_shading_geometry(o2w, dg.clone());
         self.m.get_bsdf(dg, dgs)
     }
 
-    pub fn get_bssrdf<'a>(&'a self, dg: DifferentialGeometry<'a>,
-                          o2w: &Transform) -> Option<BSSRDF<'a>> {
+    pub fn get_bssrdf(&self, dg: DifferentialGeometry,
+                      o2w: &Transform) -> Option<BSSRDF> {
         let dgs = self.s.get_shading_geometry(o2w, dg.clone());
         self.m.get_bssrdf(dg, dgs)
     }
 }
 
-impl<'a> Intersectable<'a> for GeometricPrimitive {
-    fn intersect(&'a self, ray : &Ray) -> Option<Intersection<'a>> {
+impl Intersectable for GeometricPrimitive {
+    fn intersect(&self, ray : &Ray) -> Option<Intersection> {
         self.s.intersect(ray).map(|si| {
             ray.set_maxt(si.t_hit);
             Intersection::new_with(
@@ -69,12 +65,12 @@ impl<'a> Intersectable<'a> for GeometricPrimitive {
                 self.s.base().world2object.clone(),
                 self.s.base().object2world.clone(),
                 self.s.base().shape_id,
-                self.base.prim_id,
+                0,
                 si.ray_epsilon)
         })
     }
 
-    fn intersect_p(&'a self, ray : &Ray) -> bool {
+    fn intersect_p(&self, ray : &Ray) -> bool {
         self.s.intersect_p(ray)
     }
 }
@@ -85,10 +81,9 @@ impl HasBounds for GeometricPrimitive {
 
 impl Refinable for GeometricPrimitive {
     fn refine(self) -> Vec<GeometricPrimitive> {
-        let GeometricPrimitive { base, s, m, area_light } = self;
+        let GeometricPrimitive { s, m, area_light } = self;
         s.refine().iter().cloned().map(|ss| {
             GeometricPrimitive {
-                base: PrimitiveBase::new(),
                 s: ss,
                 m: m.clone(),
                 area_light: area_light.clone()

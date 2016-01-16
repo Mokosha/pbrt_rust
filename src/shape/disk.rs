@@ -90,7 +90,7 @@ impl HasBounds for Disk {
     }
 }
 
-impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Disk {
+impl Intersectable<ShapeIntersection> for Disk {
     fn intersect_p(&self, r: &Ray) -> bool {
         // Transform ray to object space
         let ray = self.base().world2object.t(r);
@@ -121,7 +121,7 @@ impl<'a> Intersectable<'a, ShapeIntersection<'a>> for Disk {
         let o2w = &(self.base().object2world);
         let mut dg = DifferentialGeometry::new_with(
             o2w.xf(p_hit), o2w.xf(dpdu), o2w.xf(dpdv), o2w.xf(Normal::new()),
-            o2w.xf(Normal::new()), u, v, Some(self.base()));
+            o2w.xf(Normal::new()), u, v, Some(self.base().clone()));
 
         if ray.o.z > 0.0 {
             dg.nn = o2w.xf(Normal::new_with(0.0, 0.0, 1.0));

@@ -45,12 +45,12 @@ impl HasBounds for Scene {
     }
 }
 
-impl<'a> Intersectable<'a> for Scene {
-    fn intersect(&'a self, ray : &Ray) -> Option<Intersection<'a>> {
+impl Intersectable for Scene {
+    fn intersect(&self, ray : &Ray) -> Option<Intersection> {
         self.aggregate.intersect(ray)
     }
 
-    fn intersect_p(&'a self, ray : &Ray) -> bool {
+    fn intersect_p(&self, ray : &Ray) -> bool {
         self.aggregate.intersect_p(ray)
     }
 }

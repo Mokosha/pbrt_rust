@@ -6,13 +6,13 @@ use bsdf::BSSRDF;
 pub struct Material;
 
 impl Material {
-    pub fn get_bsdf<'a>(&self, dg: DifferentialGeometry<'a>,
-                        dgs: DifferentialGeometry<'a>) -> Option<BSDF<'a>> {
+    pub fn get_bsdf(&self, dg: DifferentialGeometry,
+                    dgs: DifferentialGeometry) -> Option<BSDF> {
         None
     }
 
-    pub fn get_bssrdf<'a>(&self, dg: DifferentialGeometry<'a>,
-                          dgs: DifferentialGeometry<'a>) -> Option<BSSRDF<'a>> {
+    pub fn get_bssrdf(&self, dg: DifferentialGeometry,
+                      dgs: DifferentialGeometry) -> Option<BSSRDF> {
         None
     }
 }

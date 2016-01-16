@@ -6,15 +6,13 @@ use geometry::normal::Normalize;
 use intersection::Intersectable;
 use intersection::Intersection;
 use primitive::Primitive;
-use primitive::PrimitiveBase;
 use primitive::Refinable;
 use ray::Ray;
 use transform::animated::AnimatedTransform;
 use transform::transform::ApplyTransform;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]  // , PartialEq)]
 pub struct TransformedPrimitive {
-    base: PrimitiveBase,
     prim: Arc<Primitive>,
     xf: AnimatedTransform
 }
@@ -23,24 +21,22 @@ impl TransformedPrimitive {
     pub fn new(p: Arc<Primitive>, xform: AnimatedTransform) -> TransformedPrimitive {
         assert!(p.is_refined());
         TransformedPrimitive {
-            base: PrimitiveBase::new(),
             prim: p.clone(),
             xf: xform
         }
     }
 
-    pub fn primitive<'a>(&'a self) -> &'a Primitive {
+    pub fn primitive(&self) -> &Primitive {
         self.prim.as_ref()
     }
 }
 
-impl<'a> Intersectable<'a> for TransformedPrimitive {
-    fn intersect(&'a self, ray : &Ray) -> Option<Intersection<'a>> {
+impl Intersectable for TransformedPrimitive {
+    fn intersect(&self, ray : &Ray) -> Option<Intersection> {
         let w2p = self.xf.interpolate(f32::from(ray.time));
         let r = w2p.t(ray);
         self.prim.intersect(&r).and_then(|mut isect| {
             ray.set_maxt(r.maxt());
-            isect.primitive_id = self.base.prim_id;
 
             isect.world_to_object = &isect.world_to_object * &w2p;
             isect.object_to_world = isect.world_to_object.inverse();
@@ -57,7 +53,7 @@ impl<'a> Intersectable<'a> for TransformedPrimitive {
         })
     }
 
-    fn intersect_p(&'a self, ray : &Ray) -> bool {
+    fn intersect_p(&self, ray : &Ray) -> bool {
         let w2p = self.xf.interpolate(f32::from(ray.time));
         self.prim.intersect_p(&w2p.t(ray))
     }

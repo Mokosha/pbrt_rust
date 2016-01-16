@@ -10,7 +10,7 @@ pub trait Renderer {
 
     fn li<'a, T:RNG>(
         &self, &'a scene::Scene, &ray::RayDifferential,
-        &sampler::Sample, &mut T) -> (Spectrum, Option<Intersection<'a>>, Spectrum);
+        &sampler::Sample, &mut T) -> (Spectrum, Option<Intersection>, Spectrum);
 
     fn li_simple<T:RNG>(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,

@@ -18,6 +18,7 @@ use transform::transform::Transform;
 
 use primitive::geometric::GeometricPrimitive;
 use primitive::transformed::TransformedPrimitive;
+use primitive::aggregates::Aggregate;
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
@@ -61,40 +62,60 @@ pub trait FullyRefinable : Refinable<Self>+Sized {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Primitive {
+#[derive(Clone, Debug)] // , PartialEq)]
+enum Prim {
     Geometric(GeometricPrimitive),
-    Transformed(TransformedPrimitive)
+    Transformed(TransformedPrimitive),
+    Aggregate(Aggregate)
+}
+
+#[derive(Clone, Debug)] // , PartialEq)]
+pub struct Primitive {
+    base: PrimitiveBase,
+    prim: Arc<Prim>
 }
 
 impl Primitive {
     pub fn geometric(s: Shape) -> Primitive {
-        Primitive::Geometric(GeometricPrimitive::new(s, Material))
+        Primitive {
+            base: PrimitiveBase::new(),
+            prim: Arc::new(Prim::Geometric(GeometricPrimitive::new(s, Material)))
+        }
     }
 
     pub fn transformed(p: Arc<Primitive>, xf: AnimatedTransform) -> Primitive {
-        Primitive::Transformed(TransformedPrimitive::new(p, xf))
+        Primitive {
+            base: PrimitiveBase::new(),
+            prim: Arc::new(Prim::Transformed(TransformedPrimitive::new(p, xf)))
+        }
+    }
+
+    pub fn grid(p: Vec<Primitive>, refine_immediately: bool) -> Primitive {
+        Primitive {
+            base: PrimitiveBase::new(),
+            prim: Arc::new(Prim::Aggregate(Aggregate::grid(p, refine_immediately)))
+        }
     }
 
     pub fn area_light(&self) -> Option<AreaLight> {
-        match self {
-            &Primitive::Geometric(ref p) => p.area_light().clone(),
+        match self.prim.as_ref() {
+            &Prim::Geometric(ref p) => p.area_light().clone(),
             _ => panic!("Only geometric primitives may have area lights")
         }
     }
 
-    pub fn get_bsdf<'a>(&'a self, dg: DifferentialGeometry<'a>,
-                        o2w: &Transform) -> Option<BSDF<'a>> {
-        match self {
-            &Primitive::Geometric(ref p) => p.get_bsdf(dg, o2w),
+    pub fn get_bsdf(&self, dg: DifferentialGeometry,
+                    o2w: &Transform) -> Option<BSDF> {
+        match self.prim.as_ref() {
+            &Prim::Geometric(ref p) => p.get_bsdf(dg, o2w),
             _ => panic!("Only geometric primitives may have bsdfs")
         }
     }
 
-    pub fn get_bssrdf<'a>(&'a self, dg: DifferentialGeometry<'a>,
-                          o2w: &Transform) -> Option<BSSRDF<'a>> {
-        match self {
-            &Primitive::Geometric(ref p) => p.get_bssrdf(dg, o2w),
+    pub fn get_bssrdf(&self, dg: DifferentialGeometry,
+                      o2w: &Transform) -> Option<BSSRDF> {
+        match self.prim.as_ref() {
+            &Prim::Geometric(ref p) => p.get_bssrdf(dg, o2w),
             _ => panic!("Only geometric primitives may have bssrdfs")
         }
     }
@@ -102,51 +123,71 @@ impl Primitive {
 
 impl HasBounds for Primitive {
     fn world_bound(&self) -> BBox {
-        match self {
-            &Primitive::Geometric(ref prim) => prim.world_bound(),
-            &Primitive::Transformed(ref p) => p.world_bound()
+        match self.prim.as_ref() {
+            &Prim::Geometric(ref prim) => prim.world_bound(),
+            &Prim::Transformed(ref p) => p.world_bound(),
+            &Prim::Aggregate(ref a) => a.world_bound()
         }
     }
 }
 
-impl<'a> Intersectable<'a> for Primitive {
-    fn intersect(&'a self, ray : &Ray) -> Option<Intersection<'a>> {
-        match self {
-            &Primitive::Geometric(ref prim) => {
+impl Intersectable for Primitive {
+    fn intersect(&self, ray : &Ray) -> Option<Intersection> {
+        match self.prim.as_ref() {
+            &Prim::Geometric(ref prim) => {
                 prim.intersect(ray).and_then(|mut isect| {
-                    isect.primitive = Some(self);
+                    isect.primitive = Some(Arc::new(self.clone()));
                     Some(isect)
                 })
             },
-            &Primitive::Transformed(ref prim) => prim.intersect(ray)
-        }
+            &Prim::Transformed(ref prim) => prim.intersect(ray),
+            &Prim::Aggregate(ref a) => a.intersect(ray)
+        }.and_then(|mut isect| {
+            isect.primitive_id = self.base.prim_id;
+            Some(isect)
+        })
     }
 
-    fn intersect_p(&'a self, ray : &Ray) -> bool {
-        match self {
-            &Primitive::Geometric(ref prim) => prim.intersect_p(ray),
-            &Primitive::Transformed(ref prim) => prim.intersect_p(ray)
+    fn intersect_p(&self, ray : &Ray) -> bool {
+        match self.prim.as_ref() {
+            &Prim::Geometric(ref prim) => prim.intersect_p(ray),
+            &Prim::Transformed(ref prim) => prim.intersect_p(ray),
+            &Prim::Aggregate(ref a) => a.intersect_p(ray)
         }
     }
 }
 
 impl Refinable for Primitive {
     fn refine(self) -> Vec<Primitive> {
-        match self {
-            Primitive::Geometric(p) =>
-                p.refine().iter().cloned().map(Primitive::Geometric).collect(),
-            Primitive::Transformed(_) =>
-                panic!("Transformed primitive should already be refined!")
-        }
+        let prim = match Arc::try_unwrap(self.prim) {
+            Ok(p) => p,
+            Err(pr_ref) => pr_ref.as_ref().clone()
+        };
+
+        let prims = match prim {
+            Prim::Geometric(p) =>
+                p.refine().iter().cloned().map(Prim::Geometric).collect(),
+            Prim::Transformed(_) =>
+                panic!("Transformed primitive should already be refined!"),
+            Prim::Aggregate(a) => vec![Prim::Aggregate(a)]
+        };
+
+        prims.into_iter().map(|p| {
+            Primitive {
+                base: PrimitiveBase::new(),
+                prim: Arc::new(p)
+            }
+        }).collect()
     }
 
     fn is_refined(&self) -> bool {
-        match self {
-            &Primitive::Geometric(ref p) => p.is_refined(),
-            &Primitive::Transformed(ref p) => {
+        match self.prim.as_ref() {
+            &Prim::Geometric(ref p) => p.is_refined(),
+            &Prim::Transformed(ref p) => {
                 assert!(p.primitive().is_refined());
                 true
             }
+            &Prim::Aggregate(_) => true
         }
     }
 }
