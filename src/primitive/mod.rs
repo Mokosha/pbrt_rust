@@ -97,6 +97,8 @@ impl Primitive {
         }
     }
 
+    pub fn get_id(&self) -> usize { self.base.prim_id }
+
     pub fn area_light(&self) -> Option<AreaLight> {
         match self.prim.as_ref() {
             &Prim::Geometric(ref p) => p.area_light().clone(),

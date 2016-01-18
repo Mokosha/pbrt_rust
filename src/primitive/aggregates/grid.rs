@@ -60,7 +60,10 @@ impl Intersectable for Voxel {
         let mut isect = None;
         for prim in self.primitives.iter() {
             let p = prim.upgrade().unwrap();
-            isect = p.read().unwrap().intersect(r);
+            isect = match p.read().unwrap().intersect(r) {
+                None => isect,
+                x => x
+            };
         }
         isect
     }
@@ -276,7 +279,7 @@ impl Intersectable for GridAccelerator {
                     break;
                 }
 
-                next_crossing[step_axis] = delta[step_axis];
+                next_crossing[step_axis] += delta[step_axis];
             }
         }
 
@@ -377,8 +380,57 @@ mod tests {
         } } }
     }
 
-    #[ignore]
     #[test]
     fn it_can_intersect_with_rays() {
+        let spheres = get_spheres();
+        let ids: Vec<_> = spheres.iter().map(|p| { p.get_id() }).collect();
+        let g = GridAccelerator::new(spheres, false);
+
+        let mut r = Ray::new_with(Point::new_with(0.0, 0.0, -1.0),
+                                  Vector::new_with(0.0, 0.0, 1.0), 0.0);
+        assert_eq!(g.intersect(&r).unwrap().primitive_id, ids[0]);
+
+        r = Ray::new_with(Point::new_with(-1.0, 0.0, 2.0),
+                          Vector::new_with(1.0, 0.0, 0.0), 0.0);
+        assert_eq!(g.intersect(&r).unwrap().primitive_id, ids[4]);
+
+        // Shoot a ray through the hold in between four spheres and see
+        // if it hits the sphere behind them...
+        r = Ray::new_with(Point::new_with(4.0, 0.0, 0.0),
+                          Vector::new_with(-2.0, 1.0, 1.0), 0.0);
+        assert_eq!(g.intersect(&r).unwrap().primitive_id, ids[6]);
+    }
+
+    #[test]
+    fn it_can_refine_primitives() {
+        // Tetrahedron
+        let tet_pts : [Point; 4] =
+            [Point { x: 0.0, y: 0.0, z: 0.0 },
+             Point { x: 1.0, y: 0.0, z: 0.0 },
+             Point { x: 0.0, y: 1.0, z: 0.0 },
+             Point { x: 0.0, y: 0.0, z: 1.0 }];
+        let tet_tris : [usize; 12] =
+            [ 0, 3, 2, 0, 1, 2, 0, 3, 1, 1, 2, 3 ];
+
+        let m = vec![Primitive::geometric(Shape::triangle_mesh(
+            Transform::new(), Transform::new(), false, &tet_tris,
+            &tet_pts, None, None, None, None))];
+
+        let r = Ray::new_with(Point::new_with(0.25, -1.0, 0.25),
+                              Vector::new_with(0.0, 1.0, 0.0), 0.0);
+
+        let g = GridAccelerator::new(m.clone(), false);
+        assert!(g.intersect_p(&r));
+
+        g.intersect(&r);
+        assert_eq!(r.maxt(), 1.0);
+
+        r.set_maxt(10.0);
+
+        let g2 = GridAccelerator::new(m, true);
+        assert!(g2.intersect_p(&r));
+
+        g2.intersect(&r);
+        assert_eq!(r.maxt(), 1.0);
     }
 }
