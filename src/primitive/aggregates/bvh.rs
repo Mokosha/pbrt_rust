@@ -82,8 +82,10 @@ pub struct BVHAccel {
     primitives: Vec<Primitive>,
 }
 
-fn split_middle(prims: Vec<BVHPrimitiveInfo>) -> (Vec<BVHPrimitiveInfo>, Vec<BVHPrimitiveInfo>) {
-    unimplemented!();
+fn split_middle(centroid_bounds: BBox, dim: usize, prims: Vec<BVHPrimitiveInfo>)
+                -> (Vec<BVHPrimitiveInfo>, Vec<BVHPrimitiveInfo>) {
+    let p_mid = 0.5 * (centroid_bounds.p_min[dim] + centroid_bounds.p_max[dim]);
+    prims.into_iter().partition(|p| p.centroid()[dim] < p_mid)
 }
 
 fn split_equal_counts(prims: Vec<BVHPrimitiveInfo>) -> (Vec<BVHPrimitiveInfo>, Vec<BVHPrimitiveInfo>) {
@@ -129,7 +131,7 @@ fn recursive_build(prims: Vec<BVHPrimitiveInfo>, sm: SplitMethod)
             // Partition primitives based on split method
             let (p1, p2) = {
                 match sm {
-                    SplitMethod::Middle => split_middle(prims),
+                    SplitMethod::Middle => split_middle(centroid_bounds, dim, prims),
                     SplitMethod::EqualCounts => split_equal_counts(prims),
                     SplitMethod::SAH => split_surface_area(prims)
                 }
@@ -145,7 +147,7 @@ fn recursive_build(prims: Vec<BVHPrimitiveInfo>, sm: SplitMethod)
                 child1: Box::new(left),
                 child2: Box::new(right),
                 split_axis: dim,
-                num_nodes: num_nodes + 2
+                num_nodes: num_nodes + 1
             };
 
             ordered_left.append(&mut ordered_right);
