@@ -7,9 +7,16 @@ use utils::Lerp;
 
 pub trait Union<T = Self> : Sized {
     fn union(&self, &T) -> Self;
+
+    fn union_with(&mut self, v: &T) {
+        let new_self = self.union(v);
+        *self = new_self;
+    }
+
     fn unioned_with_ref(self, v: &T) -> Self {
         self.union(v)
     }
+
     fn unioned_with(self, v: T) -> Self {
         self.union(&v)
     }
