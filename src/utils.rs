@@ -114,6 +114,56 @@ pub fn solve_linear_system_2x2(a: [[f32; 2]; 2], b: [f32; 2])
     }
 }
 
+pub fn partition_by<T, F, B>(v: &mut [T], f: F)
+    where F: Fn(&T) -> B, B: Copy+PartialOrd
+{
+    let nv = v.len();
+    if nv < 3 {
+        if nv == 2 {
+            if f(&v[1]) < f(&v[0]) {
+                v.swap(0, 1);
+            }
+        }
+        return;
+    }
+
+    let pivot = {
+        // Median of three...
+        let fst = f(&v[0]);
+        let mid = f(&v[nv / 2]);
+        let lst = f(&v[nv - 1]);
+
+        if fst < mid && mid < lst {
+            mid
+        } else if mid < fst && fst < lst {
+            fst
+        } else {
+            lst
+        }
+    };
+
+    let mut first_larger = 0;
+    let mut pivot_idx = 0;
+    for i in 0..nv {
+        let bv = f(&v[i]);
+        if bv <= pivot {
+            v.swap(first_larger, i);
+            first_larger += 1;
+
+            if bv == pivot {
+                pivot_idx = i;
+            }
+        }
+    }
+
+    let (left, right) = v.split_at_mut(pivot_idx);
+    if left.len() < (nv / 2) {
+        partition_by(right, f);
+    } else {
+        partition_by(left, f);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -319,5 +369,52 @@ mod tests {
                                                [3.0, 1.0]).unwrap();
         assert!((ox - (2.0 * 2f32.sqrt())).abs() < 1e-6);
         assert!((oy + 2f32.sqrt()).abs() < 1e-6);
+    }
+
+    #[test]
+    fn it_can_partition_slices() {
+        let mut xs = [2, 5, 6, 1, 0, 4, 3, 2, 5, 1, 3, 3, 5];
+        partition_by(&mut xs, |x| *x);
+
+        let mid = xs.len() / 2;
+        for i in 0..mid {
+            for j in mid..(xs.len()) {
+                assert!(xs[i] <= xs[j]);
+            }
+        }
+
+        let mut ys = [1, 2];
+        partition_by(&mut ys, |x| *x);
+        assert_eq!(ys, [1, 2]);
+
+        ys = [2, 1];
+        partition_by(&mut ys, |x| *x);
+        assert_eq!(ys, [1, 2]);
+
+        let mut zs = [1];
+        partition_by(&mut zs, |x| *x);
+        assert_eq!(zs, [1]);
+
+        let mut ps = [1, 0, 0, 0, -1, 0];
+        partition_by(&mut ps, |x| *x);
+
+        let m = ps.len() / 2;
+        for i in 0..m {
+            for j in m..(ps.len()) {
+                assert!(ps[i] <= ps[j]);
+            }
+        }
+
+        let mut qs = [3, 1, 1];
+        partition_by(&mut qs, |x| *x);
+        assert_eq!(qs, [1, 1, 3]);
+
+        qs = [3, 1, 2];
+        partition_by(&mut qs, |x| *x);        
+        assert_eq!(qs, [1, 2, 3]);
+
+        qs = [3, 3, 1];
+        partition_by(&mut qs, |x| *x);        
+        assert_eq!(qs, [1, 3, 3]);
     }
 }
