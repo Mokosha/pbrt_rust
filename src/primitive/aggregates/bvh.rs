@@ -103,6 +103,86 @@ fn split_equal_counts(dim: usize, prims: Vec<BVHPrimitiveInfo>)
      right.into_iter().map(|(_, p)| p).collect())
 }
 
+fn split_surface_area_heuristic(total_bounds: BBox, centroid_bounds: BBox, mp: usize,
+                                dim: usize, prims: Vec<BVHPrimitiveInfo>)
+                                -> Result<(Vec<BVHPrimitiveInfo>, Vec<BVHPrimitiveInfo>),
+                                          (BVHNode, Vec<Primitive>)>
+{
+    let num_prims = prims.len();
+    if num_prims <= 4 {
+        return Ok(split_equal_counts(dim, prims));
+    }
+
+    // Allocate BucketInfo for SAH partition buckets
+    let mut buckets = vec![(0, BBox::new()); NUM_BUCKETS];
+
+    let bucket_for_prim = |p: &BVHPrimitiveInfo| {
+        let b = {
+            let pdist = p.centroid[dim] - centroid_bounds.p_min[dim];
+            let dist = centroid_bounds.p_max[dim] - centroid_bounds.p_min[dim];
+            ((NUM_BUCKETS as f32) * (pdist / dist)) as usize
+        };
+
+        if b == NUM_BUCKETS {
+            NUM_BUCKETS - 1
+        } else {
+            b
+        }
+    };
+
+    // Initialize BucketInfo for SAH partition buckets
+    for p in prims.iter() {
+        let b = bucket_for_prim(p);
+        buckets[b].0 += 1;
+        buckets[b].1.union_with(&p.bounds);
+    }
+
+    // Compute costs for splitting after each bucket
+    let cost = {
+        let mut costs = [0f32; NUM_BUCKETS - 1];
+        for i in 0..(NUM_BUCKETS - 1) {
+            let (cnt0, b0) = buckets.iter().take(i+1)
+                .fold((0, BBox::new()),
+                      |(fc, fb), &(ref c, ref b)| (fc + c, fb.unioned_with_ref(b)));
+            let (cnt1, b1) = buckets.iter().skip(i+1)
+                .fold((0, BBox::new()),
+                      |(fc, fb), &(ref c, ref b)| (fc + c, fb.unioned_with_ref(b)));
+
+            let b0sa = (cnt0 as f32) * b0.surface_area();
+            let b1sa = (cnt1 as f32) * b1.surface_area();
+            let sc = 0.125;
+            let tsa = total_bounds.surface_area();
+            costs[i] = sc * (b0sa + b1sa) / tsa;
+        }
+        costs
+    };
+
+    // Find bucket to split at that minimizes SAH metric
+    let (min_cost_split, min_cost) = cost.iter().enumerate()
+        .fold((0, ::std::f32::MAX), |(s, mc), (i, &c)| {
+            if c < mc { (i, c) } else { (s, mc) }
+        });
+
+    // Either create leaf or split primitives at selected SAH bucket
+    if mp < num_prims || (min_cost as usize) < num_prims {
+        Ok(prims.into_iter().partition(|p| { bucket_for_prim(p) < min_cost_split }))
+    } else {
+        // Make leaf node
+        let node = BVHNode::Leaf {
+            bounds: total_bounds,
+            first_prim_offset: 0,
+            num_primitives: num_prims
+        };
+
+        let new_prims = prims
+            .into_iter()
+            .map(|BVHPrimitiveInfo { primitive, .. }| primitive)
+            .collect();
+
+        Err((node, new_prims))
+    }
+}
+
 const NUM_BUCKETS: usize = 12;
 fn recursive_build(prims: Vec<BVHPrimitiveInfo>,
                    max_prims_in_node: usize,
@@ -143,77 +223,10 @@ fn recursive_build(prims: Vec<BVHPrimitiveInfo>,
                     SplitMethod::Middle => split_middle(centroid_bounds, dim, prims),
                     SplitMethod::EqualCounts => split_equal_counts(dim, prims),
                     SplitMethod::SAH => {
-                        if prims.len() <= 4 {
-                            split_equal_counts(dim, prims)
-                        } else {
-
-                            // Allocate BucketInfo for SAH partition buckets
-                            let mut buckets = vec![(0, BBox::new()); NUM_BUCKETS];
-
-                            let bucket_for_prim = |p: &BVHPrimitiveInfo| {
-                                let b = {
-                                    let pdist = p.centroid[dim] - centroid_bounds.p_min[dim];
-                                    let dist = centroid_bounds.p_max[dim] - centroid_bounds.p_min[dim];
-                                    ((NUM_BUCKETS as f32) * (pdist / dist)) as usize
-                                };
-
-                                if b == NUM_BUCKETS {
-                                    NUM_BUCKETS - 1
-                                } else {
-                                    b
-                                }
-                            };
-
-                            // Initialize BucketInfo for SAH partition buckets
-                            for p in prims.iter() {
-                                let b = bucket_for_prim(p);
-                                buckets[b].0 += 1;
-                                buckets[b].1.union_with(&p.bounds);
-                            }
-
-                            // Compute costs for splitting after each bucket
-                            let cost = {
-                                let mut costs = [0f32; NUM_BUCKETS - 1];
-                                for i in 0..(NUM_BUCKETS - 1) {
-                                    let (cnt0, b0) = buckets.iter().take(i+1)
-                                        .fold((0, BBox::new()),
-                                              |(fc, fb), &(ref c, ref b)| (fc + c, fb.unioned_with_ref(b)));
-                                    let (cnt1, b1) = buckets.iter().skip(i+1)
-                                        .fold((0, BBox::new()),
-                                              |(fc, fb), &(ref c, ref b)| (fc + c, fb.unioned_with_ref(b)));
-
-                                    costs[i] = (cnt0 as f32) * b0.surface_area();
-                                    costs[i] += (cnt1 as f32) * b1.surface_area();
-                                    costs[i] *= 0.125;
-                                    costs[i] /= bbox.surface_area();
-                                }
-                                costs
-                            };
-
-                            // Find bucket to split at that minimizes SAH metric
-                            let (min_cost_split, _) = cost.iter().enumerate()
-                                .fold((0, ::std::f32::MAX), |(s, mc), (i, &c)| {
-                                    if c < mc { (i, c) } else { (s, mc) }
-                                });
-
-                            // Either create leaf or split primitives at selected SAH bucket
-                            if prims.len() > max_prims_in_node || min_cost_split < prims.len() {
-                                prims.into_iter().partition(|p| { bucket_for_prim(p) < min_cost_split })
-                            } else {
-                                // Make leaf node
-                                let node = BVHNode::Leaf {
-                                    bounds: bbox,
-                                    first_prim_offset: 0,
-                                    num_primitives: num_prims
-                                };
-
-                                let new_prims = prims
-                                    .into_iter()
-                                    .map(|BVHPrimitiveInfo { primitive, .. }| primitive)
-                                    .collect();
-
-                                return (node, new_prims);
-                            }
+                        match split_surface_area_heuristic(bbox, centroid_bounds,
+                                                           max_prims_in_node, dim, prims) {
+                            Ok(split) => split,
+                            Err(node_result) => return node_result
                         }
                     }
                 }
