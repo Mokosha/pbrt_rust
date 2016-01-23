@@ -5,6 +5,8 @@ use geometry::point::Point;
 use primitive::Primitive;
 use primitive::FullyRefinable;
 
+use utils::partition_by;
+
 #[derive(Clone, Debug, PartialEq, Copy)]
 enum SplitMethod {
     Middle,
@@ -88,8 +90,17 @@ fn split_middle(centroid_bounds: BBox, dim: usize, prims: Vec<BVHPrimitiveInfo>)
     prims.into_iter().partition(|p| p.centroid()[dim] < p_mid)
 }
 
-fn split_equal_counts(prims: Vec<BVHPrimitiveInfo>) -> (Vec<BVHPrimitiveInfo>, Vec<BVHPrimitiveInfo>) {
-    unimplemented!();
+fn split_equal_counts(dim: usize, prims: Vec<BVHPrimitiveInfo>)
+                      -> (Vec<BVHPrimitiveInfo>, Vec<BVHPrimitiveInfo>) {
+    let mut mut_prims = prims;
+    partition_by(&mut mut_prims, |p| p.centroid[dim]);
+
+    let n = mut_prims.len();
+    let (left, right) : (Vec<_>, Vec<_>) =
+        mut_prims.into_iter().enumerate().partition(|&(i, _)| i < (n / 2));
+
+    (left.into_iter().map(|(_, p)| p).collect(),
+     right.into_iter().map(|(_, p)| p).collect())
 }
 
 fn split_surface_area(prims: Vec<BVHPrimitiveInfo>) -> (Vec<BVHPrimitiveInfo>, Vec<BVHPrimitiveInfo>) {
@@ -132,7 +143,7 @@ fn recursive_build(prims: Vec<BVHPrimitiveInfo>, sm: SplitMethod)
             let (p1, p2) = {
                 match sm {
                     SplitMethod::Middle => split_middle(centroid_bounds, dim, prims),
-                    SplitMethod::EqualCounts => split_equal_counts(prims),
+                    SplitMethod::EqualCounts => split_equal_counts(dim, prims),
                     SplitMethod::SAH => split_surface_area(prims)
                 }
             };
