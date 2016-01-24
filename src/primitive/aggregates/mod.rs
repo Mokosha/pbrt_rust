@@ -42,3 +42,46 @@ impl Intersectable for Aggregate {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use geometry::vector::Vector;
+    use primitive::Primitive;
+    use shape::Shape;
+    use transform::transform::Transform;
+
+    pub fn get_spheres() -> Vec<Primitive> { vec![
+        Primitive::geometric(Shape::sphere(
+            Transform::translate(&Vector::new_with(0.0, 0.0, 0.0)),
+            Transform::translate(&Vector::new_with(0.0, 0.0, 0.0)),
+            false, 1.0, -1.0, 1.0, 360.0)),
+        Primitive::geometric(Shape::sphere(
+            Transform::translate(&Vector::new_with(2.0, 0.0, 0.0)),
+            Transform::translate(&Vector::new_with(-2.0, 0.0, 0.0)),
+            false, 1.0, -1.0, 1.0, 360.0)),
+        Primitive::geometric(Shape::sphere(
+            Transform::translate(&Vector::new_with(0.0, 2.0, 0.0)),
+            Transform::translate(&Vector::new_with(0.0, -2.0, 0.0)),
+            false, 1.0, -1.0, 1.0, 360.0)),
+        Primitive::geometric(Shape::sphere(
+            Transform::translate(&Vector::new_with(2.0, 2.0, 0.0)),
+            Transform::translate(&Vector::new_with(-2.0, -2.0, 0.0)),
+            false, 1.0, -1.0, 1.0, 360.0)),
+        Primitive::geometric(Shape::sphere(
+            Transform::translate(&Vector::new_with(0.0, 0.0, 2.0)),
+            Transform::translate(&Vector::new_with(0.0, 0.0, -2.0)),
+            false, 1.0, -1.0, 1.0, 360.0)),
+        Primitive::geometric(Shape::sphere(
+            Transform::translate(&Vector::new_with(2.0, 0.0, 2.0)),
+            Transform::translate(&Vector::new_with(-2.0, 0.0, -2.0)),
+            false, 1.0, -1.0, 1.0, 360.0)),
+        Primitive::geometric(Shape::sphere(
+            Transform::translate(&Vector::new_with(0.0, 2.0, 2.0)),
+            Transform::translate(&Vector::new_with(0.0, -2.0, -2.0)),
+            false, 1.0, -1.0, 1.0, 360.0)),
+        Primitive::geometric(Shape::sphere(
+            Transform::translate(&Vector::new_with(2.0, 2.0, 2.0)),
+            Transform::translate(&Vector::new_with(-2.0, -2.0, -2.0)),
+            false, 1.0, -1.0, 1.0, 360.0))]
+    }
+}

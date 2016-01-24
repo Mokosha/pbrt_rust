@@ -292,6 +292,7 @@ mod tests {
     use super::*;
 
     use bbox::BBox;
+    use primitive::aggregates::tests::get_spheres;
     use primitive::Primitive;
     use geometry::point::Point;
     use geometry::vector::Vector;
@@ -300,41 +301,6 @@ mod tests {
     use shape::Shape;
     use transform::transform::Transform;
 
-    fn get_spheres() -> Vec<Primitive> { vec![
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(0.0, 0.0, 0.0)),
-            Transform::translate(&Vector::new_with(0.0, 0.0, 0.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(2.0, 0.0, 0.0)),
-            Transform::translate(&Vector::new_with(-2.0, 0.0, 0.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(0.0, 2.0, 0.0)),
-            Transform::translate(&Vector::new_with(0.0, -2.0, 0.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(2.0, 2.0, 0.0)),
-            Transform::translate(&Vector::new_with(-2.0, -2.0, 0.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(0.0, 0.0, 2.0)),
-            Transform::translate(&Vector::new_with(0.0, 0.0, -2.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(2.0, 0.0, 2.0)),
-            Transform::translate(&Vector::new_with(-2.0, 0.0, -2.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(0.0, 2.0, 2.0)),
-            Transform::translate(&Vector::new_with(0.0, -2.0, -2.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(2.0, 2.0, 2.0)),
-            Transform::translate(&Vector::new_with(-2.0, -2.0, -2.0)),
-            false, 1.0, -1.0, 1.0, 360.0))]
-    }
-            
     #[test]
     fn it_can_be_created() {
         let g = GridAccelerator::new(get_spheres(), false);
