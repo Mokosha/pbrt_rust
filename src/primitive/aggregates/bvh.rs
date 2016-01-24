@@ -40,8 +40,8 @@ impl BVHNode {
 
     fn offset(&mut self, off: usize) {
         match self {
-            &mut BVHNode::Leaf { first_prim_offset, .. } => {
-                first_prim_offset + off;
+            &mut BVHNode::Leaf { ref mut first_prim_offset, .. } => {
+                *first_prim_offset += off;
             },
 
             &mut BVHNode::Inner { ref mut child1, ref mut child2, .. } => {
@@ -76,12 +76,6 @@ impl BVHPrimitiveInfo {
 
     fn prim<'a>(&'a self) -> &'a Primitive { &self.primitive }
     fn centroid<'a>(&'a self) -> &'a Point { &self.centroid }
-}
-
-#[derive(Clone, Debug)]
-pub struct BVHAccel {
-    root: BVHNode,
-    primitives: Vec<Primitive>,
 }
 
 fn split_middle(centroid_bounds: BBox, dim: usize, prims: Vec<BVHPrimitiveInfo>)
@@ -152,20 +146,23 @@ fn split_surface_area_heuristic(total_bounds: BBox, centroid_bounds: BBox, mp: u
             let b1sa = (cnt1 as f32) * b1.surface_area();
             let sc = 0.125;
             let tsa = total_bounds.surface_area();
+
             costs[i] = sc * (b0sa + b1sa) / tsa;
         }
         costs
     };
 
     // Find bucket to split at that minimizes SAH metric
-    let (min_cost_split, min_cost) = cost.iter().enumerate()
+    let (min_cost_split, min_cost) = cost
+        .iter()
+        .enumerate()
         .fold((0, ::std::f32::MAX), |(s, mc), (i, &c)| {
             if c < mc { (i, c) } else { (s, mc) }
         });
 
     // Either create leaf or split primitives at selected SAH bucket
     if mp < num_prims || (min_cost as usize) < num_prims {
-        Ok(prims.into_iter().partition(|p| { bucket_for_prim(p) < min_cost_split }))
+        Ok(prims.into_iter().partition(|p| { bucket_for_prim(p) <= min_cost_split }))
     } else {
         // Make leaf node
         let node = BVHNode::Leaf {
@@ -232,10 +229,14 @@ fn recursive_build(prims: Vec<BVHPrimitiveInfo>,
                 }
             };
 
+            assert!(p1.len() > 0);
+            assert!(p2.len() > 0);
+
             let (left, mut ordered_left) = recursive_build(p1, max_prims_in_node, sm);
             let (mut right, mut ordered_right) = recursive_build(p2, max_prims_in_node, sm);
 
             right.offset(ordered_left.len());
+
             let num_nodes = right.num_nodes() + left.num_nodes();
             let node = BVHNode::Inner {
                 bounds: left.bounds().clone().unioned_with_ref(right.bounds()),
@@ -249,6 +250,95 @@ fn recursive_build(prims: Vec<BVHPrimitiveInfo>,
             (node, ordered_left)
         }
     }
+}
+
+#[cfg(test)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum PackedBVHNode {
+    Leaf {
+        bounds: BBox,
+        prim_offset: usize,
+        num_prims: usize
+    },
+    Interior {
+        bounds: BBox,
+        first_child_offset: usize,
+        second_child_offset: usize,
+        axis: usize
+    }
+}
+
+#[cfg(not(test))]
+#[derive(Clone, Debug, PartialEq)]
+enum PackedBVHNode {
+    Leaf {
+        bounds: BBox,
+        prim_offset: usize,
+        num_prims: usize
+    },
+    Interior {
+        bounds: BBox,
+        first_child_offset: usize,
+        second_child_offset: usize,
+        axis: usize
+    }
+}
+
+impl PackedBVHNode {
+    fn flattenBVHTree(node: &BVHNode, nodes: &mut Vec<PackedBVHNode>, offset: usize) -> usize {
+        match node {
+            &BVHNode::Leaf { ref bounds, first_prim_offset, num_primitives } => {
+                let n = PackedBVHNode::Leaf {
+                    bounds: bounds.clone(),
+                    prim_offset: first_prim_offset,
+                    num_prims: num_primitives
+                };
+
+                nodes.push(n);
+                offset + 1
+            },
+
+            &BVHNode::Inner { ref bounds, ref child1, ref child2, split_axis, num_nodes } => {
+                let empty_interior = PackedBVHNode::Interior {
+                    bounds: bounds.clone(),
+                    first_child_offset: 0,
+                    second_child_offset: 0,
+                    axis: split_axis
+                };
+                nodes.push(empty_interior);
+
+                let c1_offset = PackedBVHNode::flattenBVHTree(child1, nodes, offset + 1);
+                let c2_offset = PackedBVHNode::flattenBVHTree(child2, nodes, c1_offset);
+
+                if let &mut PackedBVHNode::Interior {
+                    ref mut first_child_offset,
+                    ref mut second_child_offset, .. } = &mut nodes[offset] {
+
+                    assert_eq!(*first_child_offset, 0);
+                    assert_eq!(*second_child_offset, 0);
+
+                    *first_child_offset = c1_offset;
+                    *second_child_offset = c2_offset;
+                }
+
+                c2_offset
+            }
+        }
+    }
+
+    fn linearize(root: BVHNode) -> Vec<PackedBVHNode> {
+        let mut nodes = Vec::with_capacity(root.num_nodes());
+        let result = PackedBVHNode::flattenBVHTree(&root, &mut nodes, 0);
+        assert_eq!(result, nodes.len());
+        assert_eq!(result, root.num_nodes());
+        nodes
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BVHAccel {
+    root: Vec<PackedBVHNode>,
+    primitives: Vec<Primitive>,
 }
 
 impl BVHAccel {
@@ -276,7 +366,7 @@ impl BVHAccel {
         let (tree, ordered_prims) = recursive_build(build_data, mp, split_method);
 
         BVHAccel {
-            root: tree,
+            root: PackedBVHNode::linearize(tree),
             primitives: ordered_prims,
         }
     }
@@ -285,10 +375,24 @@ impl BVHAccel {
 #[cfg(test)]
 mod tests  {
     use super::*;
+    use primitive::aggregates::tests::get_spheres;
 
     #[test]
-    #[ignore]
     fn it_can_be_created() {
-        unimplemented!();
+        for sm in ["sah", "middle", "equal"].iter() {
+            let bvh = BVHAccel::new(get_spheres(), 1, sm);
+            assert_eq!(bvh.primitives.len(), 8);
+
+            let mut prims = Vec::with_capacity(8);
+            for n in bvh.root.iter() {
+                if let &PackedBVHNode::Leaf { prim_offset, num_prims, .. } = n {
+                    prims.push(prim_offset);
+                    assert_eq!(num_prims, 1);
+                }
+            }
+
+            prims.sort();
+            assert_eq!(prims, vec![0, 1, 2, 3, 4, 5, 6, 7]);
+        }
     }
 }
