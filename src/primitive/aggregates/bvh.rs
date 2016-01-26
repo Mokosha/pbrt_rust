@@ -2,8 +2,12 @@ use bbox::BBox;
 use bbox::HasBounds;
 use bbox::Union;
 use geometry::point::Point;
+use geometry::vector::Vector;
+use intersection::Intersectable;
+use intersection::Intersection;
 use primitive::Primitive;
 use primitive::FullyRefinable;
+use ray::Ray;
 
 use utils::partition_by;
 
@@ -260,9 +264,8 @@ pub enum PackedBVHNode {
         prim_offset: usize,
         num_prims: usize
     },
-    Interior {
+    Inner {
         bounds: BBox,
-        first_child_offset: usize,
         second_child_offset: usize,
         axis: usize
     }
@@ -276,15 +279,21 @@ enum PackedBVHNode {
         prim_offset: usize,
         num_prims: usize
     },
-    Interior {
+    Inner {
         bounds: BBox,
-        first_child_offset: usize,
         second_child_offset: usize,
         axis: usize
     }
 }
 
 impl PackedBVHNode {
+    fn bounds<'a>(&'a self) -> &'a BBox {
+        match self {
+            &PackedBVHNode::Leaf { ref bounds, .. } => bounds,
+            &PackedBVHNode::Inner { ref bounds, .. } => bounds
+        }
+    }
+
     fn flattenBVHTree(node: &BVHNode, nodes: &mut Vec<PackedBVHNode>, offset: usize) -> usize {
         match node {
             &BVHNode::Leaf { ref bounds, first_prim_offset, num_primitives } => {
@@ -299,9 +308,8 @@ impl PackedBVHNode {
             },
 
             &BVHNode::Inner { ref bounds, ref child1, ref child2, split_axis, num_nodes } => {
-                let empty_interior = PackedBVHNode::Interior {
+                let empty_interior = PackedBVHNode::Inner {
                     bounds: bounds.clone(),
-                    first_child_offset: 0,
                     second_child_offset: 0,
                     axis: split_axis
                 };
@@ -310,15 +318,12 @@ impl PackedBVHNode {
                 let c1_offset = PackedBVHNode::flattenBVHTree(child1, nodes, offset + 1);
                 let c2_offset = PackedBVHNode::flattenBVHTree(child2, nodes, c1_offset);
 
-                if let &mut PackedBVHNode::Interior {
-                    ref mut first_child_offset,
+                if let &mut PackedBVHNode::Inner {
                     ref mut second_child_offset, .. } = &mut nodes[offset] {
 
-                    assert_eq!(*first_child_offset, 0);
                     assert_eq!(*second_child_offset, 0);
 
-                    *first_child_offset = c1_offset;
-                    *second_child_offset = c2_offset;
+                    *second_child_offset = c1_offset;
                 }
 
                 c2_offset
@@ -337,7 +342,7 @@ impl PackedBVHNode {
 
 #[derive(Clone, Debug)]
 pub struct BVHAccel {
-    root: Vec<PackedBVHNode>,
+    nodes: Vec<PackedBVHNode>,
     primitives: Vec<Primitive>,
 }
 
@@ -366,9 +371,54 @@ impl BVHAccel {
         let (tree, ordered_prims) = recursive_build(build_data, mp, split_method);
 
         BVHAccel {
-            root: PackedBVHNode::linearize(tree),
+            nodes: PackedBVHNode::linearize(tree),
             primitives: ordered_prims,
         }
+    }
+}
+
+impl Intersectable for BVHAccel {
+    fn intersect(&self, ray: &Ray) -> Option<Intersection> {
+        if self.nodes.len() == 0 { return None; }
+
+        // !SPEED! used in speedup for ray-bbox intersection. See p. 225
+        // let origin = ray.point_at(ray.min_t);
+        let inv_dir = Vector::new_with(1f32 / ray.d.x, 1f32 / ray.d.y, 1f32 / ray.d.z);
+        let dir_is_neg = [ inv_dir.x < 0.0, inv_dir.y < 0.0, inv_dir.z < 0.0 ];
+
+        // Follow ray through BVH nodes to find primitive intersections
+        let mut todo = Vec::with_capacity(64);
+        todo.push(0);
+
+        let mut isect = None;
+        while let Some(node_num) = todo.pop() {
+
+            // !SPEED! This can be accelerated, see p.225
+            if !self.nodes[node_num].bounds().intersect_p(ray) {
+                continue;
+            }
+
+            match &self.nodes[node_num] {
+                &PackedBVHNode::Leaf { prim_offset, num_prims, ..} => {
+                    // Intersect ray wiuth primitives in leaf BVH node
+                    for i in 0..num_prims {
+                        isect = self.primitives[prim_offset + i].intersect(ray);
+                    }
+                },
+                &PackedBVHNode::Inner { second_child_offset, axis, .. } => {
+                    // Put far BVH node on todo stack, advance to near node
+                    if dir_is_neg[axis] {
+                        todo.push(node_num + 1);
+                        todo.push(second_child_offset);
+                    } else {
+                        todo.push(second_child_offset);
+                        todo.push(node_num + 1);
+                    }
+                }
+            }
+        }
+
+        isect
     }
 }
 
@@ -384,7 +434,7 @@ mod tests  {
             assert_eq!(bvh.primitives.len(), 8);
 
             let mut prims = Vec::with_capacity(8);
-            for n in bvh.root.iter() {
+            for n in bvh.nodes.iter() {
                 if let &PackedBVHNode::Leaf { prim_offset, num_prims, .. } = n {
                     prims.push(prim_offset);
                     assert_eq!(num_prims, 1);
