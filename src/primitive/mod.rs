@@ -161,6 +161,10 @@ impl Intersectable for Primitive {
 
 impl Refinable for Primitive {
     fn refine(self) -> Vec<Primitive> {
+        if self.is_refined() {
+            return vec![self];
+        }
+
         let prim = match Arc::try_unwrap(self.prim) {
             Ok(p) => p,
             Err(pr_ref) => pr_ref.as_ref().clone()

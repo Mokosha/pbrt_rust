@@ -53,8 +53,12 @@ impl Intersectable for Aggregate {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use geometry::point::Point;
     use geometry::vector::Vector;
+    use intersection::Intersectable;
     use primitive::Primitive;
+    use ray::Ray;
     use shape::Shape;
     use transform::transform::Transform;
 
@@ -91,5 +95,47 @@ mod tests {
             Transform::translate(&Vector::new_with(2.0, 2.0, 2.0)),
             Transform::translate(&Vector::new_with(-2.0, -2.0, -2.0)),
             false, 1.0, -1.0, 1.0, 360.0))]
+    }
+
+    fn test_intersection<T>(agg_factory: T)
+        where T : FnOnce(Vec<Primitive>) -> Aggregate
+    {
+        let spheres = get_spheres();
+        let ids: Vec<_> = spheres.iter().map(|p| { p.get_id() }).collect();
+        let agg = agg_factory(spheres);
+
+        let mut r = Ray::new_with(Point::new_with(0.0, 0.0, -1.0),
+                                  Vector::new_with(0.0, 0.0, 1.0), 0.0);
+        assert_eq!(agg.intersect(&r).unwrap().primitive_id, ids[0]);
+
+        r = Ray::new_with(Point::new_with(-1.0, 0.0, 2.0),
+                          Vector::new_with(1.0, 0.0, 0.0), 0.0);
+        assert_eq!(agg.intersect(&r).unwrap().primitive_id, ids[4]);
+
+        // Shoot a ray through the hold in between four spheres and see
+        // if it hits the sphere behind them...
+        r = Ray::new_with(Point::new_with(4.0, 0.0, 0.0),
+                          Vector::new_with(-2.0, 1.0, 1.0), 0.0);
+        assert_eq!(agg.intersect(&r).unwrap().primitive_id, ids[6]);
+    }
+
+    #[test]
+    fn grids_can_intersect_with_rays() {
+        test_intersection(|ps| Aggregate::grid(ps, false));
+    }
+
+    #[test]
+    fn bvhs_can_intersect_with_rays_with_sah() {
+        test_intersection(|ps| Aggregate::bvh(ps, 1, "sah"));
+    }
+
+    #[test]
+    fn bvhs_can_intersect_with_rays_with_middle() {
+        test_intersection(|ps| Aggregate::bvh(ps, 1, "middle"));
+    }
+
+    #[test]
+    fn bvhs_can_intersect_with_rays_with_equal() {
+        test_intersection(|ps| Aggregate::bvh(ps, 1, "equal"));
     }
 }

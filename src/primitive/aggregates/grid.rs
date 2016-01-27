@@ -292,14 +292,15 @@ mod tests {
     use super::*;
 
     use bbox::BBox;
-    use primitive::aggregates::tests::get_spheres;
-    use primitive::Primitive;
     use geometry::point::Point;
     use geometry::vector::Vector;
     use intersection::Intersectable;
+    use primitive::Primitive;
     use ray::Ray;
     use shape::Shape;
     use transform::transform::Transform;
+
+    use primitive::aggregates::tests::get_spheres;
 
     #[test]
     fn it_can_be_created() {
@@ -344,27 +345,6 @@ mod tests {
             assert!(prim.read().unwrap().intersect_p(&Ray::new_with(
                 Point::new_with(px, py, pz), Vector::new_with(px - 1.0, py - 1.0, pz - 1.0), 0.0)));
         } } }
-    }
-
-    #[test]
-    fn it_can_intersect_with_rays() {
-        let spheres = get_spheres();
-        let ids: Vec<_> = spheres.iter().map(|p| { p.get_id() }).collect();
-        let g = GridAccelerator::new(spheres, false);
-
-        let mut r = Ray::new_with(Point::new_with(0.0, 0.0, -1.0),
-                                  Vector::new_with(0.0, 0.0, 1.0), 0.0);
-        assert_eq!(g.intersect(&r).unwrap().primitive_id, ids[0]);
-
-        r = Ray::new_with(Point::new_with(-1.0, 0.0, 2.0),
-                          Vector::new_with(1.0, 0.0, 0.0), 0.0);
-        assert_eq!(g.intersect(&r).unwrap().primitive_id, ids[4]);
-
-        // Shoot a ray through the hold in between four spheres and see
-        // if it hits the sphere behind them...
-        r = Ray::new_with(Point::new_with(4.0, 0.0, 0.0),
-                          Vector::new_with(-2.0, 1.0, 1.0), 0.0);
-        assert_eq!(g.intersect(&r).unwrap().primitive_id, ids[6]);
     }
 
     #[test]
