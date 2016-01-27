@@ -7,24 +7,30 @@ use intersection::Intersectable;
 use intersection::Intersection;
 use primitive::Primitive;
 use primitive::aggregates::grid::GridAccelerator;
-use primitive::aggregates::bvh::BVHAccel;
+use primitive::aggregates::bvh::BVHAccelerator;
 use ray::Ray;
 
 #[derive(Clone, Debug)]
 pub enum Aggregate {
-    Grid(GridAccelerator)
+    Grid(GridAccelerator),
+    BVH(BVHAccelerator)
 }
 
 impl Aggregate {
     pub fn grid(p: Vec<Primitive>, refine_immediately: bool) -> Aggregate {
         Aggregate::Grid(GridAccelerator::new(p, refine_immediately))
     }
+
+    pub fn bvh(p: Vec<Primitive>, max_prims: usize, sm: &'static str) -> Aggregate {
+        Aggregate::BVH(BVHAccelerator::new(p, max_prims, sm))
+    }
 }
 
 impl HasBounds for Aggregate {
     fn world_bound(&self) -> BBox {
         match self {
-            &Aggregate::Grid(ref ga) => ga.world_bound()
+            &Aggregate::Grid(ref ga) => ga.world_bound(),
+            &Aggregate::BVH(ref bvh) => bvh.world_bound()
         }
     }
 }
@@ -32,13 +38,15 @@ impl HasBounds for Aggregate {
 impl Intersectable for Aggregate {
     fn intersect(&self, ray : &Ray) -> Option<Intersection> {
         match self {
-            &Aggregate::Grid(ref g) => g.intersect(ray)
+            &Aggregate::Grid(ref g) => g.intersect(ray),
+            &Aggregate::BVH(ref bvh) => bvh.intersect(ray)
         }
     }
 
     fn intersect_p(&self, ray : &Ray) -> bool {
         match self {
-            &Aggregate::Grid(ref g) => g.intersect_p(ray)
+            &Aggregate::Grid(ref g) => g.intersect_p(ray),
+            &Aggregate::BVH(ref bvh) => bvh.intersect_p(ray)
         }
     }
 }

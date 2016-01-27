@@ -341,13 +341,13 @@ impl PackedBVHNode {
 }
 
 #[derive(Clone, Debug)]
-pub struct BVHAccel {
+pub struct BVHAccelerator {
     nodes: Vec<PackedBVHNode>,
     primitives: Vec<Primitive>,
 }
 
-impl BVHAccel {
-    fn new(p: Vec<Primitive>, mp: usize, sm: &'static str) -> BVHAccel {
+impl BVHAccelerator {
+    pub fn new(p: Vec<Primitive>, mp: usize, sm: &'static str) -> BVHAccelerator {
         let prims = p.into_iter().fold(Vec::new(), |mut ps, prim| {
             ps.append(&mut prim.fully_refine());
             ps
@@ -370,14 +370,24 @@ impl BVHAccel {
 
         let (tree, ordered_prims) = recursive_build(build_data, mp, split_method);
 
-        BVHAccel {
+        BVHAccelerator {
             nodes: PackedBVHNode::linearize(tree),
             primitives: ordered_prims,
         }
     }
 }
 
-impl Intersectable for BVHAccel {
+impl HasBounds for BVHAccelerator {
+    fn world_bound(&self) -> BBox {
+        if self.nodes.is_empty() {
+            BBox::new()
+        } else {
+            self.nodes[0].bounds().clone()
+        }
+    }
+}
+
+impl Intersectable for BVHAccelerator {
     fn intersect(&self, ray: &Ray) -> Option<Intersection> {
         if self.nodes.len() == 0 { return None; }
 
@@ -430,7 +440,7 @@ mod tests  {
     #[test]
     fn it_can_be_created() {
         for sm in ["sah", "middle", "equal"].iter() {
-            let bvh = BVHAccel::new(get_spheres(), 1, sm);
+            let bvh = BVHAccelerator::new(get_spheres(), 1, sm);
             assert_eq!(bvh.primitives.len(), 8);
 
             let mut prims = Vec::with_capacity(8);
