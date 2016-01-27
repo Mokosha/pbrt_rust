@@ -156,8 +156,16 @@ pub fn partition_by<T, F, B>(v: &mut [T], f: F)
         }
     }
 
+    // We can do this because if pivot_idx == nv - 1, then all
+    // of the values are smaller than the pivot...
+    pivot_idx = ::std::cmp::min(pivot_idx, nv - 2);
+
     let (left, right) = v.split_at_mut(pivot_idx);
-    if left.len() < (nv / 2) {
+
+    debug_assert!(right.len() > 0);
+    debug_assert!(left.len() > 0);
+
+    if pivot_idx < (nv / 2) {
         partition_by(right, f);
     } else {
         partition_by(left, f);
@@ -416,5 +424,19 @@ mod tests {
         qs = [3, 3, 1];
         partition_by(&mut qs, |x| *x);        
         assert_eq!(qs, [1, 3, 3]);
+
+        qs = [2, 2, 2];
+        partition_by(&mut qs, |x| *x);
+        assert_eq!(qs, [2, 2, 2]);
+
+        let mut rs = [-2, -4, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4];
+        partition_by(&mut rs, |x| *x);
+
+        let m2 = rs.len() / 2;
+        for i in 0..m2 {
+            for j in m2..(rs.len()) {
+                assert!(rs[i] <= rs[j]);
+            }
+        }
     }
 }
