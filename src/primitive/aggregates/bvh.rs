@@ -412,7 +412,10 @@ impl Intersectable for BVHAccelerator {
                 &PackedBVHNode::Leaf { prim_offset, num_prims, ..} => {
                     // Intersect ray wiuth primitives in leaf BVH node
                     for i in 0..num_prims {
-                        isect = self.primitives[prim_offset + i].intersect(ray);
+                        isect = match self.primitives[prim_offset + i].intersect(ray) {
+                            None => isect,
+                            x => x
+                        };
                     }
                 },
                 &PackedBVHNode::Inner { second_child_offset, axis, .. } => {
@@ -435,6 +438,13 @@ impl Intersectable for BVHAccelerator {
 #[cfg(test)]
 mod tests  {
     use super::*;
+    use primitive::Primitive;
+    use geometry::point::Point;
+    use geometry::vector::Vector;
+    use intersection::Intersectable;
+    use ray::Ray;
+    use shape::Shape;
+    use transform::transform::Transform;
     use primitive::aggregates::tests::get_spheres;
 
     #[test]
@@ -455,4 +465,38 @@ mod tests  {
             assert_eq!(prims, vec![0, 1, 2, 3, 4, 5, 6, 7]);
         }
     }
+
+    #[test]
+    fn it_can_refine_primitives() {
+        // Tetrahedron
+        let tet_pts : [Point; 4] =
+            [Point { x: 0.0, y: 0.0, z: 0.0 },
+             Point { x: 1.0, y: 0.0, z: 0.0 },
+             Point { x: 0.0, y: 1.0, z: 0.0 },
+             Point { x: 0.0, y: 0.0, z: 1.0 }];
+        let tet_tris : [usize; 12] =
+            [ 0, 3, 2, 0, 1, 2, 0, 3, 1, 1, 2, 3 ];
+
+        let m = vec![Primitive::geometric(Shape::triangle_mesh(
+            Transform::new(), Transform::new(), false, &tet_tris,
+            &tet_pts, None, None, None, None))];
+
+        let r = Ray::new_with(Point::new_with(0.25, -1.0, 0.25),
+                              Vector::new_with(0.0, 1.0, 0.0), 0.0);
+
+        let g = BVHAccelerator::new(m.clone(), 1, "sah");
+        assert!(g.intersect_p(&r));
+
+        g.intersect(&r);
+        assert_eq!(r.maxt(), 1.0);
+
+        r.set_maxt(10.0);
+
+        let g2 = BVHAccelerator::new(m, 10, "middle");
+        assert!(g2.intersect_p(&r));
+
+        g2.intersect(&r);
+        assert_eq!(r.maxt(), 1.0);
+    }
+
 }
