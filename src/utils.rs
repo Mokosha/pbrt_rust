@@ -114,8 +114,8 @@ pub fn solve_linear_system_2x2(a: [[f32; 2]; 2], b: [f32; 2])
     }
 }
 
-pub fn partition_by<T: ::std::fmt::Debug, F, B>(v: &mut [T], f: F)
-    where F: Fn(&T) -> B, B: Copy+PartialOrd+::std::fmt::Debug
+pub fn partition_by<T, F, B>(v: &mut [T], f: F)
+    where F: Fn(&T) -> B, B: Copy+PartialOrd
 {
     let nv = v.len();
     if nv < 3 {
