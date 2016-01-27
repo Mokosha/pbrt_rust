@@ -63,6 +63,7 @@ impl BVHNode {
     }
 }
 
+#[derive(Debug)]
 struct BVHPrimitiveInfo {
     primitive: Primitive,
     centroid: Point,
@@ -256,24 +257,8 @@ fn recursive_build(prims: Vec<BVHPrimitiveInfo>,
     }
 }
 
-#[cfg(test)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum PackedBVHNode {
-    Leaf {
-        bounds: BBox,
-        prim_offset: usize,
-        num_prims: usize
-    },
-    Inner {
-        bounds: BBox,
-        second_child_offset: usize,
-        axis: usize
-    }
-}
-
-#[cfg(not(test))]
-#[derive(Clone, Debug, PartialEq)]
-enum PackedBVHNode {
     Leaf {
         bounds: BBox,
         prim_offset: usize,
@@ -294,7 +279,7 @@ impl PackedBVHNode {
         }
     }
 
-    fn flattenBVHTree(node: &BVHNode, nodes: &mut Vec<PackedBVHNode>, offset: usize) -> usize {
+    fn flatten_tree(node: &BVHNode, nodes: &mut Vec<PackedBVHNode>, offset: usize) -> usize {
         match node {
             &BVHNode::Leaf { ref bounds, first_prim_offset, num_primitives } => {
                 let n = PackedBVHNode::Leaf {
@@ -315,8 +300,8 @@ impl PackedBVHNode {
                 };
                 nodes.push(empty_interior);
 
-                let c1_offset = PackedBVHNode::flattenBVHTree(child1, nodes, offset + 1);
-                let c2_offset = PackedBVHNode::flattenBVHTree(child2, nodes, c1_offset);
+                let c1_offset = PackedBVHNode::flatten_tree(child1, nodes, offset + 1);
+                let c2_offset = PackedBVHNode::flatten_tree(child2, nodes, c1_offset);
 
                 if let &mut PackedBVHNode::Inner {
                     ref mut second_child_offset, .. } = &mut nodes[offset] {
@@ -333,7 +318,7 @@ impl PackedBVHNode {
 
     fn linearize(root: BVHNode) -> Vec<PackedBVHNode> {
         let mut nodes = Vec::with_capacity(root.num_nodes());
-        let result = PackedBVHNode::flattenBVHTree(&root, &mut nodes, 0);
+        let result = PackedBVHNode::flatten_tree(&root, &mut nodes, 0);
         assert_eq!(result, nodes.len());
         assert_eq!(result, root.num_nodes());
         nodes
@@ -438,6 +423,7 @@ impl Intersectable for BVHAccelerator {
 #[cfg(test)]
 mod tests  {
     use super::*;
+    use bbox::BBox;
     use primitive::Primitive;
     use geometry::point::Point;
     use geometry::vector::Vector;
@@ -446,6 +432,7 @@ mod tests  {
     use shape::Shape;
     use transform::transform::Transform;
     use primitive::aggregates::tests::get_spheres;
+    use primitive::aggregates::tests::sphere_at;
 
     #[test]
     fn it_can_be_created() {
@@ -499,4 +486,74 @@ mod tests  {
         assert_eq!(r.maxt(), 1.0);
     }
 
+    #[test]
+    fn it_can_arrange_by_middle() {
+        let spheres = vec![
+            sphere_at(Vector::new_with(-4.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(-2.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(2.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(4.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(6.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(8.0, 0.0, 0.0))];
+
+        let bvh = BVHAccelerator::new(spheres, 1, "middle");
+
+        assert_eq!(*bvh.nodes[0].bounds(),
+                   BBox::new_with(Point::new_with(-5.0, -1.0, -1.0),
+                                  Point::new_with(9.0, 1.0, 1.0)));
+        assert_eq!(*bvh.nodes[1].bounds(),
+                   BBox::new_with(Point::new_with(-5.0, -1.0, -1.0),
+                                  Point::new_with(-1.0, 1.0, 1.0)));
+        assert_eq!(*bvh.nodes[4].bounds(),
+                   BBox::new_with(Point::new_with(1.0, -1.0, -1.0),
+                                  Point::new_with(9.0, 1.0, 1.0)));
+    }
+
+    #[test]
+    fn it_can_arrange_by_equal_counts() {
+        let spheres = vec![
+            sphere_at(Vector::new_with(-4.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(-2.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(2.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(4.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(6.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(8.0, 0.0, 0.0))];
+
+        let bvh = BVHAccelerator::new(spheres, 1, "equal");
+
+        assert_eq!(*bvh.nodes[0].bounds(),
+                   BBox::new_with(Point::new_with(-5.0, -1.0, -1.0),
+                                  Point::new_with(9.0, 1.0, 1.0)));
+        assert_eq!(*bvh.nodes[1].bounds(),
+                   BBox::new_with(Point::new_with(-5.0, -1.0, -1.0),
+                                  Point::new_with(3.0, 1.0, 1.0)));
+        assert_eq!(*bvh.nodes[6].bounds(),
+                   BBox::new_with(Point::new_with(3.0, -1.0, -1.0),
+                                  Point::new_with(9.0, 1.0, 1.0)));
+    }
+
+    #[test]
+    fn it_can_arrange_by_sah() {
+        let spheres = vec![
+            sphere_at(Vector::new_with(-2.0, 2.0, 0.0)),
+            sphere_at(Vector::new_with(-4.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(2.0, 0.0, 0.0)),
+            sphere_at(Vector::new_with(4.0, 2.0, -3.0)),
+            sphere_at(Vector::new_with(4.0, 1.5, -1.5)),
+            sphere_at(Vector::new_with(4.0, 1.5, 1.5)),
+            sphere_at(Vector::new_with(4.0, 2.0, 3.0)),
+            sphere_at(Vector::new_with(4.0, 0.0, 0.0))];
+
+        let bvh = BVHAccelerator::new(spheres, 1, "sah");
+
+        assert_eq!(*bvh.nodes[0].bounds(),
+                   BBox::new_with(Point::new_with(-5.0, -1.0, -4.0),
+                                  Point::new_with(5.0, 3.0, 4.0)));
+        assert_eq!(*bvh.nodes[1].bounds(),
+                   BBox::new_with(Point::new_with(-5.0, -1.0, -1.0),
+                                  Point::new_with(3.0, 3.0, 1.0)));
+        assert_eq!(*bvh.nodes[6].bounds(),
+                   BBox::new_with(Point::new_with(3.0, -1.0, -4.0),
+                                  Point::new_with(5.0, 3.0, 4.0)));
+    }
 }
