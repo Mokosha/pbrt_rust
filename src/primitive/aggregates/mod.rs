@@ -62,39 +62,21 @@ mod tests {
     use shape::Shape;
     use transform::transform::Transform;
 
-    pub fn get_spheres() -> Vec<Primitive> { vec![
+    pub fn sphere_at(v: Vector) -> Primitive {
         Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(0.0, 0.0, 0.0)),
-            Transform::translate(&Vector::new_with(0.0, 0.0, 0.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(2.0, 0.0, 0.0)),
-            Transform::translate(&Vector::new_with(-2.0, 0.0, 0.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(0.0, 2.0, 0.0)),
-            Transform::translate(&Vector::new_with(0.0, -2.0, 0.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(2.0, 2.0, 0.0)),
-            Transform::translate(&Vector::new_with(-2.0, -2.0, 0.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(0.0, 0.0, 2.0)),
-            Transform::translate(&Vector::new_with(0.0, 0.0, -2.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(2.0, 0.0, 2.0)),
-            Transform::translate(&Vector::new_with(-2.0, 0.0, -2.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(0.0, 2.0, 2.0)),
-            Transform::translate(&Vector::new_with(0.0, -2.0, -2.0)),
-            false, 1.0, -1.0, 1.0, 360.0)),
-        Primitive::geometric(Shape::sphere(
-            Transform::translate(&Vector::new_with(2.0, 2.0, 2.0)),
-            Transform::translate(&Vector::new_with(-2.0, -2.0, -2.0)),
-            false, 1.0, -1.0, 1.0, 360.0))]
+            Transform::translate(&v), Transform::translate(&(-v)),
+            false, 1.0, -1.0, 1.0, 360.0))
+    }
+
+    pub fn get_spheres() -> Vec<Primitive> {
+        vec![ sphere_at(Vector::new_with(0.0, 0.0, 0.0)),
+              sphere_at(Vector::new_with(2.0, 0.0, 0.0)),
+              sphere_at(Vector::new_with(0.0, 2.0, 0.0)),
+              sphere_at(Vector::new_with(2.0, 2.0, 0.0)),
+              sphere_at(Vector::new_with(0.0, 0.0, 2.0)),
+              sphere_at(Vector::new_with(2.0, 0.0, 2.0)),
+              sphere_at(Vector::new_with(0.0, 2.0, 2.0)),
+              sphere_at(Vector::new_with(2.0, 2.0, 2.0))]
     }
 
     fn test_intersection<T>(agg_factory: T)
