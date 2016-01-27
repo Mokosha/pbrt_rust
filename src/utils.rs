@@ -114,8 +114,8 @@ pub fn solve_linear_system_2x2(a: [[f32; 2]; 2], b: [f32; 2])
     }
 }
 
-pub fn partition_by<T, F, B>(v: &mut [T], f: F)
-    where F: Fn(&T) -> B, B: Copy+PartialOrd
+pub fn partition_by<T: ::std::fmt::Debug, F, B>(v: &mut [T], f: F)
+    where F: Fn(&T) -> B, B: Copy+PartialOrd+::std::fmt::Debug
 {
     let nv = v.len();
     if nv < 3 {
@@ -143,22 +143,19 @@ pub fn partition_by<T, F, B>(v: &mut [T], f: F)
     };
 
     let mut first_larger = 0;
-    let mut pivot_idx = 0;
+    let mut num_pivots = 0;
     for i in 0..nv {
         let bv = f(&v[i]);
         if bv <= pivot {
             v.swap(first_larger, i);
             first_larger += 1;
-
-            if bv == pivot {
-                pivot_idx = i;
-            }
         }
     }
+    let mut pivot_idx = first_larger - 1;
 
-    // We can do this because if pivot_idx == nv - 1, then all
-    // of the values are smaller than the pivot...
-    pivot_idx = ::std::cmp::min(pivot_idx, nv - 2);
+    // We can do this because if pivot_idx == 0, then all
+    // of the values are larger than the pivot...
+    pivot_idx = ::std::cmp::max(pivot_idx, 1);
 
     let (left, right) = v.split_at_mut(pivot_idx);
 
@@ -435,6 +432,18 @@ mod tests {
         let m2 = rs.len() / 2;
         for i in 0..m2 {
             for j in m2..(rs.len()) {
+                assert!(rs[i] <= rs[j]);
+            }
+        }
+
+        println!("Problem");
+        rs = [-2, -4, 2, 2, 2, 4, 4, 4, 4, 4, 4, -5];
+        partition_by(&mut rs, |x| *x);
+        println!("Result: {:?}", rs);
+
+        let m3 = rs.len() / 2;
+        for i in 0..m3 {
+            for j in m3..(rs.len()) {
                 assert!(rs[i] <= rs[j]);
             }
         }
