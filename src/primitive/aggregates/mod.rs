@@ -1,5 +1,6 @@
 mod grid;
 mod bvh;
+mod kdt;
 
 use bbox::BBox;
 use bbox::HasBounds;
