@@ -1,3 +1,6 @@
+use bbox::BBox;
+use bbox::HasBounds;
+use bbox::Union;
 use primitive::Primitive;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -87,12 +90,35 @@ pub struct KDTreeAccelerator {
     max_prims: usize,
     max_depth: usize,
     empty_bonus: f32,
-    primitives: Vec<Primitive>
+    bounds: BBox,
+    primitives: Vec<Primitive>,
+    nodes: Vec<KDAccelNode>
 }
 
 impl KDTreeAccelerator {
     fn new(prims: Vec<Primitive>, icost: i32, tcost: i32, ebonus: f32,
            maxp: usize, maxd: usize) -> KDTreeAccelerator {
+        let num_prims = prims.len();
+        let max_depth = if maxd == 0 {
+            // Just some randomly chosen numbers apparently? (p.232)
+            ((num_prims as f32).log2() * 1.3 + 8.0).round() as usize
+        } else {
+            maxd
+        };
+
+        // Compute bounds for kd-tree construction
+        let mut prim_bounds = Vec::with_capacity(num_prims);
+        let bounds = prims.iter().fold(BBox::new(), |b, p| {
+            let pb = p.world_bound();
+            prim_bounds.push(pb.clone());
+            b.unioned_with(pb)
+        });
+
+        // Initialize prim_nums for kd-tree construction
+        let prim_nums: Vec<usize> = (0..num_prims).collect();
+
+        // Start recursive construction of kd-tree
+
         // Build kd-tree for accelerator
         KDTreeAccelerator {
             isect_cost: icost,
@@ -100,7 +126,9 @@ impl KDTreeAccelerator {
             max_prims: maxp,
             max_depth: maxd,
             empty_bonus: ebonus,
-            primitives: prims
+            bounds: bounds,
+            primitives: prims,
+            nodes: Vec::new()
         }
     }
 }
