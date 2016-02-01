@@ -104,7 +104,7 @@ pub struct KDTreeAccelerator {
     nodes: Vec<KDAccelNode>
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq)]
 enum BoundEdge {
     Unknown,
     Start(f32, usize),
@@ -135,10 +135,8 @@ impl BoundEdge {
     }
 }
 
-impl ::std::cmp::Eq for BoundEdge { }
-
-impl ::std::cmp::Ord for BoundEdge {
-    fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+impl ::std::cmp::PartialOrd for BoundEdge {
+    fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
         let (va, a_start): (f32, usize) = match self {
             &BoundEdge::Unknown => panic!("Unknown bound edge!"),
             &BoundEdge::Start(x, _) => (x, 0),
@@ -152,9 +150,9 @@ impl ::std::cmp::Ord for BoundEdge {
         };
 
         if va == vb {
-            a_start.cmp(&b_start)
+            a_start.partial_cmp(&b_start)
         } else {
-            va.partial_cmp(&vb).unwrap()
+            va.partial_cmp(&vb)
         }
     }
 }
