@@ -292,7 +292,7 @@ impl PackedBVHNode {
                 offset + 1
             },
 
-            &BVHNode::Inner { ref bounds, ref child1, ref child2, split_axis, num_nodes } => {
+            &BVHNode::Inner { ref bounds, ref child1, ref child2, split_axis, .. } => {
                 let empty_interior = PackedBVHNode::Inner {
                     bounds: bounds.clone(),
                     second_child_offset: 0,
@@ -348,7 +348,7 @@ impl BVHAccelerator {
             }
         };
 
-        let build_data: Vec<_> = prims.into_iter().enumerate().map(|(i, p)| {
+        let build_data: Vec<_> = prims.into_iter().map(|p| {
             let bbox = p.world_bound();
             BVHPrimitiveInfo::new(p, bbox)
         }).collect();

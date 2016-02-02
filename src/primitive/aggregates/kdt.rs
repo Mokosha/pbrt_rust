@@ -411,7 +411,7 @@ impl Intersectable for KDTreeAccelerator {
             }
         }
 
-        isect;
+        isect
     }
 }
 
