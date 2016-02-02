@@ -200,6 +200,7 @@ impl HasBounds for GridAccelerator {
 }
 
 impl Intersectable for GridAccelerator {
+    // !SPEED! A custom intersect_p algorithm would be a lot faster
     fn intersect(&self, ray: &Ray) -> Option<Intersection> {
         // Check ray against overall grid bounds
         let ray_t = {

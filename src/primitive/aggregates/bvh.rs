@@ -373,6 +373,7 @@ impl HasBounds for BVHAccelerator {
 }
 
 impl Intersectable for BVHAccelerator {
+    // !SPEED! A custom intersect_p algorithm would be a lot faster
     fn intersect(&self, ray: &Ray) -> Option<Intersection> {
         if self.nodes.len() == 0 { return None; }
 
