@@ -290,6 +290,7 @@ fn build_tree(icost: i32, tcost: i32, maxp: usize, ebonus: f32,
 
 #[derive(Clone, Debug)]
 pub struct KDTreeAccelerator {
+    bounds: BBox,
     primitives: Vec<Primitive>,
     nodes: Vec<KDAccelNode>
 }
@@ -330,10 +331,15 @@ impl KDTreeAccelerator {
 
         // Build kd-tree for accelerator
         KDTreeAccelerator {
+            bounds: bounds,
             primitives: prims,
             nodes: nodes
         }
     }
+}
+
+impl HasBounds for KDTreeAccelerator {
+    fn world_bound(&self) -> BBox { self.bounds.clone() }
 }
 
 #[cfg(test)]
