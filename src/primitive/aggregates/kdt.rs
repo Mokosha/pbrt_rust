@@ -1,7 +1,11 @@
 use bbox::BBox;
 use bbox::HasBounds;
 use bbox::Union;
+use geometry::vector::Vector;
+use intersection::Intersectable;
+use intersection::Intersection;
 use primitive::Primitive;
+use ray::Ray;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum SplitAxis { X, Y, Z }
@@ -340,6 +344,75 @@ impl KDTreeAccelerator {
 
 impl HasBounds for KDTreeAccelerator {
     fn world_bound(&self) -> BBox { self.bounds.clone() }
+}
+
+impl Intersectable for KDTreeAccelerator {
+    // !SPEED! A custom intersect_p algorithm would be a lot faster
+    fn intersect(&self, ray: &Ray) -> Option<Intersection> {
+        // Compute initial parametric range of ray inside kd-tree extent
+        let (gmin, gmax) = match self.world_bound().intersect(ray) {
+            None => return None,
+            Some((x, y)) => (x, y)
+        };
+
+        // Prepare to traverse kd-tree for ray
+        let inv_dir = Vector::new_with(1.0 / ray.d.x, 1.0 / ray.d.y, 1.0 / ray.d.z);
+        let mut todo = Vec::with_capacity(64);
+        todo.push((0, gmin, gmax));
+
+        // Traverse kd-tree nodes in order for ray
+        let mut isect = None;
+        while let Some((node_idx, tmin, tmax)) = todo.pop() {
+            // Bail out if we found a hit closer than the current node
+            if ray.maxt() < tmin {
+                break;
+            }
+
+            let node = &self.nodes[node_idx];
+            if node.is_leaf() {
+                // Check for intersections inside leaf node
+                match node {
+                    &KDAccelNode::Leaf(ref prim_ids) => {
+                        isect = prim_ids.iter().fold(isect, |isec, &p| {
+                            self.primitives[p].intersect(ray).or(isec)
+                        });
+                    },
+                    _ => panic!("So, is it a leaf or not??")
+                }
+            } else {
+                // Compute parametric distance along ray to split plane
+                let axis = match node.split_axis() {
+                    SplitAxis::X => 0,
+                    SplitAxis::Y => 1,
+                    SplitAxis::Z => 2
+                };
+                let tplane = (node.split_pos() - ray.o[axis]) * inv_dir[axis];
+
+                // Get node children pointers for ray
+                let below_first =
+                    (ray.o[axis] < node.split_pos()) ||
+                    (ray.o[axis] == node.split_pos() && ray.d[axis] <= 0.0);
+
+                let (first, second) = if below_first {
+                    (node_idx + 1, node.above_child())
+                } else {
+                    (node.above_child(), node_idx + 1)
+                };
+
+                // Advance to next child node, possibly enqueue other child
+                if tplane > tmax || tplane <= 0.0 {
+                    todo.push((first, tmin, tmax));
+                } else if tplane < tmin {
+                    todo.push((second, tmin, tmax));
+                } else {
+                    todo.push((second, tplane, tmax));
+                    todo.push((first, tmin, tplane));
+                }
+            }
+        }
+
+        isect;
+    }
 }
 
 #[cfg(test)]
