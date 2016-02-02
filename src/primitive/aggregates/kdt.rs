@@ -92,18 +92,6 @@ impl KDAccelNode {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct KDTreeAccelerator {
-    isect_cost: i32,
-    traversal_cost: i32,
-    max_prims: usize,
-    max_depth: usize,
-    empty_bonus: f32,
-    bounds: BBox,
-    primitives: Vec<Primitive>,
-    nodes: Vec<KDAccelNode>
-}
-
 #[derive(Clone, Debug, PartialEq)]
 enum BoundEdge {
     Unknown,
@@ -300,6 +288,11 @@ fn build_tree(icost: i32, tcost: i32, maxp: usize, ebonus: f32,
     vec![ KDAccelNode::leaf(prim_nums.iter().map(|x| *x).collect()) ]
 }
 
+#[derive(Clone, Debug)]
+pub struct KDTreeAccelerator {
+    primitives: Vec<Primitive>,
+    nodes: Vec<KDAccelNode>
+}
 
 impl KDTreeAccelerator {
     fn new(prims: Vec<Primitive>, icost: i32, tcost: i32, ebonus: f32,
@@ -337,12 +330,6 @@ impl KDTreeAccelerator {
 
         // Build kd-tree for accelerator
         KDTreeAccelerator {
-            isect_cost: icost,
-            traversal_cost: tcost,
-            max_prims: maxp,
-            max_depth: maxd,
-            empty_bonus: ebonus,
-            bounds: bounds,
             primitives: prims,
             nodes: nodes
         }
