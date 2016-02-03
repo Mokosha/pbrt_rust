@@ -9,12 +9,14 @@ use intersection::Intersection;
 use primitive::Primitive;
 use primitive::aggregates::grid::GridAccelerator;
 use primitive::aggregates::bvh::BVHAccelerator;
+use primitive::aggregates::kdt::KDTreeAccelerator;
 use ray::Ray;
 
 #[derive(Clone, Debug)]
 pub enum Aggregate {
     Grid(GridAccelerator),
-    BVH(BVHAccelerator)
+    BVH(BVHAccelerator),
+    KDT(KDTreeAccelerator)
 }
 
 impl Aggregate {
@@ -25,13 +27,19 @@ impl Aggregate {
     pub fn bvh(p: Vec<Primitive>, max_prims: usize, sm: &'static str) -> Aggregate {
         Aggregate::BVH(BVHAccelerator::new(p, max_prims, sm))
     }
+
+    pub fn kdt(p: Vec<Primitive>, icost: i32, tcost: i32, ebonus: f32,
+               max_prims: usize, max_depth: usize) -> Aggregate {
+        Aggregate::KDT(KDTreeAccelerator::new(p, icost, tcost, ebonus, max_prims, max_depth))
+    }
 }
 
 impl HasBounds for Aggregate {
     fn world_bound(&self) -> BBox {
         match self {
             &Aggregate::Grid(ref ga) => ga.world_bound(),
-            &Aggregate::BVH(ref bvh) => bvh.world_bound()
+            &Aggregate::BVH(ref bvh) => bvh.world_bound(),
+            &Aggregate::KDT(ref kdt) => kdt.world_bound()
         }
     }
 }
@@ -40,14 +48,16 @@ impl Intersectable for Aggregate {
     fn intersect(&self, ray : &Ray) -> Option<Intersection> {
         match self {
             &Aggregate::Grid(ref g) => g.intersect(ray),
-            &Aggregate::BVH(ref bvh) => bvh.intersect(ray)
+            &Aggregate::BVH(ref bvh) => bvh.intersect(ray),
+            &Aggregate::KDT(ref kdt) => kdt.intersect(ray)
         }
     }
 
     fn intersect_p(&self, ray : &Ray) -> bool {
         match self {
             &Aggregate::Grid(ref g) => g.intersect_p(ray),
-            &Aggregate::BVH(ref bvh) => bvh.intersect_p(ray)
+            &Aggregate::BVH(ref bvh) => bvh.intersect_p(ray),
+            &Aggregate::KDT(ref kdt) => kdt.intersect_p(ray)
         }
     }
 }
@@ -120,5 +130,11 @@ mod tests {
     #[test]
     fn bvhs_can_intersect_with_rays_with_equal() {
         test_intersection(|ps| Aggregate::bvh(ps, 1, "equal"));
+    }
+
+    #[ignore]
+    #[test]
+    fn kdts_can_intersect_with_rays() {
+        test_intersection(|ps| Aggregate::kdt(ps, 80, 1, 1.0, 1, 100));
     }
 }

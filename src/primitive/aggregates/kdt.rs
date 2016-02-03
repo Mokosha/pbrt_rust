@@ -300,8 +300,8 @@ pub struct KDTreeAccelerator {
 }
 
 impl KDTreeAccelerator {
-    fn new(prims: Vec<Primitive>, icost: i32, tcost: i32, ebonus: f32,
-           maxp: usize, maxd: usize) -> KDTreeAccelerator {
+    pub fn new(prims: Vec<Primitive>, icost: i32, tcost: i32, ebonus: f32,
+               maxp: usize, maxd: usize) -> KDTreeAccelerator {
         let num_prims = prims.len();
         let max_depth = if maxd == 0 {
             // Just some randomly chosen numbers apparently? (p.232)
