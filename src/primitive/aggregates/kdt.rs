@@ -8,7 +8,7 @@ use primitive::Primitive;
 use ray::Ray;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum SplitAxis { X, Y, Z }
+pub enum SplitAxis { X, Y, Z }
 
 // !SPEED! Rust uses tagged unions to construct enum values. That
 // means that each of these values will be 8 bytes larger than they
@@ -16,7 +16,7 @@ enum SplitAxis { X, Y, Z }
 // We can get tricky with data layout to make the smaller to improve
 // cache performance. (See section 4.5.1)
 #[derive(Clone, PartialEq, Debug)]
-enum KDAccelNode {
+pub enum KDAccelNode {
     InteriorX {
         split: f32,
         above_child: usize
@@ -129,20 +129,24 @@ impl BoundEdge {
 
 impl ::std::cmp::PartialOrd for BoundEdge {
     fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
-        let (va, a_start): (f32, usize) = match self {
+        let (va, a_pn, a_start): (f32, usize, usize) = match self {
             &BoundEdge::Unknown => panic!("Unknown bound edge!"),
-            &BoundEdge::Start(x, _) => (x, 0),
-            &BoundEdge::End(x, _) => (x, 1)
+            &BoundEdge::Start(x, pn) => (x, pn, 1),
+            &BoundEdge::End(x, pn) => (x, pn, 0)
         };
 
-        let (vb, b_start): (f32, usize) = match other {
+        let (vb, b_pn, b_start): (f32, usize, usize) = match other {
             &BoundEdge::Unknown => panic!("Unknown bound edge!"),
-            &BoundEdge::Start(x, _) => (x, 0),
-            &BoundEdge::End(x, _) => (x, 1)
+            &BoundEdge::Start(x, pn) => (x, pn, 1),
+            &BoundEdge::End(x, pn) => (x, pn, 0)
         };
 
         if va == vb {
-            a_start.partial_cmp(&b_start)
+            if a_pn == b_pn {
+                b_start.partial_cmp(&a_start)
+            } else {
+                a_start.partial_cmp(&b_start)
+            }
         } else {
             va.partial_cmp(&vb)
         }
@@ -155,7 +159,7 @@ fn build_tree(icost: i32, tcost: i32, maxp: usize, ebonus: f32,
               bad_refines: usize) -> Vec<KDAccelNode> {
     // Initialize leaf node if termination criteria are met
     let num_prims = prim_nums.len();
-    if num_prims < maxp || depth == 0 {
+    if num_prims <= maxp || depth == 0 {
         return vec![ KDAccelNode::leaf(prim_nums.iter().map(|x| *x).collect()) ];
     }
 
@@ -179,6 +183,7 @@ fn build_tree(icost: i32, tcost: i32, maxp: usize, ebonus: f32,
                 edges[axis][2*i] = BoundEdge::Start(bbox.p_min[axis], pn);
                 edges[axis][2*i + 1] = BoundEdge::End(bbox.p_max[axis], pn);
             }
+
             let (our_edges, _) = edges[axis].split_at_mut(2 * num_prims);
             our_edges.sort_by(|a, b| { a.partial_cmp(b).unwrap() });
 
@@ -235,18 +240,21 @@ fn build_tree(icost: i32, tcost: i32, maxp: usize, ebonus: f32,
 
             // Classify primitives with respect to split
             let (mut n0, mut n1) = (0, 0);
-            for i in 0..best_offset.unwrap() {
-                if let BoundEdge::Start(_, pn) = our_edges[i] {
+            let bo = best_offset.unwrap();
+            for edge in our_edges.iter().take(bo) {
+                if let &BoundEdge::Start(_, pn) = edge {
                     prim_nums[n0] = pn;
                     n0 += 1;
                 }
             }
-            for i in (best_offset.unwrap()+1)..(2*num_prims) {
-                if let BoundEdge::End(_, pn) = our_edges[i] {
+
+            for edge in our_edges.iter().skip(bo + 1) {
+                if let &BoundEdge::End(_, pn) = edge {
                     prims_scratch[n1] = pn;
                     n1 += 1;
                 }
             }
+
             let (tsplit, _) = our_edges[best_offset.unwrap()].get_values();
             (n0, n1, tsplit, num_bad_refines)
         };
@@ -283,7 +291,7 @@ fn build_tree(icost: i32, tcost: i32, maxp: usize, ebonus: f32,
             _ => panic!("Axis num out of range!")
         };
 
-        let mut result = vec![ KDAccelNode::interior(split_axis, 1, tsplit) ];
+        let mut result = vec![ KDAccelNode::interior(split_axis, left_children.len() + 1, tsplit) ];
         result.append(&mut left_children);
         result.append(&mut right_children);
         return result
@@ -326,7 +334,7 @@ impl KDTreeAccelerator {
             vec![ BoundEdge::Unknown; 2 * num_prims ],
             vec![ BoundEdge::Unknown; 2 * num_prims ],
             vec![ BoundEdge::Unknown; 2 * num_prims ]];
-        let mut prims_scratch = vec![ 0, (max_depth + 1) * num_prims ];
+        let mut prims_scratch = vec![ 0; (max_depth + 1) * num_prims ];
 
         // Start recursive construction of kd-tree
         let nodes = build_tree(icost, tcost, maxp, ebonus, bounds.clone(),
@@ -418,10 +426,24 @@ impl Intersectable for KDTreeAccelerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use geometry::vector::Vector;
+    use primitive::aggregates::tests::sphere_at;
 
-    #[ignore]
     #[test]
     fn it_can_be_created() {
-        unimplemented!()
+        let prims = vec![
+            sphere_at(Vector::new_with(-1.0, 1.0, 0.0)),
+            sphere_at(Vector::new_with(-1.0, -1.0, 0.0)),
+            sphere_at(Vector::new_with(2.0, 0.0, 0.0)) ];
+
+        let prim_ids : Vec<_> = prims.iter().map(|p| p.get_id()).collect();
+
+        let kdt = KDTreeAccelerator::new(prims, 80, 1, 1.0, 1, 10);
+        assert_eq!(kdt.nodes.len(), 5);
+        assert_eq!(kdt.nodes[0], KDAccelNode::interior(SplitAxis::X, 4, 0.0));
+        assert_eq!(kdt.nodes[1], KDAccelNode::interior(SplitAxis::Y, 3, 0.0));
+        assert_eq!(kdt.nodes[2], KDAccelNode::leaf(vec![1]));
+        assert_eq!(kdt.nodes[3], KDAccelNode::leaf(vec![0]));
+        assert_eq!(kdt.nodes[4], KDAccelNode::leaf(vec![2]));
     }
 }
