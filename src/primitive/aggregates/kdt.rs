@@ -428,6 +428,7 @@ mod tests {
     use super::*;
     use geometry::vector::Vector;
     use primitive::aggregates::tests::sphere_at;
+    use primitive::aggregates::tests::get_spheres;
 
     #[test]
     fn it_can_be_created() {
@@ -445,5 +446,77 @@ mod tests {
         assert_eq!(kdt.nodes[2], KDAccelNode::leaf(vec![1]));
         assert_eq!(kdt.nodes[3], KDAccelNode::leaf(vec![0]));
         assert_eq!(kdt.nodes[4], KDAccelNode::leaf(vec![2]));
+    }
+
+    #[test]
+    fn it_can_place_everything_in_one_node() {
+        let prims = vec![
+            sphere_at(Vector::new_with(-1.0, 1.0, 0.0)),
+            sphere_at(Vector::new_with(-1.0, -1.0, 0.0)),
+            sphere_at(Vector::new_with(2.0, 0.0, 0.0)) ];
+
+        let prim_ids : Vec<_> = prims.iter().map(|p| p.get_id()).collect();
+
+        let mut kdt = KDTreeAccelerator::new(prims.clone(), 1, 1000, 1.0, 1, 10);
+        assert_eq!(kdt.nodes.len(), 1);
+        assert_eq!(kdt.nodes[0], KDAccelNode::leaf(vec![0, 1, 2]));
+
+        kdt = KDTreeAccelerator::new(prims.clone(), 80, 1, 1.0, 10, 10);
+        assert_eq!(kdt.nodes.len(), 1);
+        assert_eq!(kdt.nodes[0], KDAccelNode::leaf(vec![0, 1, 2]));
+    }
+
+    #[test]
+    fn it_can_stop_early_due_to_depth() {
+        let prims = vec![
+            sphere_at(Vector::new_with(-1.0, 1.0, 0.0)),
+            sphere_at(Vector::new_with(-1.0, -1.0, 0.0)),
+            sphere_at(Vector::new_with(2.0, 0.0, 0.0)) ];
+
+        let kdt = KDTreeAccelerator::new(prims, 80, 1, 1.0, 1, 1);
+        assert_eq!(kdt.nodes.len(), 3);
+        assert_eq!(kdt.nodes[0], KDAccelNode::interior(SplitAxis::X, 2, 0.0));
+        assert_eq!(kdt.nodes[1], KDAccelNode::leaf(vec![0, 1]));
+        assert_eq!(kdt.nodes[2], KDAccelNode::leaf(vec![2]));
+
+        let skdt = KDTreeAccelerator::new(get_spheres(), 80, 1, 1.0, 2, 2);
+        assert_eq!(skdt.nodes.len(), 7);
+        assert_eq!(skdt.nodes[0], KDAccelNode::interior(SplitAxis::Z, 4, 1.0));
+        assert_eq!(skdt.nodes[1], KDAccelNode::interior(SplitAxis::Y, 3, 1.0));
+        assert_eq!(skdt.nodes[2], KDAccelNode::leaf(vec![0, 1]));
+        assert_eq!(skdt.nodes[3], KDAccelNode::leaf(vec![2, 3]));
+        assert_eq!(skdt.nodes[4], KDAccelNode::interior(SplitAxis::Y, 6, 1.0));
+        assert_eq!(skdt.nodes[5], KDAccelNode::leaf(vec![4, 5]));
+        assert_eq!(skdt.nodes[6], KDAccelNode::leaf(vec![6, 7]));
+    }
+
+    #[test]
+    fn it_can_stop_early_due_to_reaching_max_primitives() {
+        let prims = vec![
+            sphere_at(Vector::new_with(-1.0, 1.0, 0.0)),
+            sphere_at(Vector::new_with(-1.0, -1.0, 0.0)),
+            sphere_at(Vector::new_with(2.0, 0.0, 0.0)) ];
+
+        let mut kdt = KDTreeAccelerator::new(prims, 80, 1, 1.0, 2, 10);
+        assert_eq!(kdt.nodes.len(), 3);
+        assert_eq!(kdt.nodes[0], KDAccelNode::interior(SplitAxis::X, 2, 0.0));
+        assert_eq!(kdt.nodes[1], KDAccelNode::leaf(vec![0, 1]));
+        assert_eq!(kdt.nodes[2], KDAccelNode::leaf(vec![2]));
+
+        kdt = KDTreeAccelerator::new(get_spheres(), 80, 1, 1.0, 3, 10);
+        assert_eq!(kdt.nodes.len(), 7);
+        assert_eq!(kdt.nodes[0], KDAccelNode::interior(SplitAxis::Z, 4, 1.0));
+        assert_eq!(kdt.nodes[1], KDAccelNode::interior(SplitAxis::Y, 3, 1.0));
+        assert_eq!(kdt.nodes[2], KDAccelNode::leaf(vec![0, 1]));
+        assert_eq!(kdt.nodes[3], KDAccelNode::leaf(vec![2, 3]));
+        assert_eq!(kdt.nodes[4], KDAccelNode::interior(SplitAxis::Y, 6, 1.0));
+        assert_eq!(kdt.nodes[5], KDAccelNode::leaf(vec![4, 5]));
+        assert_eq!(kdt.nodes[6], KDAccelNode::leaf(vec![6, 7]));
+
+        kdt = KDTreeAccelerator::new(get_spheres(), 80, 1, 1.0, 4, 10);
+        assert_eq!(kdt.nodes.len(), 3);
+        assert_eq!(kdt.nodes[0], KDAccelNode::interior(SplitAxis::Z, 2, 1.0));
+        assert_eq!(kdt.nodes[1], KDAccelNode::leaf(vec![0, 1, 2, 3]));
+        assert_eq!(kdt.nodes[2], KDAccelNode::leaf(vec![4, 5, 6, 7]));
     }
 }
