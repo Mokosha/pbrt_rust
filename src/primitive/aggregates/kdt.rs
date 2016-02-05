@@ -281,7 +281,7 @@ fn build_tree(icost: i32, tcost: i32, maxp: usize, ebonus: f32,
         }
 
         for c in right_children.iter_mut() {
-            c.offset(left_children.len());
+            c.offset(left_children.len() + 1);
         }
 
         let split_axis = match axis {

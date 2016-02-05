@@ -132,7 +132,6 @@ mod tests {
         test_intersection(|ps| Aggregate::bvh(ps, 1, "equal"));
     }
 
-    #[ignore]
     #[test]
     fn kdts_can_intersect_with_rays() {
         test_intersection(|ps| Aggregate::kdt(ps, 80, 1, 1.0, 1, 100));
