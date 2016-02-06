@@ -5,6 +5,7 @@ use geometry::vector::Vector;
 use intersection::Intersectable;
 use intersection::Intersection;
 use primitive::Primitive;
+use primitive::FullyRefinable;
 use ray::Ray;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -310,7 +311,12 @@ pub struct KDTreeAccelerator {
 impl KDTreeAccelerator {
     pub fn new(prims: Vec<Primitive>, icost: i32, tcost: i32, ebonus: f32,
                maxp: usize, maxd: usize) -> KDTreeAccelerator {
-        let num_prims = prims.len();
+        let refined = prims.into_iter().fold(Vec::new(), |mut ps, prim| {
+            ps.append(&mut prim.fully_refine());
+            ps
+        });
+
+        let num_prims = refined.len();
         let max_depth = if maxd == 0 {
             // Just some randomly chosen numbers apparently? (p.232)
             ((num_prims as f32).log2() * 1.3 + 8.0).round() as usize
@@ -320,7 +326,7 @@ impl KDTreeAccelerator {
 
         // Compute bounds for kd-tree construction
         let mut prim_bounds = Vec::with_capacity(num_prims);
-        let bounds = prims.iter().fold(BBox::new(), |b, p| {
+        let bounds = refined.iter().fold(BBox::new(), |b, p| {
             let pb = p.world_bound();
             prim_bounds.push(pb.clone());
             b.unioned_with(pb)
@@ -344,7 +350,7 @@ impl KDTreeAccelerator {
         // Build kd-tree for accelerator
         KDTreeAccelerator {
             bounds: bounds,
-            primitives: prims,
+            primitives: refined,
             nodes: nodes
         }
     }
@@ -426,9 +432,15 @@ impl Intersectable for KDTreeAccelerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use geometry::point::Point;
     use geometry::vector::Vector;
+    use intersection::Intersectable;
+    use primitive::Primitive;
     use primitive::aggregates::tests::sphere_at;
     use primitive::aggregates::tests::get_spheres;
+    use ray::Ray;
+    use shape::Shape;
+    use transform::transform::Transform;
 
     #[test]
     fn it_can_be_created() {
@@ -518,5 +530,39 @@ mod tests {
         assert_eq!(kdt.nodes[0], KDAccelNode::interior(SplitAxis::Z, 2, 1.0));
         assert_eq!(kdt.nodes[1], KDAccelNode::leaf(vec![0, 1, 2, 3]));
         assert_eq!(kdt.nodes[2], KDAccelNode::leaf(vec![4, 5, 6, 7]));
+    }
+
+    #[test]
+    fn it_fully_refines_all_primitives() {
+        // Tetrahedron
+        let tet_pts : [Point; 4] =
+            [Point { x: 0.0, y: 0.0, z: 0.0 },
+             Point { x: 1.0, y: 0.0, z: 0.0 },
+             Point { x: 0.0, y: 1.0, z: 0.0 },
+             Point { x: 0.0, y: 0.0, z: 1.0 }];
+        let tet_tris : [usize; 12] =
+            [ 0, 3, 2, 0, 1, 2, 0, 3, 1, 1, 2, 3 ];
+
+        let m = vec![Primitive::geometric(Shape::triangle_mesh(
+            Transform::new(), Transform::new(), false, &tet_tris,
+            &tet_pts, None, None, None, None))];
+
+        let r = Ray::new_with(Point::new_with(0.25, -1.0, 0.25),
+                              Vector::new_with(0.0, 1.0, 0.0), 0.0);
+
+        let kdt = KDTreeAccelerator::new(m.clone(), 80, 1, 1.0, 1, 10);
+        assert_eq!(kdt.primitives.len(), 4);
+        assert!(kdt.intersect_p(&r));
+
+        kdt.intersect(&r);
+        assert_eq!(r.maxt(), 1.0);
+
+        r.set_maxt(10.0);
+
+        let kdt2 = KDTreeAccelerator::new(m.clone(), 80, 1, 1.0, 1, 10);
+        assert!(kdt2.intersect_p(&r));
+
+        kdt2.intersect(&r);
+        assert_eq!(r.maxt(), 1.0);
     }
 }
