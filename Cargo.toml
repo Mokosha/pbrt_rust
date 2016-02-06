@@ -1,7 +1,7 @@
 [package]
 name = "pbrt_rust"
 version = "0.1.0"
-authors = ["Pavel Krajcevski <pavel@cs.unc.edu>"]
+authors = ["Pavel Krajcevski <krajcevski@gmail.com>"]
 
 [dependencies]
 num_cpus = "*"
