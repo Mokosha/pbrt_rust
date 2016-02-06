@@ -4,6 +4,7 @@ use pbrt_rust::bbox::BBox;
 use pbrt_rust::bbox::HasBounds;
 use pbrt_rust::primitive::Primitive;
 use pbrt_rust::primitive::FullyRefinable;
+use pbrt_rust::scene::Scene;
 
 pub struct AggregateTester {
     num_iterations: usize,
