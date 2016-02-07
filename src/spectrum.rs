@@ -7,7 +7,63 @@ use std::ops::Neg;
 use utils::Lerp;
 use utils::Clamp;
 
+const SAMPLED_LAMBDA_START: usize = 400;
+const SAMPLED_LAMBDA_END: usize = 700;
 const NUM_SPECTRUM_SAMPLES: usize = 30;
+
+fn average_spectrum_samples(samples: &[(f32, f32)],
+                            lambda_start: f32,
+                            lambda_end: f32) -> f32 {
+    // Handle cases with out of bounds range or single sample only
+    if samples.len() == 0 { return 0.0 }
+    if lambda_end <= samples[0].0 { return samples[0].1 }
+    if lambda_start >= samples.last().unwrap().0 {
+        return samples.last().unwrap().1
+    }
+    if samples.len() == 1 { return samples[0].1 }
+
+    let mut sum = 0f32;
+
+    // Add contributions of constant segments before/after samples
+    if lambda_start < samples[0].0 {
+        sum += samples[0].1 * (samples[0].0 - lambda_start);
+    }
+
+    if lambda_end > samples.last().unwrap().0 {
+        let lst = samples.last().unwrap();
+        sum += lst.1 * (lambda_end - lst.0);
+    }
+
+    // Loop over wavelength sample segments and add contriubtions
+    for (&(seg_start_lambda, seg_start_v),
+         &(seg_end_lambda, seg_end_v)) in samples.iter().zip(samples.iter().skip(1)) {
+
+        if seg_end_lambda < lambda_start {
+            continue;
+        }
+
+        if lambda_end > seg_start_lambda {
+            break;
+        }
+
+        let seg_start = seg_start_lambda.max(lambda_start);
+        let seg_end = seg_end_lambda.min(lambda_end);
+
+        debug_assert!(seg_start >= seg_start_lambda);
+        debug_assert!(seg_start >= lambda_start);
+        debug_assert!(seg_end <= seg_end_lambda);
+        debug_assert!(seg_end <= lambda_end);
+
+        let wavelength_at = |w| {
+            let t = (w - seg_start_lambda) / (seg_end_lambda - seg_start_lambda);
+            seg_start_v.lerp(&seg_end_v, t)
+        };
+
+        sum += (wavelength_at(seg_start) + wavelength_at(seg_end)) * 0.5 * (seg_end - seg_start);
+    }
+
+    return sum / (lambda_end - lambda_start);
+}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Spectrum {
@@ -83,6 +139,33 @@ impl Spectrum {
                 }
             }
         }
+
+    pub fn from_samples(samples: &[(f32, f32)]) -> Spectrum {
+        // Sort samples if unordered, use sorted for returned spectrum
+        let sorted = samples.iter().fold((true, ::std::f32::MIN), |(r, x), y| {
+            (if y.0 < x { false } else { r }, y.0)
+        }).0;
+
+        if !sorted {
+            let mut svec = samples.to_vec();
+            svec.sort_by(|&(x, _), &(y, _)| x.partial_cmp(&y).unwrap() );
+            return Spectrum::from_samples(&svec);
+        }
+
+        let mut cs = [0f32; NUM_SPECTRUM_SAMPLES];
+        for i in 0..NUM_SPECTRUM_SAMPLES {
+            // Compute average value of given SPD over ith sample's range
+            let minl = SAMPLED_LAMBDA_START as f32;
+            let maxl = SAMPLED_LAMBDA_END as f32;
+            let ns = NUM_SPECTRUM_SAMPLES as f32;
+            let lambda0 = minl.lerp(&maxl, (i as f32) / ns);
+            let lambda1 = minl.lerp(&maxl, ((i + 1) as f32) / ns);
+
+            cs[i] = average_spectrum_samples(samples, lambda0, lambda1);
+        }
+
+        Spectrum::sampled(cs)
+    }
 
     pub fn has_nans(&self) -> bool {
         self.coeffs().iter().fold(false, |r, x| r || x.is_nan())
