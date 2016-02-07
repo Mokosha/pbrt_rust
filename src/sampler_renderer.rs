@@ -116,7 +116,7 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
                 let (mut ls, isect, ts) = data.read().unwrap().renderer.li(scene, &ray, &(samples[i]), &mut rng);
                 ls = ls * ray_weight;
 
-                if !ls.is_valid() { panic!("Invalid radiance value!"); }
+                if !ls.has_nans() { panic!("Invalid radiance value!"); }
                 l_s.push(ls);
 
                 // !FIXME! I think there are times when we don't generate transmissive
