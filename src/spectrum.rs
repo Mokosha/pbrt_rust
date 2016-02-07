@@ -2,6 +2,14 @@ use std::ops::Add;
 use std::ops::Div;
 use std::ops::Mul;
 
+trait CoefficientSpectrum {
+    type CoeffType : Copy+Add+Mul;
+    fn num_coefficients() -> usize;
+    fn coeff(&self, idx: usize) -> Self::CoeffType;
+    fn coeff_mut<'a>(&mut self, idx: usize) -> &'a mut Self::CoeffType;
+}
+
+
 #[derive(Debug, Copy, Clone)]
 pub struct Spectrum;
 
