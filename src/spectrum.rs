@@ -9,7 +9,12 @@ use utils::Clamp;
 
 const SAMPLED_LAMBDA_START: usize = 400;
 const SAMPLED_LAMBDA_END: usize = 700;
-const NUM_SPECTRUM_SAMPLES: usize = 30;
+const _NUM_SPECTRUM_SAMPLES: usize = 30;
+
+#[cfg(test)]
+pub const NUM_SPECTRUM_SAMPLES: usize = _NUM_SPECTRUM_SAMPLES;
+#[cfg(not(test))]
+const NUM_SPECTRUM_SAMPLES: usize = _NUM_SPECTRUM_SAMPLES;
 
 fn average_spectrum_samples(samples: &[(f32, f32)],
                             lambda_start: f32,
@@ -42,7 +47,7 @@ fn average_spectrum_samples(samples: &[(f32, f32)],
             continue;
         }
 
-        if lambda_end > seg_start_lambda {
+        if lambda_end < seg_start_lambda {
             break;
         }
 
@@ -59,7 +64,8 @@ fn average_spectrum_samples(samples: &[(f32, f32)],
             seg_start_v.lerp(&seg_end_v, t)
         };
 
-        sum += (wavelength_at(seg_start) + wavelength_at(seg_end)) * 0.5 * (seg_end - seg_start);
+        sum += (wavelength_at(seg_start) + wavelength_at(seg_end))
+            * 0.5 * (seg_end - seg_start);
     }
 
     return sum / (lambda_end - lambda_start);
@@ -97,8 +103,10 @@ impl Spectrum {
                         _ => panic!("RGB & non-RGB mismatch!")
                     };
 
-                    for i in 0..3 {
-                        _rhs_cs[i] = f((cs[i], _rhs_cs[i]));
+                    debug_assert!(_rhs_cs.len() == cs.len());
+
+                    for (rhs, c) in _rhs_cs.iter_mut().zip(cs.iter()) {
+                        *rhs = f((*c, *rhs));
                     }
 
                     Spectrum::RGB(_rhs_cs)
@@ -110,8 +118,10 @@ impl Spectrum {
                         _ => panic!("Sampled & non-Sampled mismatch!")
                     };
 
-                    for i in 0..3 {
-                        _rhs_cs[i] = f((cs[i], _rhs_cs[i]));
+                    debug_assert!(_rhs_cs.len() == cs.len());
+
+                    for (rhs, c) in _rhs_cs.iter_mut().zip(cs.iter()) {
+                        *rhs = f((*c, *rhs));
                     }
 
                     Spectrum::Sampled(_rhs_cs)
@@ -123,16 +133,16 @@ impl Spectrum {
         where F : Fn(f32) -> f32 {
             match self {
                 Spectrum::RGB(mut cs) => {
-                    for i in 0..3 {
-                        cs[i] = f(cs[i]);
+                    for c in cs.iter_mut() {
+                        *c = f(*c);
                     }
 
                     Spectrum::RGB(cs)
                 },
 
                 Spectrum::Sampled(mut cs) => {
-                    for i in 0..3 {
-                        cs[i] = f(cs[i]);
+                    for c in cs.iter_mut() {
+                        *c = f(*c);
                     }
 
                     Spectrum::Sampled(cs)
@@ -261,3 +271,195 @@ impl Clamp<f32> for Spectrum {
         self.transform(|x| x.clamp(a, b))
     }
 }
+
+impl ::std::ops::Index<usize> for Spectrum {
+    type Output = f32;
+    fn index(&self, index: usize) -> &f32 {
+        match self {
+            &Spectrum::Sampled(ref cs) => {
+                match index {
+                    0...29 => cs.get(index).unwrap(),
+                    _ => panic!("Error - Sampled Spectrum index out of bounds!")
+                }
+            },
+
+            &Spectrum::RGB(ref cs) => {
+                match index {
+                    0...2 => cs.get(index).unwrap(),
+                    _ => panic!("Error - RGB Spectrum index out of bounds!")
+                }
+            },
+        }
+    }
+}
+
+impl ::std::ops::IndexMut<usize> for Spectrum {
+    fn index_mut(&mut self, index: usize) -> &mut f32 {
+        match self {
+            &mut Spectrum::Sampled(ref mut cs) => {
+                match index {
+                    0...29 => cs.get_mut(index).unwrap(),
+                    _ => panic!("Error - Sampled Spectrum index out of bounds!")
+                }
+            },
+
+            &mut Spectrum::RGB(ref mut cs) => {
+                match index {
+                    0...2 => cs.get_mut(index).unwrap(),
+                    _ => panic!("Error - RGB Spectrum index out of bounds!")
+                }
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f32;
+    use utils::Lerp;
+
+    #[test]
+    fn it_can_be_created() {
+        assert_eq!(Spectrum::from_samples(&[(400.0, 3.0); 1]),
+                   Spectrum::Sampled([3f32; NUM_SPECTRUM_SAMPLES]));
+
+        assert_eq!(Spectrum::from_value(3f32),
+                   Spectrum::RGB([3f32; 3]));
+    }
+
+    #[test]
+    fn it_can_be_created_from_values() {
+        assert_eq!(Spectrum::from_samples(
+            &[(400.0, 3.0), (500.0, 3.0), (600.0, 3.0), (700.0, 3.0)]),
+                   Spectrum::Sampled([3f32; NUM_SPECTRUM_SAMPLES]));
+
+        assert_eq!(Spectrum::from_samples(
+            &[(500.0, 3.0), (700.0, 3.0), (600.0, 3.0), (400.0, 3.0)]),
+                   Spectrum::Sampled([3f32; NUM_SPECTRUM_SAMPLES]));
+
+        let expected =
+            [4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
+             5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
+             5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0];
+        assert_eq!(Spectrum::from_samples(
+            &[(400.0, 3.0), (410.0, 5.0), (690.0, 5.0), (700.0, 3.0)]),
+                   Spectrum::Sampled(expected));
+    }
+
+    #[test]
+    fn it_can_be_subtracted() {
+        let s1 = [(400.0, 3.0), (500.0, 3.0), (600.0, 3.0), (700.0, 3.0)];
+        let s2 = [(500.0, 3.0), (700.0, 3.0), (600.0, 3.0), (400.0, 3.0)];
+        assert!((Spectrum::from_samples(&s1) -
+                 Spectrum::from_samples(&s2)).is_black());
+
+        assert_eq!(Spectrum::from_value(10.0) - Spectrum::from_value(6.0),
+                   Spectrum::from_value(4.0));
+    }
+
+    #[test]
+    fn it_can_be_added() {
+        let s1 = [(400.0, -3.0), (500.0, -3.0), (600.0, -3.0), (700.0, -3.0)];
+        let s2 = [(500.0, 3.0), (700.0, 3.0), (600.0, 3.0), (400.0, 3.0)];
+        assert!((Spectrum::from_samples(&s1) +
+                 Spectrum::from_samples(&s2)).is_black());
+
+        assert_eq!(Spectrum::from_value(10.0) + Spectrum::from_value(6.0),
+                   Spectrum::from_value(16.0));
+    }
+
+    #[test]
+    fn it_can_be_scale() {
+        let s1 = [(400.0, 3.0), (500.0, 3.0), (600.0, 3.0), (700.0, 3.0)];
+        assert!((Spectrum::from_samples(&s1) +
+                 (-1.0) * Spectrum::from_samples(&s1)).is_black());
+
+        assert_eq!(Spectrum::from_value(10.0) * 6.0,
+                   Spectrum::from_value(10.0 * 6.0));
+    }
+
+    #[test]
+    fn it_can_be_divided_by_scalars() {
+        let s1 = [(400.0, 3.0), (500.0, 3.0), (600.0, 3.0), (700.0, 3.0)];
+        assert!((Spectrum::from_samples(&s1) +
+                 (-3.0) * (Spectrum::from_samples(&s1) / 3.0)).is_black());
+
+        assert_eq!(Spectrum::from_value(10.0) / 6.0,
+                   Spectrum::from_value(10.0 / 6.0));
+    }
+
+    #[test]
+    fn it_can_be_negated() {
+        let s1 = [(400.0, 3.0), (500.0, 3.0), (600.0, 3.0), (700.0, 3.0)];
+        assert!((Spectrum::from_samples(&s1) +
+                 -Spectrum::from_samples(&s1)).is_black());
+
+        assert_eq!(-Spectrum::from_value(10.0),
+                   Spectrum::from_value(-10.0));
+    }
+
+    #[test]
+    fn it_can_be_indexed() {
+        let s1 = [(400.0, 3.0), (500.0, 3.0), (600.0, 3.0), (700.0, 3.0)];
+        assert_eq!(Spectrum::from_samples(&s1)[0], 3.0);
+        assert_eq!(Spectrum::from_samples(&s1)[4], 3.0);
+        assert_eq!(Spectrum::from_samples(&s1)[29], 3.0);
+
+        let mut s2 = Spectrum::from_samples(&s1);
+        assert_eq!(s2[0], 3.0);
+        assert_eq!(s2[4], 3.0);
+        assert_eq!(s2[29], 3.0);
+
+        let s = Spectrum::from_value(1.0);
+        for i in 0..3 {
+            assert_eq!(s[i], 1.0);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_cant_be_indexed_too_much() {
+        let s1 = [(400.0, 3.0), (500.0, 3.0), (600.0, 3.0), (700.0, 3.0)];
+        assert_eq!(Spectrum::from_samples(&s1)[30], 3.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_cant_be_indexed_too_much2() {
+        assert_eq!(Spectrum::from_value(1.0)[3], 3.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_cant_be_mutably_indexed_too_much_either() {
+        let s1 = [(400.0, 3.0), (500.0, 3.0), (600.0, 3.0), (700.0, 3.0)];
+        let mut sp = Spectrum::from_samples(&s1);
+        assert_eq!(sp[30], 3.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_cant_be_mutably_indexed_too_much_either2() {
+        let mut sp = Spectrum::from_value(1.0);
+        assert_eq!(sp[3], 3.0);
+    }
+
+    #[test]
+    fn it_can_be_interpolated() {
+        let s1 = Spectrum::from_samples(&[(400.0, 3.0), (500.0, 3.0),
+                                          (600.0, 3.0), (700.0, 3.0)]);
+        let s2 = Spectrum::from_samples(&[(700.0, 2.0), (500.0, 2.0),
+                                          (400.0, 2.0), (600.0, 2.0)]);
+        assert_eq!(s1.lerp(&s2, 0.5).coeffs(), [2.5; NUM_SPECTRUM_SAMPLES]);
+        assert_eq!(s1.lerp(&s2, 0.0).coeffs(), [3.0; NUM_SPECTRUM_SAMPLES]);
+        assert_eq!(s1.lerp(&s2, 1.0).coeffs(), [2.0; NUM_SPECTRUM_SAMPLES]);
+
+        let s3 = Spectrum::from_value(10.0);
+        let s4 = Spectrum::from_value(6.0);
+        assert_eq!(s3.lerp(&s4, 0.75).coeffs(), [7.0; 3]);
+        assert_eq!(s3.lerp(&s4, 0.0).coeffs(), [10.0; 3]);
+        assert_eq!(s3.lerp(&s4, 1.0).coeffs(), [6.0; 3]);
+    }
+}
+
