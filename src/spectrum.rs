@@ -77,6 +77,32 @@ pub enum Spectrum {
     Sampled([f32; NUM_SPECTRUM_SAMPLES])
 }
 
+const SAMPLED_CIE_X: Spectrum = Spectrum::Sampled([
+    0.025282010, 0.081483230, 0.212490960, 0.324267570, 0.3460886,
+    0.316841900, 0.248012930, 0.143243360, 0.060038872, 0.015978936,
+    0.003980267, 0.031583928, 0.111278260, 0.226511390, 0.36044234,
+    0.512720940, 0.678387170, 0.841404600, 0.976102350, 1.0522884,
+    1.040949100, 0.935082260, 0.750358000, 0.542926500, 0.3624630,
+    0.220550330, 0.122870910, 0.064803265, 0.033551400, 0.016247809]);
+
+const SAMPLED_CIE_Y: Spectrum = Spectrum::Sampled([
+    0.00070009334, 0.0023196535, 0.007460834, 0.017003465, 0.030045602,
+    0.04834793, 0.074440464, 0.113446735, 0.17076382, 0.260841,
+    0.4090647, 0.6076807, 0.790906, 0.9125535, 0.978302,
+    0.99830306, 0.9768859, 0.91392404, 0.815348, 0.69457865,
+    0.5668466, 0.44149598, 0.32167464, 0.21798798, 0.13915467,
+    0.08240787, 0.04522627, 0.023648031, 0.012163259, 0.00587135]);
+
+const SAMPLED_CIE_Z: Spectrum = Spectrum::Sampled([
+    0.12022422, 0.39005747, 1.0293049, 1.6035757, 1.7748283,
+    1.7357556, 1.5092261, 1.0445968, 0.62422955, 0.3584742,
+    0.21300009, 0.113990866, 0.05820007, 0.030324265, 0.013784799,
+    0.005946, 0.002835, 0.0018270003, 0.0013880001, 0.0009753,
+    0.0005844333, 0.0002477, 0.00010853333, 0.000031566666, 0.000009833333,
+    0.0, 0.0, 0.0, 0.0, 0.0]);
+
+const CIE_Y_INT: f32 = 10.679393;
+
 impl Spectrum {
 
     fn sampled(cs: [f32; NUM_SPECTRUM_SAMPLES]) -> Spectrum {
@@ -201,6 +227,40 @@ impl Spectrum {
 
     pub fn exp(self) -> Spectrum {
         self.transform(|x| x.exp())
+    }
+
+    pub fn to_xyz(&self) -> [f32; 3] {
+        let mut res = [0.0; 3];
+        match self {
+            &Spectrum::Sampled(ref cs) => {
+                res[0] = (0..NUM_SPECTRUM_SAMPLES).map(|i| {
+                    SAMPLED_CIE_X.coeffs()[i] * cs[i]
+                }).fold(0.0, |x, y| x + y) / CIE_Y_INT;
+
+                res[1] = (0..NUM_SPECTRUM_SAMPLES).map(|i| {
+                    SAMPLED_CIE_Y.coeffs()[i] * cs[i]
+                }).fold(0.0, |x, y| x + y) / CIE_Y_INT;
+
+                res[2] = (0..NUM_SPECTRUM_SAMPLES).map(|i| {
+                    SAMPLED_CIE_Z.coeffs()[i] * cs[i]
+                }).fold(0.0, |x, y| x + y) / CIE_Y_INT;
+            },
+            _ => panic!("Only know how to convert Sampled spectrum to XYZ")
+        }
+
+        res
+    }
+
+    pub fn y(&self) -> f32 {
+        match self {
+            &Spectrum::Sampled(ref cs) => {
+                cs.iter().map(|x| *x)
+                    .zip(SAMPLED_CIE_Y.coeffs().iter().map(|x| *x))
+                    .map(|(x, y)| x * y)
+                    .fold(0.0, |x, y| x + y) / CIE_Y_INT
+            },
+            _ => panic!("Only know how to convert Sampled spectrum to XYZ")
+        }
     }
 }
 
