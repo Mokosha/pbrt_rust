@@ -16,6 +16,18 @@ pub const NUM_SPECTRUM_SAMPLES: usize = _NUM_SPECTRUM_SAMPLES;
 #[cfg(not(test))]
 const NUM_SPECTRUM_SAMPLES: usize = _NUM_SPECTRUM_SAMPLES;
 
+fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
+    [3.240479*xyz[0] - 1.37150*xyz[1] - 0.498535*xyz[2],
+    -0.969256*xyz[0] + 1.875991*xyz[1] + 0.041556*xyz[2],
+     0.055648*xyz[0] - 0.204043*xyz[1] + 1.057311*xyz[2]]
+}
+
+fn rgb_to_xyz(rgb: [f32; 3]) -> [f32; 3] {
+    [0.412453*rgb[0] + 0.357580*rgb[1] + 0.180423*rgb[2],
+     0.212671*rgb[0] + 0.715160*rgb[1] + 0.072169*rgb[2],
+     0.019334*rgb[0] + 0.119193*rgb[1] + 0.950227*rgb[2]]
+}
+
 fn average_spectrum_samples(samples: &[(f32, f32)],
                             lambda_start: f32,
                             lambda_end: f32) -> f32 {
@@ -230,25 +242,20 @@ impl Spectrum {
     }
 
     pub fn to_xyz(&self) -> [f32; 3] {
-        let mut res = [0.0; 3];
         match self {
             &Spectrum::Sampled(ref cs) => {
-                res[0] = (0..NUM_SPECTRUM_SAMPLES).map(|i| {
-                    SAMPLED_CIE_X.coeffs()[i] * cs[i]
-                }).fold(0.0, |x, y| x + y) / CIE_Y_INT;
+                let with_spect = |spect: Spectrum| {
+                    (0..NUM_SPECTRUM_SAMPLES).map(|i| {
+                        spect.coeffs()[i] * cs[i]
+                    }).fold(0.0, |x, y| x + y) / CIE_Y_INT
+                };
 
-                res[1] = (0..NUM_SPECTRUM_SAMPLES).map(|i| {
-                    SAMPLED_CIE_Y.coeffs()[i] * cs[i]
-                }).fold(0.0, |x, y| x + y) / CIE_Y_INT;
-
-                res[2] = (0..NUM_SPECTRUM_SAMPLES).map(|i| {
-                    SAMPLED_CIE_Z.coeffs()[i] * cs[i]
-                }).fold(0.0, |x, y| x + y) / CIE_Y_INT;
+                [with_spect(SAMPLED_CIE_X),
+                 with_spect(SAMPLED_CIE_Y),
+                 with_spect(SAMPLED_CIE_Z)]
             },
-            _ => panic!("Only know how to convert Sampled spectrum to XYZ")
+            &Spectrum::RGB(ref rgb) => rgb_to_xyz(rgb.clone())
         }
-
-        res
     }
 
     pub fn y(&self) -> f32 {
@@ -259,8 +266,19 @@ impl Spectrum {
                     .map(|(x, y)| x * y)
                     .fold(0.0, |x, y| x + y) / CIE_Y_INT
             },
-            _ => panic!("Only know how to convert Sampled spectrum to XYZ")
+            &Spectrum::RGB(ref rgb) => rgb_to_xyz(rgb.clone())[1]
         }
+    }
+
+    pub fn to_rgb(&self) -> [f32; 3] {
+        match self {
+            &Spectrum::Sampled(_) => xyz_to_rgb(self.to_xyz()),
+            &Spectrum::RGB(rgb) => rgb.clone()
+        }
+    }
+
+    pub fn into_rgb_spectrum(self) -> Spectrum {
+        Spectrum::RGB(self.to_rgb())
     }
 }
 
