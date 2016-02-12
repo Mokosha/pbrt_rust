@@ -1,4 +1,5 @@
 use utils::Lerp;
+use utils::Clamp;
 
 pub trait Dot<T = Self> {
     fn dot(&self, v2: &T) -> f32;
@@ -176,6 +177,27 @@ pub fn coordinate_system(v1: &Vector) -> (Vector, Vector) {
         };
     let v3 = v1.clone().cross(&v2);
     (v3.clone().cross(&v1), v3)
+}
+
+pub fn spherical_direction_for_basis(sintheta: f32, costheta: f32, phi: f32,
+                                     x: Vector, y: Vector, z: Vector) -> Vector {
+    sintheta * phi.cos() * x + sintheta * phi.sin() * y + costheta * z
+}
+
+pub fn spherical_direction(sintheta: f32, costheta: f32, phi: f32) -> Vector {
+    spherical_direction_for_basis(sintheta, costheta, phi,
+                                  Vector::new_with(1.0, 0.0, 0.0),
+                                  Vector::new_with(0.0, 1.0, 0.0),
+                                  Vector::new_with(0.0, 0.0, 1.0))
+}
+
+pub fn spherical_theta(v: &Vector) -> f32 {
+    v.z.clamp(-1.0, 1.0).acos()
+}
+
+pub fn spherical_phi(v: &Vector) -> f32 {
+    let p = v.y.atan2(v.x);
+    if p < 0.0 { p + 2.0 * ::std::f32::consts::PI } else { p }
 }
 
 #[cfg(test)]
