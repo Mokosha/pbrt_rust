@@ -10,6 +10,10 @@ use utils::Clamp;
 const SAMPLED_LAMBDA_START: usize = 400;
 const SAMPLED_LAMBDA_END: usize = 700;
 
+const SAMPLED_INTEGRAL_FACTOR: f32 =
+    ((SAMPLED_LAMBDA_END - SAMPLED_LAMBDA_START) as f32)
+    / (NUM_SPECTRUM_SAMPLES as f32);
+
 // Note: if you change this number you will need
 // to re-run compute_xyz from the bin folder.
 const _NUM_SPECTRUM_SAMPLES: usize = 30;
@@ -124,7 +128,7 @@ const SAMPLED_CIE_Z: Spectrum = Spectrum::Sampled([
     0.0013880001, 0.0009753, 0.0005844333, 0.0002477, 0.00010853333,
     0.000031566666, 0.000009833333, 0.0, 0.0, 0.0, 0.0, 0.0]);
 
-const CIE_Y_INT: f32 = 10.679393;
+const CIE_Y_INT: f32 = 106.856895;
 
 const RGBREFL2SPECTWHITE: Spectrum = Spectrum::Sampled([
     1.061683, 1.0622234, 1.06226, 1.0624601, 1.0624173, 1.0624563, 1.0624939,
@@ -368,7 +372,7 @@ impl Spectrum {
                 let with_spect = |spect: Spectrum| {
                     (0..NUM_SPECTRUM_SAMPLES).map(|i| {
                         spect.coeffs()[i] * cs[i]
-                    }).fold(0.0, |x, y| x + y) / CIE_Y_INT
+                    }).fold(0.0, |x, y| x + y) * SAMPLED_INTEGRAL_FACTOR / CIE_Y_INT
                 };
 
                 [with_spect(SAMPLED_CIE_X),
@@ -385,7 +389,7 @@ impl Spectrum {
                 cs.iter().map(|x| *x)
                     .zip(SAMPLED_CIE_Y.coeffs().iter().map(|x| *x))
                     .map(|(x, y)| x * y)
-                    .fold(0.0, |x, y| x + y) / CIE_Y_INT
+                    .fold(0.0, |x, y| x + y) * SAMPLED_INTEGRAL_FACTOR / CIE_Y_INT
             },
             &Spectrum::RGB(ref rgb) => rgb_to_xyz(rgb.clone())[1]
         }
