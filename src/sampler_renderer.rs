@@ -1,7 +1,9 @@
 extern crate scoped_threadpool;
 extern crate num_cpus;
 
-use camera;
+use camera::Camera;
+use camera::CameraSample;
+use camera::film::Film;
 use integrator::EmptyIntegrator;
 use integrator::Integrator;
 use integrator::VolumeIntegrator;
@@ -16,6 +18,7 @@ use sampler;
 use scene;
 use scoped_threadpool::Pool;
 use spectrum::Spectrum;
+use transform::animated::AnimatedTransform;
 
 use std::ops::BitAnd;
 use std::iter::Iterator;
@@ -23,7 +26,7 @@ use std::sync::{RwLock, Arc};
 
 pub struct SamplerRenderer<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> {
     sampler: sampler::Sampler,
-    camera: camera::Camera,
+    camera: Camera,
     surface_integrator: Surf,
     volume_integrator: Vol,
     // SamplerRenderer Private Data
@@ -33,7 +36,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
      Vol : VolumeIntegrator+Send+Sync>
     SamplerRenderer<Surf, Vol> {
     pub fn new(
-        sampler: sampler::Sampler, cam: camera::Camera,
+        sampler: sampler::Sampler, cam: Camera,
         surf: Surf, vol: Vol) -> Self {
         SamplerRenderer {
             sampler: sampler,
@@ -46,7 +49,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
     pub fn new_empty() -> SamplerRenderer<EmptyIntegrator, EmptyIntegrator> {
         SamplerRenderer {
             sampler: sampler::Sampler,
-            camera: camera::Camera::new(512, 512),
+            camera: Camera::new(Film::new(512, 512), AnimatedTransform::identity(), 0.0, 1.0),
             surface_integrator: EmptyIntegrator::new(),
             volume_integrator: EmptyIntegrator::new(),
         }
@@ -105,8 +108,9 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
         // Generate camera rays and compute radiance along rays
         for i in 0..sample_count {
             // Find camera ray for sample[i]
+            let cs = CameraSample::from_sample(&(samples[i]));
             let (ray_weight, mut ray) =
-                data.read().unwrap().renderer.camera.generate_ray_differential(&(samples[i]));
+                data.read().unwrap().renderer.camera.generate_ray_differential(&cs);
 
             ray.scale_differentials(1.0f32 / sampler.samples_per_pixel().sqrt());
 
@@ -144,7 +148,8 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
                 // we may be able to move the lock within a few levels to get finer
                 // synchronization. Writing the computed sample is significantly
                 // cheaper than the render step, though
-                data.write().unwrap().renderer.camera.film.add_sample(&samples[i], &l_s[i]);
+                let cs = CameraSample::from_sample(&(samples[i]));
+                data.write().unwrap().renderer.camera.film_mut().add_sample(&cs, &l_s[i]);
             }
         }
 

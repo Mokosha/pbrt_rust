@@ -136,6 +136,10 @@ impl AnimatedTransform {
         }
     }
 
+    pub fn identity() -> AnimatedTransform {
+        AnimatedTransform::new(Transform::new(), 0.0, Transform::new(), 1.0)
+    }
+
     pub fn interpolate(&self, time: f32) -> Transform {
         // Handle boundary conditions for matrix interpolation
         if !self.actually_animated || time <= self.start_time {
