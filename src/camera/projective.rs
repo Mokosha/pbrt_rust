@@ -1,35 +1,38 @@
 use camera::CameraBase;
 use camera::film::Film;
+use geometry::vector::Vector;
 use transform::animated::AnimatedTransform;
 use transform::transform::Transform;
 
 #[derive(Debug, Clone)]
-pub struct ProjectiveCamera {
-    base: CameraBase,
+pub struct Projection {
     camera_to_screen: Transform,
+    raster_to_screen: Transform,
+    screen_to_raster: Transform,
     raster_to_camera: Transform
 }
 
-impl ProjectiveCamera {
-    pub fn new(cam2world: AnimatedTransform, proj: Transform,
-               screen_window: [f32; 4], sopen: f32, sclose: f32,
-               lensr: f32, focald: f32, film: Film) -> ProjectiveCamera {
+impl Projection {
+    pub fn new(film: &Film, proj: Transform, screen_window: [f32; 4],
+               lensr: f32, focald: f32) -> Projection {
         // Initialize depth of field parameters
         // Compute projective camera transformations
         let cam_to_screen = proj.clone();
-        let raster_to_cam = {
-            // Compute projective camera screen transformations
-            let raster_to_screen = Transform::new();
-            cam_to_screen.inverse() * raster_to_screen
-        };
 
-        ProjectiveCamera {
-            base: CameraBase::new(film, cam2world, sopen, sclose),
+        // Compute projective camera screen transformations
+        let screen_to_raster =
+            Transform::scale(film.x_res() as f32, film.y_res() as f32, 1.0) *
+            Transform::scale(1.0 / (screen_window[1] - screen_window[0]),
+                             1.0 / (screen_window[2] - screen_window[3]), 1.0) *
+            Transform::translate(&Vector::new_with(-screen_window[0], -screen_window[3], 0.0));
+        let raster_to_screen = screen_to_raster.inverse();
+        let raster_to_cam = cam_to_screen.inverse() * raster_to_screen.clone();
+
+        Projection {
             camera_to_screen: cam_to_screen,
-            raster_to_camera: raster_to_cam
+            raster_to_screen: raster_to_screen,
+            screen_to_raster: screen_to_raster,
+            raster_to_camera: raster_to_cam,
         }
     }
-
-    pub fn base(&self) -> &CameraBase { &(self.base) }
-    pub fn base_mut(&mut self) -> &mut CameraBase { &mut (self.base) }
 }

@@ -2,7 +2,7 @@ mod projective;
 pub mod film;
 
 use camera::film::Film;
-use camera::projective::ProjectiveCamera;
+use camera::projective::Projection;
 use ray::Ray;
 use ray::RayDifferential;
 use sampler::Sample;
@@ -44,26 +44,30 @@ impl CameraBase {
 
 #[derive(Debug, Clone)]
 pub enum Camera {
-    Projective(ProjectiveCamera)
+    Perspective {
+        base: CameraBase,
+        proj: Projection
+    }
 }
 
 impl Camera {
-    pub fn projective(cam2world: AnimatedTransform, proj: Transform,
-                      screen_window: [f32; 4], sopen: f32, sclose: f32,
-                      lensr: f32, focald: f32, film: Film) -> Camera {
-        Camera::Projective(ProjectiveCamera::new(
-            cam2world, proj, screen_window, sopen, sclose, lensr, focald, film))
+    pub fn perspective(cam2world: AnimatedTransform, proj: Transform,
+                       screen_window: [f32; 4], sopen: f32, sclose: f32,
+                       lensr: f32, focald: f32, film: Film) -> Camera {
+        let p = Projection::new(&film, proj, screen_window, lensr, focald);
+        let b = CameraBase::new(film, cam2world, sopen, sclose);
+        Camera::Perspective { base: b, proj: p }
     }
 
     pub fn base(&self) -> &CameraBase {
         match self {
-            &Camera::Projective(ref cam) => { cam.base() }
+            &Camera::Perspective { ref base, .. } => { base }
         }
     }
 
     fn base_mut(&mut self) -> &mut CameraBase {
         match self {
-            &mut Camera::Projective(ref mut cam) => { cam.base_mut() }
+            &mut Camera::Perspective { ref mut base, .. } => { base }
         }
     }
 
