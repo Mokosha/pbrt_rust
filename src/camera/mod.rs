@@ -1,11 +1,14 @@
+mod projective;
 pub mod film;
 
 use camera::film::Film;
+use camera::projective::ProjectiveCamera;
 use ray::Ray;
 use ray::RayDifferential;
 use sampler::Sample;
 use spectrum::Spectrum;
 use transform::animated::AnimatedTransform;
+use transform::transform::Transform;
 
 #[derive(Debug, Clone)]
 pub struct CameraSample {
@@ -20,26 +23,52 @@ impl CameraSample {
 }
 
 #[derive(Debug, Clone)]
-pub struct Camera {
+pub struct CameraBase {
     film: Film,
     cam_to_world: AnimatedTransform,
     shutter_open: f32,
     shutter_close: f32
 }
 
-impl Camera {
-    pub fn new(film: Film, cam2world: AnimatedTransform,
-               sopen: f32, sclose: f32) -> Camera {
-        Camera {
+impl CameraBase {
+    fn new(film: Film, cam2world: AnimatedTransform,
+           sopen: f32, sclose: f32) -> CameraBase {
+        CameraBase {
             film: film,
             cam_to_world: cam2world,
             shutter_open: sopen,
             shutter_close: sclose
         }
     }
+}
 
-    pub fn film(&self) -> &Film { &(self.film) }
-    pub fn film_mut(&mut self) -> &mut Film { &mut (self.film) }
+#[derive(Debug, Clone)]
+pub enum Camera {
+    Projective(ProjectiveCamera)
+}
+
+impl Camera {
+    pub fn projective(cam2world: AnimatedTransform, proj: Transform,
+                      screen_window: [f32; 4], sopen: f32, sclose: f32,
+                      lensr: f32, focald: f32, film: Film) -> Camera {
+        Camera::Projective(ProjectiveCamera::new(
+            cam2world, proj, screen_window, sopen, sclose, lensr, focald, film))
+    }
+
+    pub fn base(&self) -> &CameraBase {
+        match self {
+            &Camera::Projective(ref cam) => { cam.base() }
+        }
+    }
+
+    fn base_mut(&mut self) -> &mut CameraBase {
+        match self {
+            &mut Camera::Projective(ref mut cam) => { cam.base_mut() }
+        }
+    }
+
+    pub fn film(&self) -> &Film { &(self.base().film) }
+    pub fn film_mut(&mut self) -> &mut Film { &mut self.base_mut().film }
 
     pub fn generate_ray(&self, sample: &CameraSample) -> (f32, Ray) {
         unimplemented!();

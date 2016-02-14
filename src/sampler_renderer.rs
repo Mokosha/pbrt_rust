@@ -18,6 +18,7 @@ use sampler;
 use scene;
 use scoped_threadpool::Pool;
 use spectrum::Spectrum;
+use transform::transform::Transform;
 use transform::animated::AnimatedTransform;
 
 use std::ops::BitAnd;
@@ -49,7 +50,9 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
     pub fn new_empty() -> SamplerRenderer<EmptyIntegrator, EmptyIntegrator> {
         SamplerRenderer {
             sampler: sampler::Sampler,
-            camera: Camera::new(Film::new(512, 512), AnimatedTransform::identity(), 0.0, 1.0),
+            camera: Camera::projective(AnimatedTransform::identity(), Transform::new(),
+                                       [0.0, 0.0, 1.0, 1.0], 1.0, 1.0, 0.0, 1.0,
+                                       Film::new(512, 512)),
             surface_integrator: EmptyIntegrator::new(),
             volume_integrator: EmptyIntegrator::new(),
         }
