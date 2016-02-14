@@ -19,6 +19,10 @@ impl Vector {
         Vector { x: x_, y: y_, z: z_ }
     }
 
+    pub fn forward() -> Vector { Vector::new_with(0.0, 0.0, 1.0) }
+    pub fn right() -> Vector { Vector::new_with(1.0, 0.0, 0.0) }
+    pub fn up() -> Vector { Vector::new_with(0.0, 1.0, 0.0) }
+
     pub fn length_squared(&self) -> f32 {
         self.x * self.x + self.y * self.y + self.z * self.z
     }
