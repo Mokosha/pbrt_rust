@@ -35,4 +35,9 @@ impl Projection {
             raster_to_camera: raster_to_cam,
         }
     }
+
+    pub fn camera_to_screen(&self) -> &Transform { &self.camera_to_screen }
+    pub fn raster_to_screen(&self) -> &Transform { &self.raster_to_screen }
+    pub fn screen_to_raster(&self) -> &Transform { &self.screen_to_raster }
+    pub fn raster_to_camera(&self) -> &Transform { &self.raster_to_camera }
 }
