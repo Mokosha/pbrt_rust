@@ -50,9 +50,8 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
     pub fn new_empty() -> SamplerRenderer<EmptyIntegrator, EmptyIntegrator> {
         SamplerRenderer {
             sampler: sampler::Sampler,
-            camera: Camera::perspective(AnimatedTransform::identity(), Transform::new(),
-                                        [0.0, 0.0, 1.0, 1.0], 1.0, 1.0, 0.0, 1.0,
-                                        Film::new(512, 512)),
+            camera: Camera::perspective(AnimatedTransform::identity(), [0.0, 0.0, 1.0, 1.0],
+                                        1.0, 1.0, 0.0, 1.0, 90.0, Film::new(512, 512)),
             surface_integrator: EmptyIntegrator::new(),
             volume_integrator: EmptyIntegrator::new(),
         }
