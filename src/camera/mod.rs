@@ -20,6 +20,8 @@ use utils::Degrees;
 pub struct CameraSample {
     image_x: usize,
     image_y: usize,
+    pub lens_u: f32,
+    pub lens_v: f32,
     time: f32
 }
 
@@ -157,7 +159,8 @@ impl Camera {
                 Ray::new_with(Point::new(), Vector::from(p_camera).normalize(), 0.0)
         };
 
-        // !FIXME! Modify ray for depth of field
+        // Modify ray for depth of field
+        self.proj().handle_dof(sample, &mut ray);
 
         ray.set_time(self.base().shutter_open.lerp(&self.base().shutter_close, sample.time));
         (1.0, self.base().cam_to_world.xf(ray))
@@ -220,7 +223,8 @@ impl Camera {
         // Normalize the ray direction
         rd.ray.d = rd.ray.d.clone().normalize();
 
-        // !FIXME! Modify ray for depth of field
+        // Modify ray for depth of field
+        self.proj().handle_dof(sample, &mut rd.ray);
 
         rd.ray.set_time(self.base().shutter_open.lerp(&self.base().shutter_close, sample.time));
         (1.0, self.base().cam_to_world.xf(rd))
