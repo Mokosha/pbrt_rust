@@ -65,6 +65,10 @@ pub enum Camera {
         proj: Projection,
         dx_camera: Vector,
         dy_camera: Vector
+    },
+
+    Environment {
+        base: CameraBase
     }
 }
 
@@ -121,24 +125,63 @@ impl Camera {
         }
     }
 
+    pub fn environment(cam2world: AnimatedTransform, sopen: f32, sclose: f32,
+                       film: Film) -> Camera {
+        Camera::Environment {
+            base: CameraBase::new(film, cam2world, sopen, sclose)
+        }
+    }
+
     pub fn base(&self) -> &CameraBase {
         match self {
             &Camera::Perspective { ref base, .. } => { base },
-            &Camera::Orthographic { ref base, .. } => { base }
+            &Camera::Orthographic { ref base, .. } => { base },
+            &Camera::Environment { ref base, .. } => { base }
         }
     }
 
     fn base_mut(&mut self) -> &mut CameraBase {
         match self {
             &mut Camera::Perspective { ref mut base, .. } => { base },
-            &mut Camera::Orthographic { ref mut base, .. } => { base }
+            &mut Camera::Orthographic { ref mut base, .. } => { base },
+            &mut Camera::Environment { ref mut base, .. } => { base }
         }
     }
 
-    fn proj(&self) -> &Projection {
+    fn proj(&self) -> Option<&Projection> {
         match self {
-            &Camera::Perspective { ref proj, .. } => { proj },
-            &Camera::Orthographic { ref proj, .. } => { proj }
+            &Camera::Perspective { ref proj, .. } => { Some(proj) },
+            &Camera::Orthographic { ref proj, .. } => { Some(proj) },
+            &Camera::Environment { .. } => None
+        }
+    }
+
+    fn generate_base_ray(&self, sample: &CameraSample) -> Ray {
+        // Generate raster and camera samples
+        let p_camera = self.proj().map(|proj| {
+            let p_raster = Point::new_with(
+                sample.image_x as f32, sample.image_y as f32, 0.0);
+            proj.raster_to_camera().xf(p_raster)
+        });
+
+        match self {
+            &Camera::Orthographic { .. } =>
+                Ray::new_with(p_camera.unwrap(), Vector::forward(), 0.0),
+            &Camera::Perspective { .. } =>
+                Ray::new_with(Point::new(),
+                              Vector::from(p_camera.unwrap()).normalize(), 0.0),
+            &Camera::Environment { .. } => {
+                let theta = ::std::f32::consts::PI *
+                    ((sample.image_y as f32) / (self.film().y_res() as f32));
+                let phi = 2.0 * ::std::f32::consts::PI *
+                    ((sample.image_x as f32) / (self.film().x_res() as f32));
+
+                Ray::new_with(Point::new(),
+                              Vector::new_with(theta.sin() * phi.cos(),
+                                               theta.cos(),
+                                               theta.sin() * phi.sin()),
+                              0.0)
+            }
         }
     }
 
@@ -146,21 +189,12 @@ impl Camera {
     pub fn film_mut(&mut self) -> &mut Film { &mut self.base_mut().film }
 
     pub fn generate_ray(&self, sample: &CameraSample) -> (f32, Ray) {
-        // Generate raster and camera samples
-        let p_raster = Point::new_with(sample.image_x as f32,
-                                       sample.image_y as f32,
-                                       0.0);
-        let p_camera = self.proj().raster_to_camera().xf(p_raster);
-
-        let mut ray = match self {
-            &Camera::Orthographic { .. } =>
-                Ray::new_with(p_camera, Vector::forward(), 0.0),
-            &Camera::Perspective { .. } =>
-                Ray::new_with(Point::new(), Vector::from(p_camera).normalize(), 0.0)
-        };
+        let mut ray = self.generate_base_ray(sample);
 
         // Modify ray for depth of field
-        self.proj().handle_dof(sample, &mut ray);
+        if let Some(proj) = self.proj() {
+            proj.handle_dof(sample, &mut ray);
+        }
 
         ray.set_time(self.base().shutter_open.lerp(&self.base().shutter_close, sample.time));
         (1.0, self.base().cam_to_world.xf(ray))
@@ -170,15 +204,10 @@ impl Camera {
                                      -> (f32, RayDifferential) {
         let mut rd = RayDifferential::new();
         rd.has_differentials = true;
-
-        let p_raster = Point::new_with(sample.image_x as f32,
-                                       sample.image_y as f32, 0.0);
-        let p_camera = self.proj().raster_to_camera().xf(p_raster);
+        rd.ray = self.generate_base_ray(sample);
 
         match self {
             &Camera::Orthographic { ref base, ref dx_camera, ref dy_camera, .. } => {
-                rd.ray = Ray::new_with(p_camera, Vector::forward(), 0.0);
-
                 rd.rx_origin = &rd.ray.o + dx_camera;
                 rd.ry_origin = &rd.ray.o + dy_camera;
                 rd.rx_dir = rd.ray.d.clone();
@@ -186,7 +215,10 @@ impl Camera {
             },
 
             &Camera::Perspective { ref base, ref dx_camera, ref dy_camera, .. } => {
-                rd.ray = Ray::new_with(Point::new(), Vector::from(p_camera.clone()), 0.0);
+                // Generate raster and camera samples
+                let p_raster = Point::new_with(
+                    sample.image_x as f32, sample.image_y as f32, 0.0);
+                let p_camera = self.proj().unwrap().raster_to_camera().xf(p_raster);
 
                 rd.rx_origin = rd.ray.o.clone();
                 rd.ry_origin = rd.ray.o.clone();
@@ -194,37 +226,36 @@ impl Camera {
                 rd.ry_dir = (Vector::from(p_camera.clone()) + dy_camera).normalize();
             },
 
-//            _ => {
-//                // Find ray after shifting one pixel in the x direction
-//                let (wtx, rx) = {
-//                    let mut s = sample.clone();
-//                    s.image_x += 1;
-//                    self.generate_ray(&s)
-//                };
-//
-//                // Find ray after shifting one pixel in the y direction
-//                let (wty, ry) = {
-//                    let mut s = sample.clone();
-//                    s.image_y += 1;
-//                    self.generate_ray(&s)
-//                };
-//
-//                rd.rx_origin = rx.o.clone();
-//                rd.rx_dir = rx.d.clone();
-//                rd.ry_origin = ry.o.clone();
-//                rd.ry_dir = ry.d.clone();
-//
-//                if wtx == 0.0 || wty == 0.0 {
-//                    return (0.0f32, rd);
-//                }
-//            }
+            &Camera::Environment { .. } => {
+                // Find ray after shifting one pixel in the x direction
+                let (wtx, rx) = {
+                    let mut s = sample.clone();
+                    s.image_x += 1;
+                    self.generate_ray(&s)
+                };
+
+                // Find ray after shifting one pixel in the y direction
+                let (wty, ry) = {
+                    let mut s = sample.clone();
+                    s.image_y += 1;
+                    self.generate_ray(&s)
+                };
+
+                rd.rx_origin = rx.o.clone();
+                rd.rx_dir = rx.d.clone();
+                rd.ry_origin = ry.o.clone();
+                rd.ry_dir = ry.d.clone();
+
+                if wtx == 0.0 || wty == 0.0 {
+                    return (0.0f32, rd);
+                }
+            }
         }
 
-        // Normalize the ray direction
-        rd.ray.d = rd.ray.d.clone().normalize();
-
         // Modify ray for depth of field
-        self.proj().handle_dof(sample, &mut rd.ray);
+        if let Some(proj) = self.proj() {
+            proj.handle_dof(sample, &mut rd.ray);
+        }
 
         rd.ray.set_time(self.base().shutter_open.lerp(&self.base().shutter_close, sample.time));
         (1.0, self.base().cam_to_world.xf(rd))
