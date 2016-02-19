@@ -20,14 +20,20 @@ use utils::Degrees;
 pub struct CameraSample {
     image_x: usize,
     image_y: usize,
-    pub lens_u: f32,
-    pub lens_v: f32,
+    lens_u: f32,
+    lens_v: f32,
     time: f32
 }
 
 impl CameraSample {
-    pub fn from_sample(s: &Sample) -> CameraSample {
-        unimplemented!()
+    pub fn new(x: usize, y: usize, lu: f32, lv: f32, t: f32) -> CameraSample {
+        CameraSample {
+            image_x: x,
+            image_y: y,
+            lens_u: lu,
+            lens_v: lv,
+            time: t
+        }
     }
 }
 

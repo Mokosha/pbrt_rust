@@ -1,3 +1,4 @@
+use camera::CameraSample;
 use integrator::SurfaceIntegrator;
 use integrator::VolumeIntegrator;
 use intersection::Intersection;
@@ -6,9 +7,9 @@ use rng::RNG;
 use spectrum::Spectrum;
 use scene;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Sample {
-    pub idx: i32,
+    camera_sample: CameraSample,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -17,7 +18,9 @@ pub struct Sampler;
 impl Sample {
     pub fn new<Surf : SurfaceIntegrator, Vol : VolumeIntegrator>(
         sampler: &Sampler, surf: &Surf, vol: &Vol, scene: &scene::Scene, idx: i32)
-        -> Sample { Sample { idx: idx } }
+        -> Sample { unimplemented!() }
+
+    pub fn to_camera_sample(self) -> CameraSample { self.camera_sample }
 }
 
 impl Sampler {

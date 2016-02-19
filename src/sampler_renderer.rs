@@ -110,7 +110,7 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
         // Generate camera rays and compute radiance along rays
         for i in 0..sample_count {
             // Find camera ray for sample[i]
-            let cs = CameraSample::from_sample(&(samples[i]));
+            let cs = samples[i].clone().to_camera_sample();
             let (ray_weight, mut ray) =
                 data.read().unwrap().renderer.camera.generate_ray_differential(&cs);
 
@@ -150,7 +150,7 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
                 // we may be able to move the lock within a few levels to get finer
                 // synchronization. Writing the computed sample is significantly
                 // cheaper than the render step, though
-                let cs = CameraSample::from_sample(&(samples[i]));
+                let cs = samples[i].clone().to_camera_sample();
                 data.write().unwrap().renderer.camera.film_mut().add_sample(&cs, &l_s[i]);
             }
         }
@@ -161,10 +161,6 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
         t_s.clear();
         isects.clear();
     }
-
-    // !DEBUG!
-    let sample = data.read().unwrap().sample.idx;
-    println!("Got sample {} fo task {} of {}", sample, task_idx, num_tasks);
 }
 
 impl<Surf : SurfaceIntegrator+Send+Sync,
