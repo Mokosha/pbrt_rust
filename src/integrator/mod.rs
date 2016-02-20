@@ -1,3 +1,5 @@
+mod whitted;
+
 use bsdf;
 use bsdf::BSDF;
 use bsdf::BSDFSample;
@@ -10,6 +12,8 @@ use rng::RNG;
 use sampler::Sample;
 use scene::Scene;
 use spectrum::Spectrum;
+
+use integrator::whitted::WhittedIntegrator;
 
 fn process_specular<T: RNG, R: Renderer>(
     ray: &RayDifferential, bsdf: &BSDF,
@@ -48,39 +52,52 @@ pub fn specular_transmit<T: RNG, R: Renderer>(
                      bsdf::BSDF_TRANSMISSION | bsdf::BSDF_SPECULAR)
 }
 
-pub trait Integrator {
-    fn preprocess(&mut self, scene: &Scene, camera: &Camera) { }
-}
+pub struct Integrator;
 
-pub trait SurfaceIntegrator : Integrator {
-    fn li<T:RNG, R:Renderer>(&self, &Scene, &R, &RayDifferential,
-                             &mut Intersection, &Sample, &mut T) -> Spectrum;
-}
-
-pub trait VolumeIntegrator : Integrator {
-    fn li<T:RNG, R:Renderer>(&self, &Scene, &R, &RayDifferential,
-                             &Sample, &mut T, &mut Spectrum) -> Spectrum;
-}
-
-
-#[derive(Debug, Clone)]
-pub struct EmptyIntegrator;
-
-impl EmptyIntegrator {
-    pub fn new() -> EmptyIntegrator { EmptyIntegrator }
-}
-
-impl Integrator for EmptyIntegrator { }
-impl SurfaceIntegrator for EmptyIntegrator {
-    fn li<T:RNG, R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
-                             _: &mut Intersection, _: &Sample, _: &mut T) -> Spectrum {
-        Spectrum::from_value(0f32)
+impl Integrator {
+    fn preprocess(&mut self, scene: &Scene, camera: &Camera) {
+        unimplemented!()
     }
 }
 
-impl VolumeIntegrator for EmptyIntegrator {
-    fn li<T:RNG, R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
-                             _: &Sample, _: &mut T, _: &mut Spectrum) -> Spectrum {
-        Spectrum::from_value(0f32)
+pub enum SurfaceIntegrator {
+    Whitted {
+        base: Integrator,
+        surf: WhittedIntegrator
+    }
+}
+
+impl SurfaceIntegrator {
+    pub fn whitted(max_depth: usize) -> SurfaceIntegrator {
+        SurfaceIntegrator::Whitted {
+            base: Integrator,
+            surf: WhittedIntegrator::new(max_depth)
+        }
+    }
+
+    pub fn li<T:RNG, R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
+                                 _: &mut Intersection, _: &Sample, _: &mut T) -> Spectrum {
+        unimplemented!()
+    }
+
+    pub fn preprocess(&mut self, scene: &Scene, camera: &Camera) {
+        match self {
+            &mut SurfaceIntegrator::Whitted { ref mut base, .. } => base.preprocess(scene, camera)
+        }
+    }
+}
+
+pub struct VolumeIntegrator {
+    base: Integrator
+}
+
+impl VolumeIntegrator {
+    pub fn li<T:RNG, R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
+                                 _: &Sample, _: &mut T, _: &mut Spectrum) -> Spectrum {
+        unimplemented!()
+    }
+
+    pub fn preprocess(&mut self, scene: &Scene, camera: &Camera) {
+        self.base.preprocess(scene, camera);
     }
 }

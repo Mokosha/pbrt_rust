@@ -1,6 +1,5 @@
 extern crate pbrt_rust;
 
-use pbrt_rust::integrator::EmptyIntegrator;
 use pbrt_rust::renderer::Renderer;
 use pbrt_rust::scene;
 use pbrt_rust::sampler_renderer::SamplerRenderer;
@@ -31,10 +30,4 @@ fn main() {
         }
     }
     pbrt_cleanup();
-
-    // !DEBUG!
-    let scene = scene::Scene::new();
-    let mut renderer : SamplerRenderer<EmptyIntegrator, EmptyIntegrator> =
-        SamplerRenderer::<EmptyIntegrator, EmptyIntegrator>::new_empty();
-    renderer.render(&scene);
 }

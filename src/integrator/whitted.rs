@@ -15,25 +15,16 @@ use spectrum::Spectrum;
 
 pub struct WhittedIntegrator {
     // WhittedIntegrator Private Data
-    max_depth: i32,
+    max_depth: usize,
 }
 
 impl WhittedIntegrator {
-    pub fn new() -> WhittedIntegrator {
-        WhittedIntegrator {
-            max_depth: 5
-        }
-    }
-
-    pub fn with_depth(d: i32) -> WhittedIntegrator {
+    pub fn new(d: usize) -> WhittedIntegrator {
         WhittedIntegrator {
             max_depth: d
         }
     }
-}
 
-impl Integrator for WhittedIntegrator { }
-impl SurfaceIntegrator for WhittedIntegrator {
     fn li<T : RNG, R : Renderer>(&self, scene: &Scene,
                                  renderer: &R,
                                  rayd: &RayDifferential,

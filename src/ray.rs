@@ -10,7 +10,7 @@ pub struct Ray {
     pub o: Point,
     pub d: Vector,
     pub time: Time,
-    pub depth: i32,
+    pub depth: usize,
     mint: RefCell<f32>,
     maxt: RefCell<f32>
 }
@@ -56,7 +56,7 @@ impl Ray {
     pub fn maxt(&self) -> f32 { *(self.maxt.borrow()) }
 
     pub fn set_time(&mut self, t: f32) { self.time = Time::from(t) }
-    pub fn set_depth(&mut self, d: i32) { self.depth = d }
+    pub fn set_depth(&mut self, d: usize) { self.depth = d }
 
     pub fn point_at(&self, t: f32) -> Point { &self.o + (&self.d * t) }
 }

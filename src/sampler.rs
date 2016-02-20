@@ -14,8 +14,7 @@ pub struct Sample {
 }
 
 impl Sample {
-    pub fn new<Surf : SurfaceIntegrator, Vol : VolumeIntegrator>(
-        sampler: &Sampler, surf: &Surf, vol: &Vol, scene: &Scene, idx: i32)
+    pub fn new(sampler: &Sampler, surf: &SurfaceIntegrator, vol: &VolumeIntegrator, scene: &Scene, idx: i32)
         -> Sample { unimplemented!() }
 
     pub fn to_camera_sample(self) -> CameraSample { self.camera_sample }
