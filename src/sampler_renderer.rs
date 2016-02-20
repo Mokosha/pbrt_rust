@@ -14,7 +14,8 @@ use ray;
 use rng::RNG;
 use rng::PseudoRNG;
 use renderer::Renderer;
-use sampler;
+use sampler::Sample;
+use sampler::Sampler;
 use scene;
 use scoped_threadpool::Pool;
 use spectrum::Spectrum;
@@ -26,7 +27,7 @@ use std::iter::Iterator;
 use std::sync::{RwLock, Arc};
 
 pub struct SamplerRenderer<Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+Send+Sync> {
-    sampler: sampler::Sampler,
+    sampler: Sampler,
     camera: Camera,
     surface_integrator: Surf,
     volume_integrator: Vol,
@@ -37,7 +38,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
      Vol : VolumeIntegrator+Send+Sync>
     SamplerRenderer<Surf, Vol> {
     pub fn new(
-        sampler: sampler::Sampler, cam: Camera,
+        sampler: Sampler, cam: Camera,
         surf: Surf, vol: Vol) -> Self {
         SamplerRenderer {
             sampler: sampler,
@@ -49,7 +50,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
 
     pub fn new_empty() -> SamplerRenderer<EmptyIntegrator, EmptyIntegrator> {
         SamplerRenderer {
-            sampler: sampler::Sampler,
+            sampler: Sampler::new(),
             camera: Camera::perspective(AnimatedTransform::identity(), [0.0, 0.0, 1.0, 1.0],
                                         1.0, 1.0, 0.0, 1.0, 90.0, Film::new(512, 512)),
             surface_integrator: EmptyIntegrator::new(),
@@ -61,7 +62,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
 struct SamplerRendererTaskData<'a, 'b, Surf : 'a+SurfaceIntegrator+Send+Sync+, Vol : 'a+VolumeIntegrator+Send+Sync+> {
     scene: &'a scene::Scene,
     renderer: &'a mut SamplerRenderer<Surf, Vol>,
-    sample: &'b mut sampler::Sample
+    sample: &'b mut Sample
 }
 
 impl<'a, 'b,
@@ -70,7 +71,7 @@ impl<'a, 'b,
     SamplerRendererTaskData<'a, 'b, Surf, Vol> {
         fn new(scene: &'a scene::Scene,
                renderer: &'a mut SamplerRenderer<Surf, Vol>,
-               sample: &'b mut sampler::Sample) ->
+               sample: &'b mut Sample) ->
             SamplerRendererTaskData<'a, 'b, Surf, Vol> {
                 SamplerRendererTaskData {
                     scene: scene,
@@ -95,7 +96,7 @@ fn run_task<'a, 'b, Surf : SurfaceIntegrator+Send+Sync, Vol : VolumeIntegrator+S
     
     // Allocate space for samples and intersections
     let max_samples = sampler.maximum_sample_count() as usize;
-    let mut samples : Vec<sampler::Sample> = (0..max_samples).map(|_| data.read().unwrap().sample.clone()).collect();
+    let mut samples : Vec<Sample> = (0..max_samples).map(|_| data.read().unwrap().sample.clone()).collect();
     let mut rays : Vec<ray::RayDifferential> = Vec::with_capacity(max_samples);
     let mut l_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
     let mut t_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
@@ -172,8 +173,8 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
         self.volume_integrator.preprocess(scene, &(self.camera));
 
         // Allocate and initialize sample
-        let mut sample = sampler::Sample::new(&(self.sampler), &(self.surface_integrator),
-                                              &(self.volume_integrator), &scene, 1);
+        let mut sample = Sample::new(&(self.sampler), &(self.surface_integrator),
+                                     &(self.volume_integrator), &scene, 1);
 
         // Create and launch SampleRendererTasks for rendering image
         {
@@ -201,7 +202,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
 
     fn li<'a, T:RNG>(
         &self, scene: &'a scene::Scene, ray: &ray::RayDifferential,
-        sample: &sampler::Sample, rng: &mut T) -> (Spectrum, Option<Intersection>, Spectrum) {
+        sample: &Sample, rng: &mut T) -> (Spectrum, Option<Intersection>, Spectrum) {
         // Allocate variables for isect and T if needed
         let (isect, li) =
             if let Some(mut scene_isect) = scene.intersect(&ray.ray) {
@@ -220,7 +221,7 @@ impl<Surf : SurfaceIntegrator+Send+Sync,
 
     fn transmittance<T:RNG>(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,
-        sample: &sampler::Sample, rng: &mut T) -> Spectrum {
+        sample: &Sample, rng: &mut T) -> Spectrum {
         let mut local_trans = Spectrum::from_value(0f32);
         self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans)
     }
