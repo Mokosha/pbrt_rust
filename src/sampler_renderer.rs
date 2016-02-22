@@ -160,8 +160,8 @@ impl Renderer for SamplerRenderer {
         self.volume_integrator.preprocess(scene, &(self.camera));
 
         // Allocate and initialize sample
-        let mut sample = Sample::new(&(self.sampler), &(self.surface_integrator),
-                                     &(self.volume_integrator), &scene, 1);
+        let mut sample = Sample::new(&(self.sampler), Some(&self.surface_integrator),
+                                     Some(&self.volume_integrator), &scene, 1);
 
         // Create and launch SampleRendererTasks for rendering image
         {

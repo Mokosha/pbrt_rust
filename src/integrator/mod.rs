@@ -10,6 +10,7 @@ use ray::RayDifferential;
 use renderer::Renderer;
 use rng::RNG;
 use sampler::Sample;
+use sampler::Sampler;
 use scene::Scene;
 use spectrum::Spectrum;
 
@@ -85,6 +86,10 @@ impl SurfaceIntegrator {
             &mut SurfaceIntegrator::Whitted { ref mut base, .. } => base.preprocess(scene, camera)
         }
     }
+
+    pub fn request_samples(&self, sampler: &Sampler, sample: &mut Sample, scene: &Scene) {
+        unimplemented!()
+    }
 }
 
 pub struct VolumeIntegrator {
@@ -99,5 +104,9 @@ impl VolumeIntegrator {
 
     pub fn preprocess(&mut self, scene: &Scene, camera: &Camera) {
         self.base.preprocess(scene, camera);
+    }
+
+    pub fn request_samples(&self, sampler: &Sampler, sample: &mut Sample, scene: &Scene) {
+        unimplemented!()
     }
 }

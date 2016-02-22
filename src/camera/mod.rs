@@ -35,6 +35,10 @@ impl CameraSample {
             time: t
         }
     }
+
+    pub fn empty() -> CameraSample {
+        CameraSample::new(0, 0, 0.0, 0.0, 0.0)
+    }
 }
 
 #[derive(Debug, Clone)]
