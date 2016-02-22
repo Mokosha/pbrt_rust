@@ -1,4 +1,4 @@
-use sampler::Sample;
+use sampler::sample::Sample;
 use scene::Scene;
 use spectrum::Spectrum;
 use renderer::Renderer;

@@ -9,7 +9,7 @@ use intersection::Intersection;
 use ray::RayDifferential;
 use renderer::Renderer;
 use rng::RNG;
-use sampler::Sample;
+use sampler::sample::Sample;
 use sampler::Sampler;
 use scene::Scene;
 use spectrum::Spectrum;

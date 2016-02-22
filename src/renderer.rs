@@ -1,6 +1,6 @@
 use ray;
 use rng::RNG;
-use sampler;
+use sampler::sample::Sample;
 use spectrum::Spectrum;
 use scene;
 use intersection::Intersection;
@@ -10,17 +10,17 @@ pub trait Renderer {
 
     fn li<'a, T:RNG>(
         &self, &'a scene::Scene, &ray::RayDifferential,
-        &sampler::Sample, &mut T) -> (Spectrum, Option<Intersection>, Spectrum);
+        &Sample, &mut T) -> (Spectrum, Option<Intersection>, Spectrum);
 
     fn li_simple<T:RNG>(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,
-        sample: &sampler::Sample, rng: &mut T) -> Spectrum {
+        sample: &Sample, rng: &mut T) -> Spectrum {
         self.li(scene, ray, sample, rng).0
     }
 
     fn transmittance<T:RNG>(
         &self, &scene::Scene, &ray::RayDifferential,
-        &sampler::Sample, &mut T) -> Spectrum;
+        &Sample, &mut T) -> Spectrum;
 
     // Rnderer Interface
 }

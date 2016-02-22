@@ -13,7 +13,7 @@ use ray;
 use rng::RNG;
 use rng::PseudoRNG;
 use renderer::Renderer;
-use sampler::Sample;
+use sampler::sample::Sample;
 use sampler::Sampler;
 use scene;
 use scoped_threadpool::Pool;

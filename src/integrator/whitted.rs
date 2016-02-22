@@ -3,15 +3,13 @@ use integrator;
 use integrator::Integrator;
 use integrator::SurfaceIntegrator;
 use intersection::Intersection;
-// use light::Light;
 use light::LightSample;
 use ray::RayDifferential;
 use renderer::Renderer;
 use rng::RNG;
-use sampler::Sample;
+use sampler::sample::Sample;
 use scene::Scene;
 use spectrum::Spectrum;
-// use visibility_tester::VisibilityTester;
 
 pub struct WhittedIntegrator {
     // WhittedIntegrator Private Data

@@ -8,7 +8,6 @@ use geometry::normal::Normalize;
 use geometry::vector::Vector;
 use ray::Ray;
 use ray::RayDifferential;
-use sampler::Sample;
 use spectrum::Spectrum;
 use transform::animated::AnimatedTransform;
 use transform::transform::ApplyTransform;
