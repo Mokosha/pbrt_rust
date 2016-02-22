@@ -91,3 +91,35 @@ impl Sample {
 
     pub fn to_camera_sample(self) -> CameraSample { self.camera_sample }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[ignore]
+    #[test]
+    fn it_can_be_created() {
+        unimplemented!()
+    }
+
+    // !FIXME! These should all also make sure that the proper amount
+    // of data was allocated to store the resulting samples.
+
+    #[ignore]
+    #[test]
+    fn it_can_add_1D_samples() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_add_2D_samples() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_add_both_1D_and_2D_samples() {
+        unimplemented!()
+    }
+}
