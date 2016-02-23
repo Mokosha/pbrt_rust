@@ -1,3 +1,4 @@
+mod stratified;
 pub mod sample;
 
 use intersection::Intersection;
@@ -16,6 +17,21 @@ pub struct SamplerBase {
     samples_per_pixel: usize,
     shutter_open: f32,
     shutter_close: f32
+}
+
+impl SamplerBase {
+    pub fn new(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
+               spp: usize, sopen: f32, sclose: f32) -> SamplerBase {
+        SamplerBase {
+            x_pixel_start: x_start,
+            x_pixel_end: x_end,
+            y_pixel_start: y_start,
+            y_pixel_end: y_end,
+            samples_per_pixel: spp,
+            shutter_open: sopen,
+            shutter_close: sclose
+        }
+    }
 }
 
 pub struct Sampler {
