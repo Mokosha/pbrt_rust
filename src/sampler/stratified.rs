@@ -25,6 +25,18 @@ impl StratifiedSampler {
             sample_buf: vec![0.0; 5 * (xs * ys as usize)]
         }
     }
+
+    pub fn get_sub_sampler(&self, num: usize, count: usize) -> Option<StratifiedSampler> {
+        let (x0, x1, y0, y1) = self.base.compute_sub_window(num, count);
+        if x0 == x1 || y0 == y1 {
+            None
+        } else {
+            Some(StratifiedSampler::new(x0, x1, y0, y1,
+                                        self.x_pixel_samples, self.y_pixel_samples,
+                                        self.jitter_samples,
+                                        self.base.shutter_open, self.base.shutter_close))
+        }
+    }
 }
 
 #[cfg(test)]
