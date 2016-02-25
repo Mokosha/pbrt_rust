@@ -1,4 +1,4 @@
-use sampler::SamplerBase;
+use sampler::base::SamplerBase;
 
 pub struct StratifiedSampler {
     base: SamplerBase,
