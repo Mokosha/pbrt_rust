@@ -31,16 +31,29 @@ impl SamplerBase {
         let dx = (self.x_pixel_end - self.x_pixel_start) as usize;
         let dy = (self.y_pixel_end - self.y_pixel_start) as usize;
 
-        let mut nx = count;
-        let mut ny = 1;
-        while (nx % 2) == 0 && 2*dx*ny < dy*nx {
-            nx /= 2;
-            ny *= 2;
-        }
+        let (nx, ny) = if dx > dy {
+            let mut _nx = count;
+            let mut _ny = 1;
+            while (_nx % 2) == 0 && 2*dx*_ny < dy*_nx {
+                _nx /= 2;
+                _ny *= 2;
+            }
+            (_nx, _ny)
+        } else {
+            let mut _nx = 1;
+            let mut _ny = count;
+            while (_ny % 2) == 0 && 2*dy*_nx < dx*_ny {
+                _nx *= 2;
+                _ny /= 2;
+            }
+            (_nx, _ny)
+        };
 
         // Compute x and y pixel sample range for sub window
         let xo = num % nx;
         let yo = num / nx;
+
+        println!("{:?}", (nx, ny, xo, yo));
 
         let tx0 = (xo as f32) / (nx as f32);
         let tx1 = ((xo + 1) as f32) / (nx as f32);
@@ -79,9 +92,26 @@ mod tests {
         assert_eq!(s.shutter_close, 1.0);
     }
 
-    #[ignore]
     #[test]
     fn its_base_can_tile_windows() {
-        unimplemented!()
+        let mut s = SamplerBase::new(0, 10, 0, 2, 2, 0.0, 1.0);
+
+        assert_eq!(s.compute_sub_window(0, 20), (0, 1, 0, 1));
+        assert_eq!(s.compute_sub_window(9, 20), (9, 10, 0, 1));
+        assert_eq!(s.compute_sub_window(10, 20), (0, 1, 1, 2));
+        assert_eq!(s.compute_sub_window(19, 20), (9, 10, 1, 2));
+
+        assert_eq!(s.compute_sub_window(4, 5), (8, 10, 0, 2));
+        assert_eq!(s.compute_sub_window(0, 1), (0, 10, 0, 2));
+
+        s = SamplerBase::new(0, 2, 0, 10, 2, 0.0, 1.0);
+
+        assert_eq!(s.compute_sub_window(0, 20), (0, 1, 0, 1));
+        assert_eq!(s.compute_sub_window(9, 20), (1, 2, 4, 5));
+        assert_eq!(s.compute_sub_window(10, 20), (0, 1, 5, 6));
+        assert_eq!(s.compute_sub_window(19, 20), (1, 2, 9, 10));
+
+        assert_eq!(s.compute_sub_window(4, 5), (0, 2, 8, 10));
+        assert_eq!(s.compute_sub_window(0, 1), (0, 2, 0, 10));
     }
 }
