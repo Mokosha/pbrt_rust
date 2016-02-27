@@ -1,6 +1,6 @@
 use utils::Lerp;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SamplerBase {
     pub x_pixel_start: i32,
     pub x_pixel_end: i32,

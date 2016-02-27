@@ -6,6 +6,7 @@ use utils::Lerp;
 
 use rng::shuffle;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct StratifiedSampler {
     base: SamplerBase,
     x_pixel_samples: usize,
@@ -73,6 +74,10 @@ impl StratifiedSampler {
             y_pos: b.y_pixel_start,
             sample_buf: vec![0.0; 5 * (xs * ys as usize)]
         }
+    }
+
+    pub fn maximum_sample_count(&self) -> usize {
+        self.x_pixel_samples * self.y_pixel_samples
     }
 
     pub fn get_sub_sampler(&self, num: usize,
@@ -163,11 +168,19 @@ impl StratifiedSampler {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sampler::base::SamplerBase;
 
-    #[ignore]
     #[test]
     fn it_can_be_created() {
-        unimplemented!()
+        let s = StratifiedSampler::new(0, 10, 0, 10, 20, 5, true, 0.0, 1.0);
+
+        assert_eq!(s.base, SamplerBase::new(0, 10, 0, 10, 100, 0.0, 1.0));
+        assert_eq!(s.x_pixel_samples, 20);
+        assert_eq!(s.y_pixel_samples, 5);
+        assert_eq!(s.jitter_samples, true);
+        assert_eq!(s.x_pos, 0);
+        assert_eq!(s.y_pos, 0);
+        assert_eq!(s.sample_buf, vec![0.0; 500]);
     }
 
     #[ignore]
