@@ -6,12 +6,12 @@ use scene::Scene;
 
 #[derive(Debug, Clone)]
 pub struct Sample {
-    camera_sample: CameraSample,
-    n1D: Vec<usize>,
-    n2D: Vec<usize>,
-    offset1D: Vec<usize>,
-    offset2D: Vec<usize>,
-    samples: Vec<f32>,
+    pub camera_sample: CameraSample,
+    pub n1D: Vec<usize>,
+    pub n2D: Vec<usize>,
+    pub offset1D: Vec<usize>,
+    pub offset2D: Vec<usize>,
+    pub samples: Vec<f32>,
 }
 
 impl Sample {
