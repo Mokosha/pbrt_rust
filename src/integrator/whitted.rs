@@ -23,12 +23,12 @@ impl WhittedIntegrator {
         }
     }
 
-    fn li<T : RNG, R : Renderer>(&self, scene: &Scene,
-                                 renderer: &R,
-                                 rayd: &RayDifferential,
-                                 isect: &mut Intersection,
-                                 sample: &Sample,
-                                 rng: &mut T) -> Spectrum {
+    fn li<R : Renderer>(&self, scene: &Scene,
+                        renderer: &R,
+                        rayd: &RayDifferential,
+                        isect: &mut Intersection,
+                        sample: &Sample,
+                        rng: &mut RNG) -> Spectrum {
         // Compute emitted and reflected light at ray intersection point
         // Evaluate BSDF at hit point
         let ray = &rayd.ray;
@@ -44,7 +44,8 @@ impl WhittedIntegrator {
 
             // Add contribution of each light source
             let (li, wi, pdf, visibility) =
-                light.sample_l(p, isect.ray_epsilon, LightSample::new(rng), ray.time.clone());
+                light.sample_l(p, isect.ray_epsilon,
+                               LightSample::new(rng), ray.time.clone());
             if li.is_black() || pdf == 0f32 { l_acc }
             else {
                 let f = bsdf.f(&wo, &wi);

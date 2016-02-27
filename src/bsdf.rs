@@ -9,7 +9,7 @@ pub const BSDF_TRANSMISSION : u32 = (1 << 2);
 
 pub struct BSDFSample;
 impl BSDFSample {
-    pub fn new<T: RNG>(rng: &mut T) -> BSDFSample { BSDFSample }
+    pub fn new(rng: &mut RNG) -> BSDFSample { BSDFSample }
 }
 
 #[derive(Debug, Clone)]

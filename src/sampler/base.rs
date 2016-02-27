@@ -53,8 +53,6 @@ impl SamplerBase {
         let xo = num % nx;
         let yo = num / nx;
 
-        println!("{:?}", (nx, ny, xo, yo));
-
         let tx0 = (xo as f32) / (nx as f32);
         let tx1 = ((xo + 1) as f32) / (nx as f32);
 

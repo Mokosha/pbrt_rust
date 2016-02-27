@@ -11,7 +11,6 @@ use intersection::Intersection;
 use intersection::Intersectable;
 use ray;
 use rng::RNG;
-use rng::PseudoRNG;
 use renderer::Renderer;
 use sampler::sample::Sample;
 use sampler::Sampler;
@@ -81,7 +80,7 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>, task_id
     let scene = data.read().unwrap().scene;
 
     // Declare local variables used for rendering loop
-    let mut rng = PseudoRNG::new(task_idx);
+    let mut rng = RNG::new(task_idx);
     
     // Allocate space for samples and intersections
     let max_samples = sampler.maximum_sample_count() as usize;
@@ -187,9 +186,10 @@ impl Renderer for SamplerRenderer {
         // Clean up after rendering and store final image    
     }
 
-    fn li<'a, T:RNG>(
-        &self, scene: &'a scene::Scene, ray: &ray::RayDifferential,
-        sample: &Sample, rng: &mut T) -> (Spectrum, Option<Intersection>, Spectrum) {
+    fn li<'a>(&self, scene: &'a scene::Scene,
+              ray: &ray::RayDifferential,
+              sample: &Sample,
+              rng: &mut RNG) -> (Spectrum, Option<Intersection>, Spectrum) {
         // Allocate variables for isect and T if needed
         let (isect, li) =
             if let Some(mut scene_isect) = scene.intersect(&ray.ray) {
@@ -206,9 +206,9 @@ impl Renderer for SamplerRenderer {
         (local_trans * li + lvi, isect, local_trans)
     }
 
-    fn transmittance<T:RNG>(
+    fn transmittance(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,
-        sample: &Sample, rng: &mut T) -> Spectrum {
+        sample: &Sample, rng: &mut RNG) -> Spectrum {
         let mut local_trans = Spectrum::from_value(0f32);
         self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans)
     }

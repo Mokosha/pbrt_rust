@@ -1,8 +1,5 @@
-pub trait RNG {
-}
+pub struct RNG;
 
-pub struct PseudoRNG;
-impl RNG for PseudoRNG { }
-impl PseudoRNG {
-    pub fn new(task_idx: i32) -> PseudoRNG { PseudoRNG }
+impl RNG {
+    pub fn new(task_idx: i32) -> RNG { RNG }
 }

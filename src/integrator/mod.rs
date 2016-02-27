@@ -16,9 +16,9 @@ use spectrum::Spectrum;
 
 use integrator::whitted::WhittedIntegrator;
 
-fn process_specular<T: RNG, R: Renderer>(
+fn process_specular<R: Renderer>(
     ray: &RayDifferential, bsdf: &BSDF,
-    rng: &mut T, isect: &Intersection, renderer: &R,
+    rng: &mut RNG, isect: &Intersection, renderer: &R,
     scene: &Scene, sample: &Sample, sample_type: u32) -> Spectrum {
     let wo = -(&ray.ray.d);
     let p = &(bsdf.dg_shading.p);
@@ -37,17 +37,17 @@ fn process_specular<T: RNG, R: Renderer>(
     }
 }
 
-pub fn specular_reflect<T: RNG, R: Renderer>(
+pub fn specular_reflect<R: Renderer>(
     ray: &RayDifferential, bsdf: &BSDF,
-    rng: &mut T, isect: &Intersection, renderer: &R,
+    rng: &mut RNG, isect: &Intersection, renderer: &R,
     scene: &Scene, sample: &Sample) -> Spectrum {
     process_specular(ray, bsdf, rng, isect, renderer, scene, sample,
                      bsdf::BSDF_REFLECTION | bsdf::BSDF_SPECULAR)
 }
 
-pub fn specular_transmit<T: RNG, R: Renderer>(
+pub fn specular_transmit<R: Renderer>(
     ray: &RayDifferential, bsdf: &BSDF,
-    rng: &mut T, isect: &Intersection, renderer: &R,
+    rng: &mut RNG, isect: &Intersection, renderer: &R,
     scene: &Scene, sample: &Sample) -> Spectrum {
     process_specular(ray, bsdf, rng, isect, renderer, scene, sample,
                      bsdf::BSDF_TRANSMISSION | bsdf::BSDF_SPECULAR)
@@ -76,8 +76,8 @@ impl SurfaceIntegrator {
         }
     }
 
-    pub fn li<T:RNG, R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
-                                 _: &mut Intersection, _: &Sample, _: &mut T) -> Spectrum {
+    pub fn li<R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
+                          _: &mut Intersection, _: &Sample, _: &mut RNG) -> Spectrum {
         unimplemented!()
     }
 
@@ -97,8 +97,8 @@ pub struct VolumeIntegrator {
 }
 
 impl VolumeIntegrator {
-    pub fn li<T:RNG, R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
-                                 _: &Sample, _: &mut T, _: &mut Spectrum) -> Spectrum {
+    pub fn li<R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
+                          _: &Sample, _: &mut RNG, _: &mut Spectrum) -> Spectrum {
         unimplemented!()
     }
 

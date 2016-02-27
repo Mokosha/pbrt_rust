@@ -8,19 +8,19 @@ use intersection::Intersection;
 pub trait Renderer {
     fn render(&mut self, &scene::Scene);
 
-    fn li<'a, T:RNG>(
+    fn li<'a>(
         &self, &'a scene::Scene, &ray::RayDifferential,
-        &Sample, &mut T) -> (Spectrum, Option<Intersection>, Spectrum);
+        &Sample, &mut RNG) -> (Spectrum, Option<Intersection>, Spectrum);
 
-    fn li_simple<T:RNG>(
+    fn li_simple(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,
-        sample: &Sample, rng: &mut T) -> Spectrum {
+        sample: &Sample, rng: &mut RNG) -> Spectrum {
         self.li(scene, ray, sample, rng).0
     }
 
-    fn transmittance<T:RNG>(
+    fn transmittance(
         &self, &scene::Scene, &ray::RayDifferential,
-        &Sample, &mut T) -> Spectrum;
+        &Sample, &mut RNG) -> Spectrum;
 
     // Rnderer Interface
 }

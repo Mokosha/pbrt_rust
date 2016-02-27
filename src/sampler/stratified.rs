@@ -14,7 +14,8 @@ impl StratifiedSampler {
     pub fn new(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
                xs: usize, ys: usize, jitter: bool,
                sopen: f32, sclose: f32) -> StratifiedSampler {
-        let b = SamplerBase::new(x_start, x_end, y_start, y_end, xs * ys, sopen, sclose);
+        let b = SamplerBase::new(x_start, x_end, y_start, y_end,
+                                 xs * ys, sopen, sclose);
         StratifiedSampler {
             base: b.clone(),
             x_pixel_samples: xs,
@@ -26,15 +27,18 @@ impl StratifiedSampler {
         }
     }
 
-    pub fn get_sub_sampler(&self, num: usize, count: usize) -> Option<StratifiedSampler> {
+    pub fn get_sub_sampler(&self, num: usize,
+                           count: usize) -> Option<StratifiedSampler> {
         let (x0, x1, y0, y1) = self.base.compute_sub_window(num, count);
         if x0 == x1 || y0 == y1 {
             None
         } else {
             Some(StratifiedSampler::new(x0, x1, y0, y1,
-                                        self.x_pixel_samples, self.y_pixel_samples,
+                                        self.x_pixel_samples,
+                                        self.y_pixel_samples,
                                         self.jitter_samples,
-                                        self.base.shutter_open, self.base.shutter_close))
+                                        self.base.shutter_open,
+                                        self.base.shutter_close))
         }
     }
 }

@@ -11,7 +11,7 @@ pub struct Light;
 pub struct LightSample;
 
 impl LightSample {
-    pub fn new<T: RNG>(rng: &mut T) -> LightSample { LightSample }
+    pub fn new(rng: &mut RNG) -> LightSample { LightSample }
 }
 
 impl Light {

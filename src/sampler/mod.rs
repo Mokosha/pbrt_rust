@@ -28,7 +28,8 @@ impl Sampler {
         unimplemented!()
     }
 
-    pub fn get_more_samples<T: RNG>(&mut self, samples: &mut Vec<Sample>, rng: &mut T) {
+    pub fn get_more_samples(&mut self, samples: &mut Vec<Sample>,
+                            rng: &mut RNG) -> usize {
         unimplemented!()
     }
 
