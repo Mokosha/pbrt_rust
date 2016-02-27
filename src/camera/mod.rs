@@ -17,15 +17,15 @@ use utils::Degrees;
 
 #[derive(Debug, Clone)]
 pub struct CameraSample {
-    image_x: usize,
-    image_y: usize,
+    image_x: f32,
+    image_y: f32,
     lens_u: f32,
     lens_v: f32,
     time: f32
 }
 
 impl CameraSample {
-    pub fn new(x: usize, y: usize, lu: f32, lv: f32, t: f32) -> CameraSample {
+    pub fn new(x: f32, y: f32, lu: f32, lv: f32, t: f32) -> CameraSample {
         CameraSample {
             image_x: x,
             image_y: y,
@@ -36,7 +36,7 @@ impl CameraSample {
     }
 
     pub fn empty() -> CameraSample {
-        CameraSample::new(0, 0, 0.0, 0.0, 0.0)
+        CameraSample::new(0.0, 0.0, 0.0, 0.0, 0.0)
     }
 }
 
@@ -169,7 +169,7 @@ impl Camera {
         // Generate raster and camera samples
         let p_camera = self.proj().map(|proj| {
             let p_raster = Point::new_with(
-                sample.image_x as f32, sample.image_y as f32, 0.0);
+                sample.image_x, sample.image_y, 0.0);
             proj.raster_to_camera().xf(p_raster)
         });
 
@@ -181,9 +181,9 @@ impl Camera {
                               Vector::from(p_camera.unwrap()).normalize(), 0.0),
             &Camera::Environment { .. } => {
                 let theta = ::std::f32::consts::PI *
-                    ((sample.image_y as f32) / (self.film().y_res() as f32));
+                    (sample.image_y / (self.film().y_res() as f32));
                 let phi = 2.0 * ::std::f32::consts::PI *
-                    ((sample.image_x as f32) / (self.film().x_res() as f32));
+                    (sample.image_x / (self.film().x_res() as f32));
 
                 Ray::new_with(Point::new(),
                               Vector::new_with(theta.sin() * phi.cos(),
@@ -226,7 +226,7 @@ impl Camera {
             &Camera::Perspective { ref base, ref dx_camera, ref dy_camera, .. } => {
                 // Generate raster and camera samples
                 let p_raster = Point::new_with(
-                    sample.image_x as f32, sample.image_y as f32, 0.0);
+                    sample.image_x, sample.image_y, 0.0);
                 let p_camera = self.proj().unwrap().raster_to_camera().xf(p_raster);
 
                 rd.rx_origin = rd.ray.o.clone();
@@ -239,14 +239,14 @@ impl Camera {
                 // Find ray after shifting one pixel in the x direction
                 let (wtx, rx) = {
                     let mut s = sample.clone();
-                    s.image_x += 1;
+                    s.image_x += 1.0;
                     self.generate_ray(&s)
                 };
 
                 // Find ray after shifting one pixel in the y direction
                 let (wty, ry) = {
                     let mut s = sample.clone();
-                    s.image_y += 1;
+                    s.image_y += 1.0;
                     self.generate_ray(&s)
                 };
 
