@@ -1,4 +1,10 @@
+use camera::CameraSample;
+use rng::RNG;
 use sampler::base::SamplerBase;
+use sampler::sample::Sample;
+use utils::Lerp;
+
+use rng::shuffle;
 
 pub struct StratifiedSampler {
     base: SamplerBase,
@@ -8,6 +14,48 @@ pub struct StratifiedSampler {
     x_pos: i32,
     y_pos: i32,
     sample_buf: Vec<f32>
+}
+
+fn stratified_sample_1d(samples: &mut [f32], num_samples: usize,
+                        rng: &mut RNG, jitter: bool) {
+    let inv_tot = 1.0 / (num_samples as f32);
+    for i in 0..num_samples {
+        let delta = if jitter { rng.random_float() } else { 0.5 };
+        samples[i] = ((i as f32) + delta) * inv_tot;
+    }
+}
+
+fn stratified_sample_2d(samples: &mut [f32], nx: usize, ny: usize,
+                        rng: &mut RNG, jitter: bool) {
+    let dx = 1.0 / (nx as f32);
+    let dy = 1.0 / (ny as f32);
+    for y in 0..ny {
+        for x in 0..nx {
+            let jx = if jitter { rng.random_float() } else { 0.5 };
+            let jy = if jitter { rng.random_float() } else { 0.5 };
+            let off = 2 * (y*nx + x);
+            samples[off] = ((x as f32) + jx) * dx;
+            samples[off + 1] = ((y as f32) + jy) * dy;
+        }
+    }
+}
+
+fn latin_hypercube(samples: &mut [f32], num: usize, dim: usize, rng: &mut RNG) {
+    // Generate LHS samples along diagonal
+    let delta = 1.0 / (num as f32);
+    for i in 0..num {
+        for j in 0..dim {
+            samples[dim * i + j] = ((i as f32) + rng.random_float()) * delta;
+        }
+    }
+
+    // Permute LHS samples in each dimension
+    for i in 0..dim {
+        for j in 0..num {
+            let other = j + rng.random_uint() % (num - j);
+            samples.swap(dim*j + i, dim*other + i);
+        }
+    }
 }
 
 impl StratifiedSampler {
@@ -41,6 +89,75 @@ impl StratifiedSampler {
                                         self.base.shutter_close))
         }
     }
+
+    pub fn get_more_samples(&mut self, samples: &mut Vec<Sample>,
+                            rng: &mut RNG) -> usize {
+        if self.y_pos == self.base.y_pixel_end { return 0; }
+
+        let num_samples = self.x_pixel_samples * self.y_pixel_samples;
+
+        // Generate stratified samples for (xpos, ypos)...
+        // Generate initial stratified samples into sampleBuf memory
+        let (mut image_samples, mut not_image_samples) =
+            self.sample_buf.split_at_mut(2 * num_samples);
+        let (mut lens_samples, mut time_samples) =
+            not_image_samples.split_at_mut(2 * num_samples);
+        stratified_sample_2d(image_samples, self.x_pixel_samples,
+                             self.y_pixel_samples, rng, self.jitter_samples);
+        stratified_sample_2d(lens_samples, self.x_pixel_samples,
+                             self.y_pixel_samples, rng, self.jitter_samples);
+        stratified_sample_1d(time_samples, num_samples,
+                             rng, self.jitter_samples);
+
+        // Shift stratified image samples to pixel coordinates
+        for i in 0..num_samples {
+            image_samples[2 * i + 0] += self.x_pos as f32;
+            image_samples[2 * i + 1] += self.y_pos as f32;
+        }
+
+        // Decorrelate sample dimensions
+        shuffle(&mut lens_samples, 2, rng);
+        shuffle(&mut time_samples, 1, rng);
+
+        // Initialize stratified samples with sample values
+        for i in 0..num_samples {
+            let t = self.base.shutter_open.lerp(
+                &self.base.shutter_close, time_samples[i]);
+
+            samples[i].camera_sample = CameraSample::new(
+                image_samples[2*i + 0],
+                image_samples[2*i + 1],
+                lens_samples[2*i + 0],
+                lens_samples[2*i + 1],
+                t);
+
+            // Generate stratified samples for integrators
+            let sz_and_off_1d: Vec<(usize, usize)> = samples[i].n1D.iter().zip(
+                samples[i].offset1D.iter()).map(|(x, y)| (*x, *y)).collect();
+
+            for (num, off) in sz_and_off_1d {
+                let (oned, _) = samples[i].samples.split_at_mut(off);
+                latin_hypercube(oned, num, 1, rng);
+            }
+
+            let sz_and_off_2d: Vec<(usize, usize)> = samples[i].n2D.iter().zip(
+                samples[i].offset2D.iter()).map(|(x, y)| (*x, *y)).collect();
+
+            for (num, off) in sz_and_off_2d {
+                let (twod, _) = samples[i].samples.split_at_mut(off);
+                latin_hypercube(twod, num, 2, rng);
+            }
+        }
+
+        // Advance to next pixel for stratified sampling
+        self.x_pos += 1;
+        if self.x_pos == self.base.x_pixel_end {
+            self.x_pos = self.base.x_pixel_start;
+            self.y_pos += 1;
+        }
+
+        num_samples
+    }
 }
 
 #[cfg(test)]
@@ -50,6 +167,14 @@ mod tests {
     #[ignore]
     #[test]
     fn it_can_be_created() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_generate_stratified_samples() {
+        // !FIXME! Not really sure how to test stochastic
+        // methods....
         unimplemented!()
     }
 }
