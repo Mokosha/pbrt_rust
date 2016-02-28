@@ -70,10 +70,12 @@ impl<'a, 'b>
             }
     }
 
-fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>, task_idx: i32, num_tasks: i32) {
+fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
+                    task_idx: usize, num_tasks: usize) {
     // Get sub-sampler for SamplerRendererTask
     let mut sampler = {
-        if let Some(s) = data.read().unwrap().renderer.sampler.get_sub_sampler(task_idx, num_tasks)
+        if let Some(s) = data.read().unwrap()
+            .renderer.sampler.get_sub_sampler(task_idx, num_tasks)
         { s } else { return }
     };
     
@@ -164,12 +166,12 @@ impl Renderer for SamplerRenderer {
 
         // Create and launch SampleRendererTasks for rendering image
         {
-            let num_cpus = num_cpus::get() as i32;
+            let num_cpus = num_cpus::get();
             let num_pixels = self.camera.film().num_pixels();
 
-            let num_tasks = (|x : i32| {
-                31 - (x.leading_zeros() as i32) + (if 0 == x.bitand(x - 1) { 0 } else { 1 })
-            }) (::std::cmp::max(32 * num_cpus, num_pixels / (16 * 16)));
+            let num_tasks = (|x: usize| {
+                31 - x.leading_zeros() + (if 0 == x.bitand(x - 1) { 0 } else { 1 })
+            }) (::std::cmp::max(32 * num_cpus, num_pixels / (16 * 16))) as usize;
 
             let task_data = SamplerRendererTaskData::new(scene, self, &mut sample);
             let task_data_shared = Arc::new(RwLock::new(task_data));

@@ -1,7 +1,7 @@
 pub struct RNG;
 
 impl RNG {
-    pub fn new(task_idx: i32) -> RNG { RNG }
+    pub fn new(task_idx: usize) -> RNG { RNG }
     pub fn random_float(&mut self) -> f32 {
         unimplemented!()
     }

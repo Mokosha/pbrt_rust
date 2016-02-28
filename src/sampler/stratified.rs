@@ -76,6 +76,8 @@ impl StratifiedSampler {
         }
     }
 
+    pub fn base(&self) -> &SamplerBase { &self.base }
+
     pub fn maximum_sample_count(&self) -> usize {
         self.x_pixel_samples * self.y_pixel_samples
     }
