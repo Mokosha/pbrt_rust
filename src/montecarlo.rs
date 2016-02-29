@@ -1,5 +1,20 @@
 use rng::RNG;
 
+pub fn radical_inverse(n: usize, b: usize) -> f64 {
+    let mut v = 0.0;
+    let mut num = n;
+    let invBase = 1.0 / (b as f64);
+    let mut aib = 1.0;
+    while num > 0 {
+        let d = (num % b) as f64;
+        num /= b;
+        aib *= invBase;
+        v += d * aib;
+    }
+
+    v
+}
+
 pub fn latin_hypercube(samples: &mut [f32], num: usize, dim: usize, rng: &mut RNG) {
     // Generate LHS samples along diagonal
     let delta = 1.0 / (num as f32);
@@ -46,6 +61,41 @@ pub fn stratified_sample_2d(samples: &mut [f32], nx: usize, ny: usize,
 mod tests {
     use super::*;
     use rng::RNG;
+
+    #[test]
+    fn it_can_compute_radical_inverses() {
+        assert_eq!(radical_inverse(0, 2), 0.0);
+        assert_eq!(radical_inverse(1, 2), 0.5);
+        assert_eq!(radical_inverse(2, 2), 0.25);
+        assert_eq!(radical_inverse(3, 2), 0.75);
+        assert_eq!(radical_inverse(4, 2), 0.125);
+        assert_eq!(radical_inverse(5, 2), 0.625);
+        assert_eq!(radical_inverse(6, 2), 0.375);
+        assert_eq!(radical_inverse(7, 2), 0.875);
+
+        assert_eq!(radical_inverse(0, 4), 0.0);
+        assert_eq!(radical_inverse(1, 4), 0.25);
+        assert_eq!(radical_inverse(2, 4), 0.5);
+        assert_eq!(radical_inverse(3, 4), 0.75);
+        assert_eq!(radical_inverse(4, 4), 1.0 / 16.0);
+        assert_eq!(radical_inverse(5, 4), 5.0 / 16.0);
+        assert_eq!(radical_inverse(6, 4), 9.0 / 16.0);
+        assert_eq!(radical_inverse(7, 4), 13.0 / 16.0);
+        assert_eq!(radical_inverse(8, 4), 2.0 / 16.0);
+        assert_eq!(radical_inverse(9, 4), 6.0 / 16.0);
+        assert_eq!(radical_inverse(10, 4), 10.0 / 16.0);
+        assert_eq!(radical_inverse(11, 4), 14.0 / 16.0);
+
+        assert!((radical_inverse(0, 3) - (0.0)).abs() < 1e-6);
+        assert!((radical_inverse(1, 3) - (1.0 / 3.0)).abs() < 1e-6);
+        assert!((radical_inverse(2, 3) - (2.0 / 3.0)).abs() < 1e-6);
+        assert!((radical_inverse(3, 3) - (1.0 / 9.0)).abs() < 1e-6);
+        assert!((radical_inverse(4, 3) - (4.0 / 9.0)).abs() < 1e-6);
+        assert!((radical_inverse(5, 3) - (7.0 / 9.0)).abs() < 1e-6);
+        assert!((radical_inverse(6, 3) - (2.0 / 9.0)).abs() < 1e-6);
+        assert!((radical_inverse(7, 3) - (5.0 / 9.0)).abs() < 1e-6);
+        assert!((radical_inverse(8, 3) - (8.0 / 9.0)).abs() < 1e-6);
+    }
 
     #[test]
     fn it_can_stratify_1d() {
