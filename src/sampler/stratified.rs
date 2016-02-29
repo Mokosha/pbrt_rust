@@ -4,7 +4,9 @@ use sampler::base::SamplerBase;
 use sampler::sample::Sample;
 use utils::Lerp;
 
-use rng::shuffle;
+use montecarlo::latin_hypercube;
+use montecarlo::stratified_sample_1d;
+use montecarlo::stratified_sample_2d;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StratifiedSampler {
@@ -15,48 +17,6 @@ pub struct StratifiedSampler {
     x_pos: i32,
     y_pos: i32,
     sample_buf: Vec<f32>
-}
-
-fn stratified_sample_1d(samples: &mut [f32], num_samples: usize,
-                        rng: &mut RNG, jitter: bool) {
-    let inv_tot = 1.0 / (num_samples as f32);
-    for i in 0..num_samples {
-        let delta = if jitter { rng.random_float() } else { 0.5 };
-        samples[i] = ((i as f32) + delta) * inv_tot;
-    }
-}
-
-fn stratified_sample_2d(samples: &mut [f32], nx: usize, ny: usize,
-                        rng: &mut RNG, jitter: bool) {
-    let dx = 1.0 / (nx as f32);
-    let dy = 1.0 / (ny as f32);
-    for y in 0..ny {
-        for x in 0..nx {
-            let jx = if jitter { rng.random_float() } else { 0.5 };
-            let jy = if jitter { rng.random_float() } else { 0.5 };
-            let off = 2 * (y*nx + x);
-            samples[off] = ((x as f32) + jx) * dx;
-            samples[off + 1] = ((y as f32) + jy) * dy;
-        }
-    }
-}
-
-fn latin_hypercube(samples: &mut [f32], num: usize, dim: usize, rng: &mut RNG) {
-    // Generate LHS samples along diagonal
-    let delta = 1.0 / (num as f32);
-    for i in 0..num {
-        for j in 0..dim {
-            samples[dim * i + j] = ((i as f32) + rng.random_float()) * delta;
-        }
-    }
-
-    // Permute LHS samples in each dimension
-    for i in 0..dim {
-        for j in 0..num {
-            let other = j + rng.random_uint() % (num - j);
-            samples.swap(dim*j + i, dim*other + i);
-        }
-    }
 }
 
 impl StratifiedSampler {
@@ -123,8 +83,8 @@ impl StratifiedSampler {
         }
 
         // Decorrelate sample dimensions
-        shuffle(&mut lens_samples, 2, rng);
-        shuffle(&mut time_samples, 1, rng);
+        rng.shuffle(&mut lens_samples, 2);
+        rng.shuffle(&mut time_samples, 1);
 
         // Initialize stratified samples with sample values
         for i in 0..num_samples {

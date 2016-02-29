@@ -1,24 +1,44 @@
-pub struct RNG;
+extern crate rand;
+
+use self::rand::{Rng, SeedableRng, XorShiftRng};
+
+pub struct RNG {
+    rng: XorShiftRng
+}
 
 impl RNG {
-    pub fn new(task_idx: usize) -> RNG { RNG }
+    pub fn new(task_idx: usize) -> RNG {
+        let s = task_idx + 1;
+        let seed = [
+            s as u32,
+            (s * s) as u32,
+            (s * s * s) as u32,
+            (s * s * s * s) as u32];
+
+        RNG {
+            rng: SeedableRng::from_seed(seed)
+        }
+    }
+
     pub fn random_float(&mut self) -> f32 {
-        unimplemented!()
+        self.rng.next_f32()
     }
 
     pub fn random_uint(&mut self) -> usize {
-        unimplemented!()
+        (self.rng.next_u64() % (usize::max_value() as u64)) as usize
     }
 }
 
-pub fn shuffle<T>(v: &mut [T], dims: usize, rng: &mut RNG) {
-    let count = v.len() / dims;
-    assert!(count * dims == v.len());
+impl RNG {
+    pub fn shuffle<T>(&mut self, v: &mut [T], dims: usize) {
+        let count = v.len() / dims;
+        assert!(count * dims == v.len());
 
-    for i in 0..count {
-        let other = i + rng.random_uint() % (count - i);
-        for j in 0..dims {
-            v.swap(dims*i+j, dims*other+j);
+        for i in 0..count {
+            let other = i + self.random_uint() % (count - i);
+            for j in 0..dims {
+                v.swap(dims*i+j, dims*other+j);
+            }
         }
     }
 }

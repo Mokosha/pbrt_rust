@@ -6,3 +6,4 @@ authors = ["Pavel Krajcevski <krajcevski@gmail.com>"]
 [dependencies]
 num_cpus = "*"
 scoped_threadpool = "*"
+rand = "*"
