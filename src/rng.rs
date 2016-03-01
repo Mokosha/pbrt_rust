@@ -41,6 +41,15 @@ impl RNG {
             }
         }
     }
+
+    pub fn permutation(&mut self, v: &mut [usize]) {
+        let n = v.len();
+        for i in 0..n {
+            v[i] = i;
+        }
+
+        self.shuffle(v, 1);
+    }
 }
 
 #[cfg(test)]
