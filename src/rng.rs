@@ -56,9 +56,31 @@ impl RNG {
 mod tests {
     use super::*;
 
-    #[ignore]
     #[test]
     fn it_can_shuffle_slices() {
+        let mut rng = RNG::new(12);
+        let mut ps = [0];
+        rng.shuffle(&mut ps, 1);
+        assert_eq!(ps, [0]);
+
+        let mut xs = [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+        rng.shuffle(&mut xs, 1);
+        assert_eq!(xs[0], 1);
+
+        let mut saw_zero = false;
+        for &i in xs.iter() {
+            if i == 0 {
+                assert!(!saw_zero);
+                saw_zero = true;
+            } else {
+                assert_eq!(i, 1);
+            }
+        }
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_generate_permutations() {
         unimplemented!()
     }
 }
