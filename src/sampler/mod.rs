@@ -1,5 +1,6 @@
 mod base;
 mod stratified;
+mod halton;
 pub mod sample;
 
 use intersection::Intersection;
