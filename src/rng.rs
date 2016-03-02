@@ -78,9 +78,21 @@ mod tests {
         }
     }
 
-    #[ignore]
     #[test]
     fn it_can_generate_permutations() {
-        unimplemented!()
+        let mut perm: [usize; 11] = [0; 11];
+        let mut rng = RNG::new(120);
+        rng.permutation(&mut perm);
+
+        assert!(perm[0] != 0);
+
+        let mut contents = [false; 11];
+        for &i in perm.iter() {
+            contents[i] = true;
+        }
+
+        for &c in contents.iter() {
+            assert!(c);
+        }
     }
 }
