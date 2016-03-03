@@ -15,6 +15,22 @@ pub fn radical_inverse(n: usize, b: usize) -> f64 {
     v
 }
 
+pub fn permuted_radical_inverse(n: usize, b: usize, p: &[usize]) -> f64 {
+    assert!(p.len() == b);
+    let mut v = 0.0;
+    let mut num = n;
+    let invBase = 1.0 / (b as f64);
+    let mut aib = 1.0;
+    while num > 0 {
+        let d = p[num % b] as f64;
+        num /= b;
+        aib *= invBase;
+        v += d * aib;
+    }
+
+    v
+}
+
 pub fn latin_hypercube(samples: &mut [f32], num: usize, dim: usize, rng: &mut RNG) {
     // Generate LHS samples along diagonal
     let delta = 1.0 / (num as f32);
