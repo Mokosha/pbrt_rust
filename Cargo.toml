@@ -7,3 +7,4 @@ authors = ["Pavel Krajcevski <krajcevski@gmail.com>"]
 num_cpus = "*"
 scoped_threadpool = "*"
 rand = "*"
+primal = "*"

@@ -1,4 +1,9 @@
+extern crate primal;
+
 use rng::RNG;
+
+use std::ops::Deref;
+use std::ops::DerefMut;
 
 pub fn radical_inverse(n: usize, b: usize) -> f64 {
     let mut v = 0.0;
@@ -29,6 +34,44 @@ pub fn permuted_radical_inverse(n: usize, b: usize, p: &[usize]) -> f64 {
     }
 
     v
+}
+
+pub struct PermutedHalton {
+    dims: usize,
+    bases: Vec<usize>,
+    permute: Vec<usize>
+}
+
+impl PermutedHalton {
+    pub fn new(d: usize, rng: &mut RNG) -> PermutedHalton {
+
+        // Determine bases and their sum
+        let b: Vec<usize> = primal::Primes::all().take(d).collect();
+        let sum_bases = b.iter().fold(0, |acc, &x| acc + x);
+
+        // Compute permutation tables for each base
+        let mut perms = vec![0; sum_bases];
+        b.iter().fold((perms.deref_mut(), 0), |(xs, off), &x| {
+            let (mut p, mut rest) = xs.split_at_mut(x);
+            rng.permutation(p);
+            (rest, off + x)
+        });
+
+        PermutedHalton {
+            dims: d,
+            bases: b,
+            permute: perms
+        }
+    }
+
+    pub fn sample(&self, n: usize, out: &mut [f32]) {
+        assert!(out.len() == self.bases.len());
+        self.bases.iter().enumerate().fold((self.permute.deref(), 0), |(xs, off), (i, &x)| {
+            let (p, rest) = xs.split_at(x);
+            out[i] = permuted_radical_inverse(n, x, p) as f32;
+            (rest, off + x)
+        });
+    }
 }
 
 pub fn latin_hypercube(samples: &mut [f32], num: usize, dim: usize, rng: &mut RNG) {
@@ -169,6 +212,64 @@ mod tests {
 
         assert!(2.0 / 3.0 <= fs[10] && fs[10] <= 3.0 / 3.0);
         assert!(1.0 / 2.0 <= fs[11] && fs[11] <= 2.0 / 2.0);
+    }
+
+    #[test]
+    fn it_can_generate_permuted_halton_samples() {
+        let mut rng = RNG::new(42);
+        let halton = PermutedHalton::new(3, &mut rng);
+
+        let mut sample = [
+            [0.0; 3], [0.0; 3], [0.0; 3], [0.0; 3]];
+
+        halton.sample(1, &mut sample[0]);
+        halton.sample(2, &mut sample[1]);
+        halton.sample(3, &mut sample[2]);
+        halton.sample(4, &mut sample[3]);
+
+        let mut is_there = [false; 4];
+
+        let dim2 = [0.5, 0.25, 0.75, 0.125];
+        for (i, &d) in dim2.iter().enumerate() {
+            for s in sample.iter() {
+                if s[0] == d {
+                    is_there[i] = true;
+                }
+            }
+        }
+
+        for t in is_there.iter_mut() {
+            assert!(*t);
+            *t = false;
+        }
+
+        let dim3 = [0.0, 1.0 / 3.0, 2.0 / 3.0, 0.0];
+        for (i, &d) in dim3.iter().enumerate() {
+            for s in sample.iter() {
+                if s[1] == d {
+                    is_there[i] = true;
+                }
+            }
+        }
+
+        for t in is_there.iter_mut() {
+            assert!(*t);
+            *t = false;
+        }
+
+        let dim5 = [0.0, 4.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0];
+        for &d in dim5.iter() {
+            for (i, s) in sample.iter().enumerate() {
+                if s[2] == d {
+                    is_there[i] = true;
+                }
+            }
+        }
+
+        for t in is_there.iter_mut() {
+            assert!(*t);
+            *t = false;
+        }
     }
 
     #[ignore]
