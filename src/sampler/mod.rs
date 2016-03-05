@@ -10,11 +10,13 @@ use rng::RNG;
 use sampler::base::SamplerBase;
 use sampler::sample::Sample;
 use sampler::stratified::StratifiedSampler;
+use sampler::halton::HaltonSampler;
 use spectrum::Spectrum;
 use utils::Lerp;
 
 pub enum Sampler {
-    Stratified(StratifiedSampler)
+    Stratified(StratifiedSampler),
+    Halton(HaltonSampler)
 }
 
 impl Sampler {
@@ -25,9 +27,16 @@ impl Sampler {
                                                    xs, ys, jitter, sopen, sclose))
     }
 
+    fn halton(x_start: i32, x_end: i32, y_start: i32, y_end: i32, samples_per_pixel: usize,
+              sopen: f32, sclose: f32) -> Sampler {
+        Sampler::Halton(HaltonSampler::new(x_start, x_end, y_start, y_end,
+                                           samples_per_pixel, sopen, sclose))
+    }
+
     fn base(&self) -> &SamplerBase {
         match self {
-            &Sampler::Stratified(ref sampler) => sampler.base()
+            &Sampler::Stratified(ref sampler) => sampler.base(),
+            &Sampler::Halton(ref sampler) => sampler.base()
         }
     }
 
@@ -35,13 +44,16 @@ impl Sampler {
                            -> Option<Sampler> {
         match self {
             &Sampler::Stratified(ref sampler) =>
-                sampler.get_sub_sampler(task_idx, num_tasks).map(Sampler::Stratified)
+                sampler.get_sub_sampler(task_idx, num_tasks).map(Sampler::Stratified),
+            &Sampler::Halton(ref sampler) =>
+                sampler.get_sub_sampler(task_idx, num_tasks).map(Sampler::Halton)
         }
     }
 
     pub fn maximum_sample_count(&self) -> usize {
         match self {
-            &Sampler::Stratified(ref sampler) => sampler.maximum_sample_count()
+            &Sampler::Stratified(ref sampler) => sampler.maximum_sample_count(),
+            &Sampler::Halton(ref sampler) => sampler.maximum_sample_count()
         }
     }
 
@@ -49,12 +61,14 @@ impl Sampler {
                             rng: &mut RNG) -> usize {
         match self {
             &mut Sampler::Stratified(ref mut sampler) =>
+                sampler.get_more_samples(samples, rng),
+            &mut Sampler::Halton(ref mut sampler) =>
                 sampler.get_more_samples(samples, rng)
         }
     }
 
     pub fn samples_per_pixel(&self) -> f32 {
-        unimplemented!()
+        self.base().samples_per_pixel as f32
     }
 
     pub fn round_size(&self, sz: usize) -> usize {

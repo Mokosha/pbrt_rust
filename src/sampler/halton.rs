@@ -15,8 +15,8 @@ pub struct HaltonSampler {
 }
 
 impl HaltonSampler {
-    fn new(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
-           samples_per_pixel: usize, sopen: f32, sclose: f32) -> HaltonSampler {
+    pub fn new(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
+               samples_per_pixel: usize, sopen: f32, sclose: f32) -> HaltonSampler {
         let dx = x_end - x_start;
         let dy = y_end - y_start;
         let num_samples = (|x| x * x)(if dx > dy { dx } else { dy }) as usize;
@@ -45,8 +45,8 @@ impl HaltonSampler {
         }        
     }    
 
-    fn get_more_samples(&mut self, samples: &mut Vec<Sample>,
-                        rng: &mut RNG) -> usize {
+    pub fn get_more_samples(&mut self, samples: &mut Vec<Sample>,
+                            rng: &mut RNG) -> usize {
         loop {
             let mut sample: &mut Sample = samples.get_mut(0).unwrap();
 
