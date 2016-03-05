@@ -20,7 +20,7 @@ fn sobol2(_n: u32, scramble: u32) -> f32 {
         if (n & 0x1) == 0 {
             s ^= v;
         }
-        v ^= (v >> 1);
+        v ^= v >> 1;
         n >>= 1;
     }
 
