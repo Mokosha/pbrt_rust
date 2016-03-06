@@ -2,6 +2,7 @@ mod utils;
 mod base;
 mod stratified;
 mod halton;
+mod lds;
 pub mod sample;
 
 use intersection::Intersection;
