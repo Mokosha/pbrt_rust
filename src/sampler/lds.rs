@@ -4,6 +4,9 @@ use sampler::sample::Sample;
 use sampler::base::SamplerBase;
 use utils::Lerp;
 
+use sampler::utils::van_der_corput;
+use sampler::utils::sample02;
+
 pub struct LDSampler {
     base: SamplerBase,
     x_pos: i32,
@@ -21,13 +24,37 @@ fn ld_pixel_sample_floats_needed(sample: &Sample, num_pixel_samples: usize) -> u
 fn ld_shuffle_scrambled_1d(num_samples: usize, num_pixel_samples: usize,
                            samples: &mut [f32], rng: &mut RNG) {
     assert!(samples.len() >= num_samples * num_pixel_samples);
-    unimplemented!()
+
+    let scramble = rng.random_uint();
+    for i in 0..(num_samples * num_pixel_samples) {
+        samples[i] = van_der_corput(i as u32, scramble as u32);
+    }
+
+    for win in samples.chunks_mut(num_samples) {
+        debug_assert_eq!(win.len(), num_samples);
+        rng.shuffle(win, 1);
+    }
+
+    rng.shuffle(samples, num_samples);
 }
 
 fn ld_shuffle_scrambled_2d(num_samples: usize, num_pixel_samples: usize,
                            samples: &mut [f32], rng: &mut RNG) {
     assert!(samples.len() >= num_samples * num_pixel_samples * 2);
-    unimplemented!()
+
+    let scramble = [rng.random_uint() as u32, rng.random_uint() as u32];
+    for i in 0..(num_samples * num_pixel_samples) {
+        let (s1, s2) = sample02(i as u32, scramble);
+        samples[2 * i] = s1;
+        samples[2 * i + 1] = s2;
+    }
+
+    for win in samples.chunks_mut(2 * num_samples) {
+        debug_assert_eq!(win.len(), num_samples);
+        rng.shuffle(win, 2);
+    }
+
+    rng.shuffle(samples, 2 * num_samples);
 }
 
 fn ld_pixel_sample(x_pos: i32, y_pos: i32, shutter_open: f32, shutter_close: f32,

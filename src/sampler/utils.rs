@@ -1,4 +1,4 @@
-fn van_der_corput(_n: u32, scramble: u32) -> f32 {
+pub fn van_der_corput(_n: u32, scramble: u32) -> f32 {
     let mut n = _n;
 
     // Reverse bits of n
