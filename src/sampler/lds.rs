@@ -60,6 +60,10 @@ fn ld_shuffle_scrambled_2d(num_samples: usize, num_pixel_samples: usize,
 fn ld_pixel_sample(x_pos: i32, y_pos: i32, shutter_open: f32, shutter_close: f32,
                    num_samples: usize, samples: &mut [Sample],
                    buf: &mut [f32], rng: &mut RNG) {
+    if samples.is_empty() {
+        return;
+    }
+
     // Prepare temporary array pointers for low-discrepancy camera samples
     let (mut image_samples, mut not_image_samples) =
         buf.split_at_mut(2 * num_samples);
@@ -113,8 +117,21 @@ fn ld_pixel_sample(x_pos: i32, y_pos: i32, shutter_open: f32, shutter_close: f32
                               lens_samples[2 * i + 1],
                               t);
 
-        // Copy integrator samples into samples[j]
-        unimplemented!()
+        // Copy integrator samples into samples[i]
+        // !KLUDGE! This isn't very rust-y
+        for j in 0..(samples[i].n1D.len()) {
+            let start_samp = samples[i].n1D[j] * i;
+            for k in 0..(samples[i].n1D[j]) {
+                samples[i].samples[offset1D[j] + k] = oneD_samples[j][start_samp + k];
+            }
+        }
+
+        for j in 0..(samples[i].n2D.len()) {
+            let start_samp = 2 * samples[i].n2D[j] * i;
+            for k in 0..(2 * samples[i].n2D[j]) {
+                samples[i].samples[offset2D[j] + k] = twoD_samples[j][start_samp + k];
+            }
+        }
     }
 }
 
