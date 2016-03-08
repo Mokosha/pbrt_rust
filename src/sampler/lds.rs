@@ -1,6 +1,8 @@
+use camera::CameraSample;
 use rng::RNG;
 use sampler::sample::Sample;
 use sampler::base::SamplerBase;
+use utils::Lerp;
 
 pub struct LDSampler {
     base: SamplerBase,
@@ -11,25 +13,82 @@ pub struct LDSampler {
 
 fn ld_pixel_sample_floats_needed(sample: &Sample, num_pixel_samples: usize) -> usize {
     let mut n = 5;  // 2 image, 2 lens, 1 time
-    for &ns in sample.n1D.iter() {
-        n += ns;
-    }
-
-    for &ns in sample.n2D.iter() {
-        n += 2 * ns;
-    }
-
+    n += sample.n1D.iter().fold(0, |acc, &x| acc + x);
+    n += sample.n2D.iter().fold(0, |acc, &x| acc + (2 * x));
     n * num_pixel_samples
 }
 
+fn ld_shuffle_scrambled_1d(num_samples: usize, num_pixel_samples: usize,
+                           samples: &mut [f32], rng: &mut RNG) {
+    assert!(samples.len() >= num_samples * num_pixel_samples);
+    unimplemented!()
+}
+
+fn ld_shuffle_scrambled_2d(num_samples: usize, num_pixel_samples: usize,
+                           samples: &mut [f32], rng: &mut RNG) {
+    assert!(samples.len() >= num_samples * num_pixel_samples * 2);
+    unimplemented!()
+}
+
 fn ld_pixel_sample(x_pos: i32, y_pos: i32, shutter_open: f32, shutter_close: f32,
-                   num_pixel_samples: usize, sample: &mut Vec<Sample>,
+                   num_samples: usize, samples: &mut [Sample],
                    buf: &mut [f32], rng: &mut RNG) {
     // Prepare temporary array pointers for low-discrepancy camera samples
+    let (mut image_samples, mut not_image_samples) =
+        buf.split_at_mut(2 * num_samples);
+    let (mut lens_samples, mut not_lens_samples) =
+        not_image_samples.split_at_mut(2 * num_samples);
+    let (mut time_samples, mut not_time_samples) =
+        not_lens_samples.split_at_mut(num_samples);
+
     // Prepare temporary array pointers for low-discrepancy integrator samples
+    let total_oneD_samples = samples[0].n1D.iter().fold(0, |acc, &x| acc + (x * num_samples));
+    let (mut oneD_sample_buf, mut twoD_sample_buf) =
+        not_time_samples.split_at_mut(total_oneD_samples);
+    assert_eq!(twoD_sample_buf.len(),
+               samples[0].n2D.iter().fold(0, |acc, &x| acc + (2 * x * num_samples)));
+
+    // !SPEED! These are allocated on the heap. :(
+    let mut oneD_samples = samples[0].n1D.iter()
+        .fold((Vec::new(), oneD_sample_buf), |(mut ss, rest), &split| {
+            let (mut oneD, mut the_rest) = rest.split_at_mut(split);
+            ss.push(oneD);
+            (ss, the_rest)
+        }).0;
+
+    let mut twoD_samples = samples[0].n2D.iter()
+        .fold((Vec::new(), twoD_sample_buf), |(mut ss, rest), &split| {
+            let (mut twoD, mut the_rest) = rest.split_at_mut(2 * split);
+            ss.push(twoD);
+            (ss, the_rest)
+        }).0;
+
     // Generate low-discrepancy pixel samples
+    ld_shuffle_scrambled_2d(1, num_samples, &mut image_samples, rng);
+    ld_shuffle_scrambled_2d(1, num_samples, &mut lens_samples, rng);
+    ld_shuffle_scrambled_1d(1, num_samples, &mut time_samples, rng);
+
+    for (i, oneD) in oneD_samples.iter_mut().enumerate() {
+        ld_shuffle_scrambled_1d(samples[0].n1D[i], num_samples, oneD, rng);
+    }
+
+    for (i, twoD) in twoD_samples.iter_mut().enumerate() {
+        ld_shuffle_scrambled_2d(samples[0].n2D[i], num_samples, twoD, rng);
+    }
+
     // Initialize samples with computed sample values
-    unimplemented!()
+    for i in 0..num_samples {
+        let t = shutter_open.lerp(&shutter_close, time_samples[i]);
+        samples[i].camera_sample =
+            CameraSample::new(x_pos as f32 + image_samples[2 * i],
+                              y_pos as f32 + image_samples[2 * i + 1],
+                              lens_samples[2 * i],
+                              lens_samples[2 * i + 1],
+                              t);
+
+        // Copy integrator samples into samples[j]
+        unimplemented!()
+    }
 }
 
 impl LDSampler {
