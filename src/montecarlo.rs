@@ -157,6 +157,19 @@ mod tests {
     }
 
     #[test]
+    fn it_can_permute_radical_inverses() {
+        let mut result: Vec<_> = (0..8)
+            .map(|x| permuted_radical_inverse(x, 2, &[1, 0]))
+            .collect();
+        result.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let expected = [0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875];
+
+        for (x, y) in result.into_iter().zip(expected.into_iter().map(|x| *x)) {
+            assert_eq!(x, y);
+        }
+    }
+
+    #[test]
     fn it_can_stratify_1d() {
         let mut fs = [0.0; 4];
         let mut rng = RNG::new(0);
