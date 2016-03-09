@@ -122,14 +122,14 @@ fn ld_pixel_sample(x_pos: i32, y_pos: i32, shutter_open: f32, shutter_close: f32
         for j in 0..(samples[i].n1D.len()) {
             let start_samp = samples[i].n1D[j] * i;
             for k in 0..(samples[i].n1D[j]) {
-                samples[i].samples[offset1D[j] + k] = oneD_samples[j][start_samp + k];
+                samples[i].samples[samples[i].offset1D[j] + k] = oneD_samples[j][start_samp + k];
             }
         }
 
         for j in 0..(samples[i].n2D.len()) {
             let start_samp = 2 * samples[i].n2D[j] * i;
             for k in 0..(2 * samples[i].n2D[j]) {
-                samples[i].samples[offset2D[j] + k] = twoD_samples[j][start_samp + k];
+                samples[i].samples[samples[i].offset2D[j] + k] = twoD_samples[j][start_samp + k];
             }
         }
     }
