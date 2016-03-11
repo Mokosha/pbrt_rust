@@ -33,9 +33,19 @@ pub fn permuted_radical_inverse(n: usize, b: usize, p: &[usize]) -> f64 {
         v += d * aib;
     }
 
-    v
+    // We need to take special care here for values of n whose digits are all
+    // k in base b and p[k] = 0. These values will all permute to zero giving
+    // zero as the answer. It's important to realize that the permuted radical
+    // inverse takes into account the implicit leading zeros to
+    // also be permuted, which means that the final value needs to
+    // be added by p[0] * aib * (1 + invBase + invBase * invBase + ...)
+    // Since this is a series of the form sum_i^inf (1/(b^i)),
+    // we know the result, b / (b - 1)
+
+    v + (p[0] as f64) * aib * invBase * (b as f64) / ((b - 1) as f64)
 }
 
+#[derive(Debug, Clone)]
 pub struct PermutedHalton {
     dims: usize,
     bases: Vec<usize>,
@@ -66,10 +76,11 @@ impl PermutedHalton {
 
     pub fn sample(&self, n: usize, out: &mut [f32]) {
         assert!(out.len() == self.bases.len());
-        self.bases.iter().enumerate().fold((self.permute.deref(), 0), |(xs, off), (i, &x)| {
-            let (p, rest) = xs.split_at(x);
-            out[i] = permuted_radical_inverse(n, x, p) as f32;
-            (rest, off + x)
+        self.bases.iter().enumerate().fold(
+            (self.permute.deref(), 0), |(xs, off), (i, &x)| {
+                let (p, rest) = xs.split_at(x);
+                out[i] = permuted_radical_inverse(n, x, p) as f32;
+                (rest, off + x)
         });
     }
 }
@@ -162,10 +173,20 @@ mod tests {
             .map(|x| permuted_radical_inverse(x, 2, &[1, 0]))
             .collect();
         result.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        let expected = [0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875];
+        let expected = [0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0];
 
         for (x, y) in result.into_iter().zip(expected.into_iter().map(|x| *x)) {
             assert_eq!(x, y);
+        }
+
+        let mut result5: Vec<_> = (0..5)
+            .map(|x| permuted_radical_inverse(x, 5, &[3, 4, 1, 0, 2]))
+            .collect();
+        result5.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let expected5 = [0.0, 0.2, 0.4, 0.6, 0.8];
+        let factor = 3.0 * (1.0 / (5.0 * 4.0));
+        for (x, y) in result5.into_iter().zip(expected5.into_iter().map(|x| *x)) {
+            assert!((x - (y + factor)).abs() < 1e-6);
         }
     }
 
@@ -231,7 +252,6 @@ mod tests {
     fn it_can_generate_permuted_halton_samples() {
         let mut rng = RNG::new(42);
         let halton = PermutedHalton::new(3, &mut rng);
-
         let mut sample = [
             [0.0; 3], [0.0; 3], [0.0; 3], [0.0; 3]];
 
@@ -256,7 +276,7 @@ mod tests {
             *t = false;
         }
 
-        let dim3 = [0.0, 1.0 / 3.0, 2.0 / 3.0, 0.0];
+        let dim3 = [1.0 / 3.0, 2.0 / 3.0, 7.0 / 9.0, 1.0 / 9.0];
         for (i, &d) in dim3.iter().enumerate() {
             for s in sample.iter() {
                 if s[1] == d {
@@ -270,10 +290,11 @@ mod tests {
             *t = false;
         }
 
-        let dim5 = [0.0, 4.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0];
+        let factor = 1.0 / (5.0 * 4.0);
+        let dim5 = [2.0 / 5.0, 0.0, 4.0 / 5.0, 3.0 / 5.0];
         for &d in dim5.iter() {
             for (i, s) in sample.iter().enumerate() {
-                if s[2] == d {
+                if (s[2] - (d + factor)).abs() < 1e-6 {
                     is_there[i] = true;
                 }
             }
