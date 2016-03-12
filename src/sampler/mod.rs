@@ -9,15 +9,17 @@ use intersection::Intersection;
 use ray::RayDifferential;
 use rng::RNG;
 use sampler::base::SamplerBase;
+use sampler::halton::HaltonSampler;
+use sampler::lds::LDSampler;
 use sampler::sample::Sample;
 use sampler::stratified::StratifiedSampler;
-use sampler::halton::HaltonSampler;
 use spectrum::Spectrum;
 use utils::Lerp;
 
 pub enum Sampler {
     Stratified(StratifiedSampler),
-    Halton(HaltonSampler)
+    Halton(HaltonSampler),
+    LowDiscrepancy(LDSampler)
 }
 
 impl Sampler {
@@ -28,16 +30,24 @@ impl Sampler {
                                                    xs, ys, jitter, sopen, sclose))
     }
 
-    fn halton(x_start: i32, x_end: i32, y_start: i32, y_end: i32, samples_per_pixel: usize,
-              sopen: f32, sclose: f32) -> Sampler {
+    fn halton(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
+              samples_per_pixel: usize, sopen: f32, sclose: f32) -> Sampler {
         Sampler::Halton(HaltonSampler::new(x_start, x_end, y_start, y_end,
                                            samples_per_pixel, sopen, sclose))
+    }
+
+    fn low_discrepancy(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
+                       samples_per_pixel: usize, sopen: f32,
+                       sclose: f32) -> Sampler {
+        Sampler::LowDiscrepancy(LDSampler::new(x_start, x_end, y_start, y_end,
+                                               samples_per_pixel, sopen, sclose))
     }
 
     fn base(&self) -> &SamplerBase {
         match self {
             &Sampler::Stratified(ref sampler) => sampler.base(),
-            &Sampler::Halton(ref sampler) => sampler.base()
+            &Sampler::Halton(ref sampler) => sampler.base(),
+            &Sampler::LowDiscrepancy(ref sampler) => sampler.base()
         }
     }
 
@@ -45,16 +55,25 @@ impl Sampler {
                            -> Option<Sampler> {
         match self {
             &Sampler::Stratified(ref sampler) =>
-                sampler.get_sub_sampler(task_idx, num_tasks).map(Sampler::Stratified),
+                sampler
+                .get_sub_sampler(task_idx, num_tasks)
+                .map(Sampler::Stratified),
             &Sampler::Halton(ref sampler) =>
-                sampler.get_sub_sampler(task_idx, num_tasks).map(Sampler::Halton)
+                sampler
+                .get_sub_sampler(task_idx, num_tasks)
+                .map(Sampler::Halton),
+            &Sampler::LowDiscrepancy(ref sampler) =>
+                sampler
+                .get_sub_sampler(task_idx, num_tasks)
+                .map(Sampler::LowDiscrepancy),
         }
     }
 
     pub fn maximum_sample_count(&self) -> usize {
         match self {
             &Sampler::Stratified(ref sampler) => sampler.maximum_sample_count(),
-            &Sampler::Halton(ref sampler) => sampler.maximum_sample_count()
+            &Sampler::Halton(ref sampler) => sampler.maximum_sample_count(),
+            &Sampler::LowDiscrepancy(ref sampler) => sampler.maximum_sample_count()
         }
     }
 
@@ -64,6 +83,8 @@ impl Sampler {
             &mut Sampler::Stratified(ref mut sampler) =>
                 sampler.get_more_samples(samples, rng),
             &mut Sampler::Halton(ref mut sampler) =>
+                sampler.get_more_samples(samples, rng),
+            &mut Sampler::LowDiscrepancy(ref mut sampler) =>
                 sampler.get_more_samples(samples, rng)
         }
     }
@@ -73,7 +94,10 @@ impl Sampler {
     }
 
     pub fn round_size(&self, sz: usize) -> usize {
-        sz
+        match self {
+            &Sampler::LowDiscrepancy(_) => sz.next_power_of_two(),
+            _ => sz
+        }
     }
 
     pub fn report_results(&self, samples: &Vec<Sample>,
