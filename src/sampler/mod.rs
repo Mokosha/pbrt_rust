@@ -1,9 +1,10 @@
-mod utils;
+mod adaptive;
 mod base;
-mod stratified;
 mod halton;
 mod lds;
 pub mod sample;
+mod stratified;
+mod utils;
 
 use intersection::Intersection;
 use ray::RayDifferential;
