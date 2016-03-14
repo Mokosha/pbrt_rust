@@ -7,6 +7,7 @@ use utils::Lerp;
 use sampler::utils::van_der_corput;
 use sampler::utils::sample02;
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct LDSampler {
     base: SamplerBase,
     x_pos: i32,

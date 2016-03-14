@@ -6,6 +6,7 @@ pub enum AdaptiveTest {
     ContrastThreshold
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct AdaptiveSampler {
     base: SamplerBase,
     x_pos: i32,

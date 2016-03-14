@@ -17,6 +17,7 @@ use sampler::stratified::StratifiedSampler;
 use spectrum::Spectrum;
 use utils::Lerp;
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Sampler {
     Stratified(StratifiedSampler),
     Halton(HaltonSampler),
