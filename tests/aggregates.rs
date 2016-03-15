@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 extern crate pbrt_rust;
 
 use pbrt_rust::bbox::BBox;

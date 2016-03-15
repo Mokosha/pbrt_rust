@@ -20,7 +20,7 @@ fn main() {
         parse_file("-");
     } else {
         for filename in &filenames {
-            if let Some(scene) = parse_file(&filename) {
+            if let Some(_) = parse_file(&filename) {
             } else {
                 panic!("Cannot open scene file \"{}\"", filename);
             }
