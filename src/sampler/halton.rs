@@ -86,16 +86,16 @@ impl HaltonSampler {
             sample.camera_sample = CameraSample::new(
                 image_x, image_y, lens_u, lens_v, t);
 
-            let sz_and_off_1d: Vec<(usize, usize)> = sample.n1D.iter().zip(
-                sample.offset1D.iter()).map(|(x, y)| (*x, *y)).collect();
+            let sz_and_off_1d: Vec<(usize, usize)> = sample.num_1d.iter().zip(
+                sample.offset_1d.iter()).map(|(x, y)| (*x, *y)).collect();
 
             for (num, off) in sz_and_off_1d {
                 let (oned, _) = sample.samples.split_at_mut(off);
                 latin_hypercube(oned, num, 1, rng);
             }
 
-            let sz_and_off_2d: Vec<(usize, usize)> = sample.n2D.iter().zip(
-                sample.offset2D.iter()).map(|(x, y)| (*x, *y)).collect();
+            let sz_and_off_2d: Vec<(usize, usize)> = sample.num_2d.iter().zip(
+                sample.offset_2d.iter()).map(|(x, y)| (*x, *y)).collect();
 
             for (num, off) in sz_and_off_2d {
                 let (twod, _) = sample.samples.split_at_mut(off);
@@ -109,7 +109,4 @@ impl HaltonSampler {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use sampler::base::SamplerBase;
-
 }

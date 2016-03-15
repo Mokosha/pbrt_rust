@@ -17,8 +17,8 @@ pub struct LDSampler {
 
 fn ld_pixel_sample_floats_needed(sample: &Sample, num_pixel_samples: usize) -> usize {
     let mut n = 5;  // 2 image, 2 lens, 1 time
-    n += sample.n1D.iter().fold(0, |acc, &x| acc + x);
-    n += sample.n2D.iter().fold(0, |acc, &x| acc + (2 * x));
+    n += sample.num_1d.iter().fold(0, |acc, &x| acc + x);
+    n += sample.num_2d.iter().fold(0, |acc, &x| acc + (2 * x));
     n * num_pixel_samples
 }
 
@@ -74,24 +74,26 @@ fn ld_pixel_sample(x_pos: i32, y_pos: i32, shutter_open: f32, shutter_close: f32
         not_lens_samples.split_at_mut(num_samples);
 
     // Prepare temporary array pointers for low-discrepancy integrator samples
-    let total_oneD_samples = samples[0].n1D.iter().fold(0, |acc, &x| acc + (x * num_samples));
-    let (mut oneD_sample_buf, mut twoD_sample_buf) =
-        not_time_samples.split_at_mut(total_oneD_samples);
-    assert_eq!(twoD_sample_buf.len(),
-               samples[0].n2D.iter().fold(0, |acc, &x| acc + (2 * x * num_samples)));
+    let total_oned_samples =
+        samples[0].num_1d.iter()
+        .fold(0, |acc, &x| acc + (x * num_samples));
+    let (oned_sample_buf, twod_sample_buf) =
+        not_time_samples.split_at_mut(total_oned_samples);
+    assert_eq!(twod_sample_buf.len(),
+               samples[0].num_2d.iter().fold(0, |acc, &x| acc + (2 * x * num_samples)));
 
     // !SPEED! These are allocated on the heap. :(
-    let mut oneD_samples = samples[0].n1D.iter()
-        .fold((Vec::new(), oneD_sample_buf), |(mut ss, rest), &split| {
-            let (mut oneD, mut the_rest) = rest.split_at_mut(split);
-            ss.push(oneD);
+    let mut oned_samples = samples[0].num_1d.iter()
+        .fold((Vec::new(), oned_sample_buf), |(mut ss, rest), &split| {
+            let (oned, the_rest) = rest.split_at_mut(split);
+            ss.push(oned);
             (ss, the_rest)
         }).0;
 
-    let mut twoD_samples = samples[0].n2D.iter()
-        .fold((Vec::new(), twoD_sample_buf), |(mut ss, rest), &split| {
-            let (mut twoD, mut the_rest) = rest.split_at_mut(2 * split);
-            ss.push(twoD);
+    let mut twod_samples = samples[0].num_2d.iter()
+        .fold((Vec::new(), twod_sample_buf), |(mut ss, rest), &split| {
+            let (twod, the_rest) = rest.split_at_mut(2 * split);
+            ss.push(twod);
             (ss, the_rest)
         }).0;
 
@@ -100,12 +102,12 @@ fn ld_pixel_sample(x_pos: i32, y_pos: i32, shutter_open: f32, shutter_close: f32
     ld_shuffle_scrambled_2d(1, num_samples, &mut lens_samples, rng);
     ld_shuffle_scrambled_1d(1, num_samples, &mut time_samples, rng);
 
-    for (i, oneD) in oneD_samples.iter_mut().enumerate() {
-        ld_shuffle_scrambled_1d(samples[0].n1D[i], num_samples, oneD, rng);
+    for (i, oned) in oned_samples.iter_mut().enumerate() {
+        ld_shuffle_scrambled_1d(samples[0].num_1d[i], num_samples, oned, rng);
     }
 
-    for (i, twoD) in twoD_samples.iter_mut().enumerate() {
-        ld_shuffle_scrambled_2d(samples[0].n2D[i], num_samples, twoD, rng);
+    for (i, twod) in twod_samples.iter_mut().enumerate() {
+        ld_shuffle_scrambled_2d(samples[0].num_2d[i], num_samples, twod, rng);
     }
 
     // Initialize samples with computed sample values
@@ -120,17 +122,19 @@ fn ld_pixel_sample(x_pos: i32, y_pos: i32, shutter_open: f32, shutter_close: f32
 
         // Copy integrator samples into samples[i]
         // !KLUDGE! This isn't very rust-y
-        for j in 0..(samples[i].n1D.len()) {
-            let start_samp = samples[i].n1D[j] * i;
-            for k in 0..(samples[i].n1D[j]) {
-                samples[i].samples[samples[i].offset1D[j] + k] = oneD_samples[j][start_samp + k];
+        for j in 0..(samples[i].num_1d.len()) {
+            let start_samp = samples[i].num_1d[j] * i;
+            for k in 0..(samples[i].num_1d[j]) {
+                samples[i].samples[samples[i].offset_1d[j] + k] =
+                    oned_samples[j][start_samp + k];
             }
         }
 
-        for j in 0..(samples[i].n2D.len()) {
-            let start_samp = 2 * samples[i].n2D[j] * i;
-            for k in 0..(2 * samples[i].n2D[j]) {
-                samples[i].samples[samples[i].offset2D[j] + k] = twoD_samples[j][start_samp + k];
+        for j in 0..(samples[i].num_2d.len()) {
+            let start_samp = 2 * samples[i].num_2d[j] * i;
+            for k in 0..(2 * samples[i].num_2d[j]) {
+                samples[i].samples[samples[i].offset_2d[j] + k] =
+                    twod_samples[j][start_samp + k];
             }
         }
     }
@@ -157,10 +161,6 @@ impl LDSampler {
 
     pub fn maximum_sample_count(&self) -> usize {
         self.base.samples_per_pixel
-    }
-
-    pub fn round_size(&self, sz: usize) -> usize {
-        sz.next_power_of_two()
     }
 
     pub fn get_sub_sampler(&self, num: usize, count:usize) -> Option<LDSampler> {

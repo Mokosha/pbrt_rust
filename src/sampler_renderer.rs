@@ -2,9 +2,6 @@ extern crate scoped_threadpool;
 extern crate num_cpus;
 
 use camera::Camera;
-use camera::CameraSample;
-use camera::film::Film;
-use integrator::Integrator;
 use integrator::VolumeIntegrator;
 use integrator::SurfaceIntegrator;
 use intersection::Intersection;
@@ -17,8 +14,6 @@ use sampler::Sampler;
 use scene;
 use scoped_threadpool::Pool;
 use spectrum::Spectrum;
-use transform::transform::Transform;
-use transform::animated::AnimatedTransform;
 
 use std::ops::BitAnd;
 use std::iter::Iterator;
@@ -162,7 +157,7 @@ impl Renderer for SamplerRenderer {
 
         // Allocate and initialize sample
         let mut sample = Sample::new(&(self.sampler), Some(&self.surface_integrator),
-                                     Some(&self.volume_integrator), &scene, 1);
+                                     Some(&self.volume_integrator), &scene);
 
         // Create and launch SampleRendererTasks for rendering image
         {

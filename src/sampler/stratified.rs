@@ -99,16 +99,16 @@ impl StratifiedSampler {
                 t);
 
             // Generate stratified samples for integrators
-            let sz_and_off_1d: Vec<(usize, usize)> = samples[i].n1D.iter().zip(
-                samples[i].offset1D.iter()).map(|(x, y)| (*x, *y)).collect();
+            let sz_and_off_1d: Vec<(usize, usize)> = samples[i].num_1d.iter().zip(
+                samples[i].offset_1d.iter()).map(|(x, y)| (*x, *y)).collect();
 
             for (num, off) in sz_and_off_1d {
                 let (oned, _) = samples[i].samples.split_at_mut(off);
                 latin_hypercube(oned, num, 1, rng);
             }
 
-            let sz_and_off_2d: Vec<(usize, usize)> = samples[i].n2D.iter().zip(
-                samples[i].offset2D.iter()).map(|(x, y)| (*x, *y)).collect();
+            let sz_and_off_2d: Vec<(usize, usize)> = samples[i].num_2d.iter().zip(
+                samples[i].offset_2d.iter()).map(|(x, y)| (*x, *y)).collect();
 
             for (num, off) in sz_and_off_2d {
                 let (twod, _) = samples[i].samples.split_at_mut(off);

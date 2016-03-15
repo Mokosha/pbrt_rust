@@ -7,22 +7,22 @@ use scene::Scene;
 #[derive(Debug, Clone)]
 pub struct Sample {
     pub camera_sample: CameraSample,
-    pub n1D: Vec<usize>,
-    pub n2D: Vec<usize>,
-    pub offset1D: Vec<usize>,
-    pub offset2D: Vec<usize>,
+    pub num_1d: Vec<usize>,
+    pub num_2d: Vec<usize>,
+    pub offset_1d: Vec<usize>,
+    pub offset_2d: Vec<usize>,
     pub samples: Vec<f32>,
 }
 
 impl Sample {
     pub fn new(sampler: &Sampler, _surf: Option<&SurfaceIntegrator>,
-               _vol: Option<&VolumeIntegrator>, scene: &Scene, idx: i32) -> Sample {
+               _vol: Option<&VolumeIntegrator>, scene: &Scene) -> Sample {
         let mut s = Sample {
             camera_sample: CameraSample::empty(),
-            n1D: Vec::new(),
-            n2D: Vec::new(),
-            offset1D: Vec::new(),
-            offset2D: Vec::new(),
+            num_1d: Vec::new(),
+            num_2d: Vec::new(),
+            offset_1d: Vec::new(),
+            offset_2d: Vec::new(),
             samples: Vec::new(),
         };
 
@@ -35,23 +35,23 @@ impl Sample {
         }
 
         // Allocate sample memory
-        let num_1D_samples = match s.offset1D.last() {
+        let num_1d_samples = match s.offset_1d.last() {
             None => 0,
             Some(x) => {
-                assert!(s.n1D.len() > 0);
-                x + *(s.n1D.last().unwrap())
+                assert!(s.num_1d.len() > 0);
+                x + *(s.num_1d.last().unwrap())
             }
         };
 
-        for x in s.offset2D.iter_mut() {
-            *x += num_1D_samples
+        for x in s.offset_2d.iter_mut() {
+            *x += num_1d_samples
         }
 
-        let total_num_samples = match s.offset2D.last() {
-            None => num_1D_samples,
+        let total_num_samples = match s.offset_2d.last() {
+            None => num_1d_samples,
             Some(x) => {
-                assert!(s.n2D.len() > 0);
-                x + num_1D_samples + *(s.n2D.last().unwrap()) * 2
+                assert!(s.num_2d.len() > 0);
+                x + num_1d_samples + *(s.num_2d.last().unwrap()) * 2
             }
         };
 
@@ -60,33 +60,33 @@ impl Sample {
     }
 
     pub fn add_1d(&mut self, num: usize) -> usize {
-        let first = self.n1D.is_empty();
+        let first = self.num_1d.is_empty();
 
-        self.n1D.push(num);
+        self.num_1d.push(num);
         if first {
-            self.offset1D.push(0)
+            self.offset_1d.push(0)
         } else {
-            assert!(self.offset1D.len() > 0);
-            let offset_to_last = *(self.offset1D.last().unwrap());
-            self.offset1D.push(offset_to_last + num);
+            assert!(self.offset_1d.len() > 0);
+            let offset_to_last = *(self.offset_1d.last().unwrap());
+            self.offset_1d.push(offset_to_last + num);
         }
 
-        self.n1D.len() - 1
+        self.num_1d.len() - 1
     }
 
     pub fn add_2d(&mut self, num: usize) -> usize {
-        let first = self.n2D.is_empty();
+        let first = self.num_2d.is_empty();
 
-        self.n2D.push(num);
+        self.num_2d.push(num);
         if first {
-            self.offset2D.push(0)
+            self.offset_2d.push(0)
         } else {
-            assert!(self.offset2D.len() > 0);
-            let offset_to_last = *(self.offset2D.last().unwrap());
-            self.offset2D.push(offset_to_last + (2 * num));
+            assert!(self.offset_2d.len() > 0);
+            let offset_to_last = *(self.offset_2d.last().unwrap());
+            self.offset_2d.push(offset_to_last + (2 * num));
         }
 
-        self.n2D.len() - 1
+        self.num_2d.len() - 1
     }
 
     pub fn to_camera_sample(self) -> CameraSample { self.camera_sample }
@@ -94,32 +94,31 @@ impl Sample {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
+    // !FIXME! These should all also make sure that the proper amount
+    // of data was allocated to store the resulting samples. These
+    // can't be properly tested until we get integrators working...
 
     #[ignore]
     #[test]
     fn it_can_be_created() {
-        unimplemented!()
     }
-
-    // !FIXME! These should all also make sure that the proper amount
-    // of data was allocated to store the resulting samples.
 
     #[ignore]
     #[test]
-    fn it_can_add_1D_samples() {
+    fn it_can_add_1d_samples() {
         unimplemented!()
     }
 
     #[ignore]
     #[test]
-    fn it_can_add_2D_samples() {
+    fn it_can_add_2d_samples() {
         unimplemented!()
     }
 
     #[ignore]
     #[test]
-    fn it_can_add_both_1D_and_2D_samples() {
+    fn it_can_add_both_1d_and_2d_samples() {
         unimplemented!()
     }
 }

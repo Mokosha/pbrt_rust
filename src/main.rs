@@ -1,8 +1,5 @@
 extern crate pbrt_rust;
-
-use pbrt_rust::renderer::Renderer;
-use pbrt_rust::scene;
-use pbrt_rust::sampler_renderer::SamplerRenderer;
+use pbrt_rust::scene::Scene;
 
 struct Options;
 
@@ -10,8 +7,8 @@ impl Options {
     fn new() -> Options { Options }
 }
 
-fn parse_file(filename : &str) -> Option<scene::Scene> { None }
-fn pbrt_init(options : &Options) { }
+fn parse_file(_ : &str) -> Option<Scene> { None }
+fn pbrt_init(_ : &Options) { }
 fn pbrt_cleanup() { }
 
 fn main() {

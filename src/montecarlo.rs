@@ -8,12 +8,12 @@ use std::ops::DerefMut;
 pub fn radical_inverse(n: usize, b: usize) -> f64 {
     let mut v = 0.0;
     let mut num = n;
-    let invBase = 1.0 / (b as f64);
+    let inv_base = 1.0 / (b as f64);
     let mut aib = 1.0;
     while num > 0 {
         let d = (num % b) as f64;
         num /= b;
-        aib *= invBase;
+        aib *= inv_base;
         v += d * aib;
     }
 
@@ -24,12 +24,12 @@ pub fn permuted_radical_inverse(n: usize, b: usize, p: &[usize]) -> f64 {
     assert!(p.len() == b);
     let mut v = 0.0;
     let mut num = n;
-    let invBase = 1.0 / (b as f64);
+    let inv_base = 1.0 / (b as f64);
     let mut aib = 1.0;
     while num > 0 {
         let d = p[num % b] as f64;
         num /= b;
-        aib *= invBase;
+        aib *= inv_base;
         v += d * aib;
     }
 
@@ -38,11 +38,11 @@ pub fn permuted_radical_inverse(n: usize, b: usize, p: &[usize]) -> f64 {
     // zero as the answer. It's important to realize that the permuted radical
     // inverse takes into account the implicit leading zeros to
     // also be permuted, which means that the final value needs to
-    // be added by p[0] * aib * (1 + invBase + invBase * invBase + ...)
+    // be added by p[0] * aib * (1 + inv_base + inv_base * inv_base + ...)
     // Since this is a series of the form sum_i^inf (1/(b^i)),
     // we know the result, b / (b - 1)
 
-    v + (p[0] as f64) * aib * invBase * (b as f64) / ((b - 1) as f64)
+    v + (p[0] as f64) * aib * inv_base * (b as f64) / ((b - 1) as f64)
 }
 
 #[derive(Debug, Clone)]

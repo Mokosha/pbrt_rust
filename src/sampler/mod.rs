@@ -15,7 +15,6 @@ use sampler::lds::LDSampler;
 use sampler::sample::Sample;
 use sampler::stratified::StratifiedSampler;
 use spectrum::Spectrum;
-use utils::Lerp;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Sampler {
@@ -25,22 +24,22 @@ pub enum Sampler {
 }
 
 impl Sampler {
-    fn stratified(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
-                  xs: usize, ys: usize, jitter: bool,
-                  sopen: f32, sclose: f32) -> Sampler {
+    pub fn stratified(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
+                      xs: usize, ys: usize, jitter: bool,
+                      sopen: f32, sclose: f32) -> Sampler {
         Sampler::Stratified(StratifiedSampler::new(x_start, x_end, y_start, y_end,
                                                    xs, ys, jitter, sopen, sclose))
     }
 
-    fn halton(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
-              samples_per_pixel: usize, sopen: f32, sclose: f32) -> Sampler {
+    pub fn halton(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
+                  samples_per_pixel: usize, sopen: f32, sclose: f32) -> Sampler {
         Sampler::Halton(HaltonSampler::new(x_start, x_end, y_start, y_end,
                                            samples_per_pixel, sopen, sclose))
     }
 
-    fn low_discrepancy(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
-                       samples_per_pixel: usize, sopen: f32,
-                       sclose: f32) -> Sampler {
+    pub fn low_discrepancy(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
+                           samples_per_pixel: usize, sopen: f32,
+                           sclose: f32) -> Sampler {
         Sampler::LowDiscrepancy(LDSampler::new(x_start, x_end, y_start, y_end,
                                                samples_per_pixel, sopen, sclose))
     }

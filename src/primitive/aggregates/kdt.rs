@@ -48,9 +48,12 @@ impl KDAccelNode {
 
     fn offset(&mut self, off: usize) {
         match self {
-            &mut KDAccelNode::InteriorX { ref mut above_child, .. } => *above_child += off,
-            &mut KDAccelNode::InteriorY { ref mut above_child, .. } => *above_child += off,
-            &mut KDAccelNode::InteriorZ { ref mut above_child, .. } => *above_child += off,
+            &mut KDAccelNode::InteriorX { ref mut above_child, .. } =>
+                *above_child += off,
+            &mut KDAccelNode::InteriorY { ref mut above_child, .. } =>
+                *above_child += off,
+            &mut KDAccelNode::InteriorZ { ref mut above_child, .. } =>
+                *above_child += off,
             _ => { } // Leaf nodes needn't do anything
         }
     }
@@ -168,8 +171,8 @@ fn build_tree(icost: i32, tcost: i32, maxp: usize, ebonus: f32,
     let mut best_offset = None;
     let mut best_cost = ::std::f32::MAX;
     let old_cost = (icost as f32) * (num_prims as f32);
-    let total_SA = bounds.surface_area();
-    let inv_total_SA = 1.0 / total_SA;
+    let total_sa = bounds.surface_area();
+    let inv_total_sa = 1.0 / total_sa;
     let d = &bounds.p_max - &bounds.p_min;
 
     // Choose which axis to split along
@@ -198,17 +201,22 @@ fn build_tree(icost: i32, tcost: i32, maxp: usize, ebonus: f32,
                     let other_axis_0 = (axis + 1) % 3;
                     let other_axis_1 = (axis + 2) % 3;
 
-                    let compute_SA = |x| {
+                    let compute_sa = |x| {
                         2.0 * (d[other_axis_0] * d[other_axis_1] +
                                x * (d[other_axis_0] * d[other_axis_1]))
                     };
 
-                    let below_SA = compute_SA(edge_t - bounds.p_min[axis]);
-                    let above_SA = compute_SA(bounds.p_max[axis] - edge_t);
+                    let below_sa = compute_sa(edge_t - bounds.p_min[axis]);
+                    let above_sa = compute_sa(bounds.p_max[axis] - edge_t);
 
-                    let p_below = below_SA * inv_total_SA;
-                    let p_above = above_SA * inv_total_SA;
-                    let eb = if num_above == 0 || num_below == 0 { ebonus } else { 0.0 };
+                    let p_below = below_sa * inv_total_sa;
+                    let p_above = above_sa * inv_total_sa;
+                    let eb = if num_above == 0 || num_below == 0 {
+                        ebonus
+                    } else {
+                        0.0
+                    };
+
                     let cost =
                         (tcost as f32) +
                         (icost as f32) *

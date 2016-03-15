@@ -603,7 +603,6 @@ impl ::std::ops::IndexMut<usize> for Spectrum {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f32;
     use utils::Lerp;
 
     #[test]

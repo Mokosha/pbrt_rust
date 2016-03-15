@@ -83,11 +83,12 @@ impl SurfaceIntegrator {
 
     pub fn preprocess(&mut self, scene: &Scene, camera: &Camera) {
         match self {
-            &mut SurfaceIntegrator::Whitted { ref mut base, .. } => base.preprocess(scene, camera)
+            &mut SurfaceIntegrator::Whitted { ref mut base, .. } =>
+                base.preprocess(scene, camera)
         }
     }
 
-    pub fn request_samples(&self, sampler: &Sampler, sample: &mut Sample, scene: &Scene) {
+    pub fn request_samples(&self, _: &Sampler, _: &mut Sample, _: &Scene) {
         unimplemented!()
     }
 }
@@ -106,7 +107,7 @@ impl VolumeIntegrator {
         self.base.preprocess(scene, camera);
     }
 
-    pub fn request_samples(&self, sampler: &Sampler, sample: &mut Sample, scene: &Scene) {
+    pub fn request_samples(&self, _: &Sampler, _: &mut Sample, _: &Scene) {
         unimplemented!()
     }
 }
