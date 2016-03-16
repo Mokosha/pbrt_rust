@@ -23,6 +23,12 @@ pub const NUM_SPECTRUM_SAMPLES: usize = _NUM_SPECTRUM_SAMPLES;
 #[cfg(not(test))]
 const NUM_SPECTRUM_SAMPLES: usize = _NUM_SPECTRUM_SAMPLES;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SpectrumType {
+    Reflectance,
+    Illumination
+}
+
 fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
     [3.240479*xyz[0] - 1.37150*xyz[1] - 0.498535*xyz[2],
     -0.969256*xyz[0] + 1.875991*xyz[1] + 0.041556*xyz[2],
@@ -90,16 +96,87 @@ fn average_spectrum_samples(samples: &[(f32, f32)],
     return sum / (lambda_end - lambda_start);
 }
 
+fn rgb_to_samples_spectrum(rgb: [f32; 3], ty: SpectrumType) -> Spectrum {
+    let mut r = Spectrum::Sampled([0.0; NUM_SPECTRUM_SAMPLES]);
+    match ty {
+        SpectrumType::Reflectance => {
+            // Convert reflectance spectrum to RGB
+            if rgb[0] <= rgb[1] && rgb[0] <= rgb[2] {
+                // Compute reflectance SampledSpectrum with rgb[0] as minimum
+                r = r + rgb[0] * RGBREFL2SPECTWHITE;
+                if rgb[1] <= rgb[2] {
+                    r = r + (rgb[1] - rgb[0]) * RGBREFL2SPECTCYAN;
+                    r = r + (rgb[2] - rgb[1]) * RGBREFL2SPECTBLUE;
+                } else {
+                    r = r + (rgb[2] - rgb[0]) * RGBREFL2SPECTCYAN;
+                    r = r + (rgb[1] - rgb[2]) * RGBREFL2SPECTGREEN;
+                }
+            } else if rgb[1] <= rgb[0] && rgb[1] <= rgb[2] {
+                // Compute reflectance _SampledSpectrum_ with rgb[1] as minimum
+                r = r + rgb[1] * RGBREFL2SPECTWHITE;
+                if rgb[0] <= rgb[2] {
+                    r = r + (rgb[0] - rgb[1]) * RGBREFL2SPECTMAGENTA;
+                    r = r + (rgb[2] - rgb[0]) * RGBREFL2SPECTBLUE;
+                } else {
+                    r = r + (rgb[2] - rgb[1]) * RGBREFL2SPECTMAGENTA;
+                    r = r + (rgb[0] - rgb[2]) * RGBREFL2SPECTRED;
+                }
+            } else {
+                // Compute reflectance SampledSpectrum with rgb[2] as minimum
+                r = r + rgb[2] * RGBREFL2SPECTWHITE;
+                if rgb[0] <= rgb[1] {
+                    r = r + (rgb[0] - rgb[2]) * RGBREFL2SPECTYELLOW;
+                    r = r + (rgb[1] - rgb[0]) * RGBREFL2SPECTGREEN;
+                } else {
+                    r = r + (rgb[1] - rgb[2]) * RGBREFL2SPECTYELLOW;
+                    r = r + (rgb[0] - rgb[1]) * RGBREFL2SPECTRED;
+                }
+            }
+            r = r * 0.94;
+        },
+        SpectrumType::Illumination => {
+            // Convert illuminant spectrum to RGB
+            if rgb[0] <= rgb[1] && rgb[0] <= rgb[2] {
+                // Compute illuminant _SampledSpectrum_ with _rgb[0]_ as minimum
+                r = r + rgb[0] * RGBILLUM2SPECTWHITE;
+                if rgb[1] <= rgb[2] {
+                    r = r + (rgb[1] - rgb[0]) * RGBILLUM2SPECTCYAN;
+                    r = r + (rgb[2] - rgb[1]) * RGBILLUM2SPECTBLUE;
+                } else {
+                    r = r + (rgb[2] - rgb[0]) * RGBILLUM2SPECTCYAN;
+                    r = r + (rgb[1] - rgb[2]) * RGBILLUM2SPECTGREEN;
+                }
+            } else if rgb[1] <= rgb[0] && rgb[1] <= rgb[2] {
+                // Compute illuminant _SampledSpectrum_ with _rgb[1]_ as minimum
+                r = r + rgb[1] * RGBILLUM2SPECTWHITE;
+                if rgb[0] <= rgb[2] {
+                    r = r + (rgb[0] - rgb[1]) * RGBILLUM2SPECTMAGENTA;
+                    r = r + (rgb[2] - rgb[0]) * RGBILLUM2SPECTBLUE;
+                } else {
+                    r = r + (rgb[2] - rgb[1]) * RGBILLUM2SPECTMAGENTA;
+                    r = r + (rgb[0] - rgb[2]) * RGBILLUM2SPECTRED;
+                }
+            } else {
+                // Compute illuminant _SampledSpectrum_ with _rgb[2]_ as minimum
+                r = r + rgb[2] * RGBILLUM2SPECTWHITE;
+                if rgb[0] <= rgb[1] {
+                    r = r + (rgb[0] - rgb[2]) * RGBILLUM2SPECTYELLOW;
+                    r = r + (rgb[1] - rgb[0]) * RGBILLUM2SPECTGREEN;
+                } else {
+                    r = r + (rgb[1] - rgb[2]) * RGBILLUM2SPECTYELLOW;
+                    r = r + (rgb[0] - rgb[1]) * RGBILLUM2SPECTRED;
+                }
+            }
+            r = r * 0.86445;
+        }
+    }
+    r.clamp(0.0, ::std::f32::MAX)
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Spectrum {
     RGB([f32; 3]),
     Sampled([f32; NUM_SPECTRUM_SAMPLES])
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SpectrumType {
-    Reflectance,
-    Illumination
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,84 +486,7 @@ impl Spectrum {
     pub fn into_sampled_spectrum(self, ty: SpectrumType) -> Spectrum {
         match self {
             Spectrum::Sampled(s) => Spectrum::Sampled(s),
-            Spectrum::RGB(rgb) => {
-                let mut r = Spectrum::Sampled([0.0; NUM_SPECTRUM_SAMPLES]);
-
-                match ty {
-                    SpectrumType::Reflectance => {
-                        // Convert reflectance spectrum to RGB
-                        if rgb[0] <= rgb[1] && rgb[0] <= rgb[2] {
-                            // Compute reflectance SampledSpectrum with rgb[0] as minimum
-                            r = r + rgb[0] * RGBREFL2SPECTWHITE;
-                            if rgb[1] <= rgb[2] {
-                                r = r + (rgb[1] - rgb[0]) * RGBREFL2SPECTCYAN;
-                                r = r + (rgb[2] - rgb[1]) * RGBREFL2SPECTBLUE;
-                            } else {
-                                r = r + (rgb[2] - rgb[0]) * RGBREFL2SPECTCYAN;
-                                r = r + (rgb[1] - rgb[2]) * RGBREFL2SPECTGREEN;
-                            }
-                        }
-                        else if rgb[1] <= rgb[0] && rgb[1] <= rgb[2] {
-                            // Compute reflectance _SampledSpectrum_ with rgb[1] as minimum
-                            r = r + rgb[1] * RGBREFL2SPECTWHITE;
-                            if rgb[0] <= rgb[2] {
-                                r = r + (rgb[0] - rgb[1]) * RGBREFL2SPECTMAGENTA;
-                                r = r + (rgb[2] - rgb[0]) * RGBREFL2SPECTBLUE;
-                            } else {
-                                r = r + (rgb[2] - rgb[1]) * RGBREFL2SPECTMAGENTA;
-                                r = r + (rgb[0] - rgb[2]) * RGBREFL2SPECTRED;
-                            }
-                        } else {
-                            // Compute reflectance SampledSpectrum with rgb[2] as minimum
-                            r = r + rgb[2] * RGBREFL2SPECTWHITE;
-                            if rgb[0] <= rgb[1] {
-                                r = r + (rgb[0] - rgb[2]) * RGBREFL2SPECTYELLOW;
-                                r = r + (rgb[1] - rgb[0]) * RGBREFL2SPECTGREEN;
-                            } else {
-                                r = r + (rgb[1] - rgb[2]) * RGBREFL2SPECTYELLOW;
-                                r = r + (rgb[0] - rgb[1]) * RGBREFL2SPECTRED;
-                            }
-                        }
-                        r = r * 0.94;
-                    },
-                    SpectrumType::Illumination => {
-                        // Convert illuminant spectrum to RGB
-                        if rgb[0] <= rgb[1] && rgb[0] <= rgb[2] {
-                            // Compute illuminant _SampledSpectrum_ with _rgb[0]_ as minimum
-                            r = r + rgb[0] * RGBILLUM2SPECTWHITE;
-                            if rgb[1] <= rgb[2] {
-                                r = r + (rgb[1] - rgb[0]) * RGBILLUM2SPECTCYAN;
-                                r = r + (rgb[2] - rgb[1]) * RGBILLUM2SPECTBLUE;
-                            } else {
-                                r = r + (rgb[2] - rgb[0]) * RGBILLUM2SPECTCYAN;
-                                r = r + (rgb[1] - rgb[2]) * RGBILLUM2SPECTGREEN;
-                            }
-                        } else if rgb[1] <= rgb[0] && rgb[1] <= rgb[2] {
-                            // Compute illuminant _SampledSpectrum_ with _rgb[1]_ as minimum
-                            r = r + rgb[1] * RGBILLUM2SPECTWHITE;
-                            if rgb[0] <= rgb[2] {
-                                r = r + (rgb[0] - rgb[1]) * RGBILLUM2SPECTMAGENTA;
-                                r = r + (rgb[2] - rgb[0]) * RGBILLUM2SPECTBLUE;
-                            } else {
-                                r = r + (rgb[2] - rgb[1]) * RGBILLUM2SPECTMAGENTA;
-                                r = r + (rgb[0] - rgb[2]) * RGBILLUM2SPECTRED;
-                            }
-                        } else {
-                            // Compute illuminant _SampledSpectrum_ with _rgb[2]_ as minimum
-                            r = r + rgb[2] * RGBILLUM2SPECTWHITE;
-                            if rgb[0] <= rgb[1] {
-                                r = r + (rgb[0] - rgb[2]) * RGBILLUM2SPECTYELLOW;
-                                r = r + (rgb[1] - rgb[0]) * RGBILLUM2SPECTGREEN;
-                            } else {
-                                r = r + (rgb[1] - rgb[2]) * RGBILLUM2SPECTYELLOW;
-                                r = r + (rgb[0] - rgb[1]) * RGBILLUM2SPECTRED;
-                            }
-                        }
-                        r = r * 0.86445;
-                    }
-                }
-                r.clamp(0.0, ::std::f32::MAX)
-            }
+            Spectrum::RGB(rgb) => rgb_to_samples_spectrum(rgb, ty)
         }
     }
 }

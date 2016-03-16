@@ -81,7 +81,8 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
     
     // Allocate space for samples and intersections
     let max_samples = sampler.maximum_sample_count() as usize;
-    let mut samples : Vec<Sample> = (0..max_samples).map(|_| data.read().unwrap().sample.clone()).collect();
+    let samplesample = data.read().unwrap().sample.clone();
+    let mut samples : Vec<Sample> = vec![samplesample; max_samples];
     let mut rays : Vec<ray::RayDifferential> = Vec::with_capacity(max_samples);
     let mut l_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
     let mut t_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
@@ -105,14 +106,17 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
             // Evaluate radiance along camera ray
             if ray_weight > 0f32 {
                 // !FIXME! I think this synchronization is a bit too coarse grained
-                let (mut ls, isect, ts) = data.read().unwrap().renderer.li(scene, &ray, &(samples[i]), &mut rng);
+                let (mut ls, isect, ts) =
+                    data.read().unwrap()
+                    .renderer.li(scene, &ray, &(samples[i]), &mut rng);
                 ls = ls * ray_weight;
 
                 if !ls.has_nans() { panic!("Invalid radiance value!"); }
                 l_s.push(ls);
 
-                // !FIXME! I think there are times when we don't generate transmissive
-                // values, and these times we shouldn't add them to the list...
+                // !FIXME! I think there are times when we don't generate
+                // transmissive values, and these times we shouldn't add them
+                // to the list...
                 t_s.push(ts);
                 
                 if let Some(isect_val) = isect {
@@ -137,7 +141,11 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
                 // synchronization. Writing the computed sample is significantly
                 // cheaper than the render step, though
                 let cs = samples[i].clone().to_camera_sample();
-                data.write().unwrap().renderer.camera.film_mut().add_sample(&cs, &l_s[i]);
+                data.write().unwrap()
+                    .renderer
+                    .camera
+                    .film_mut()
+                    .add_sample(&cs, &l_s[i]);
             }
         }
 

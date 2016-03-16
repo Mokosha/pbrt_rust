@@ -22,7 +22,8 @@ pub struct Intersection {
 
 impl Intersection {
     pub fn new_with(_dg: DifferentialGeometry, w2o: Transform,
-                    o2w: Transform, sid: usize, pid: usize, ray_eps: f32) -> Intersection {
+                    o2w: Transform, sid: usize, pid: usize,
+                    ray_eps: f32) -> Intersection {
         Intersection {
             dg: _dg,
             primitive: None,
