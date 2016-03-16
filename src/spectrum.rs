@@ -498,6 +498,13 @@ impl Add for Spectrum {
     }
 }
 
+impl<'a> Add<&'a Spectrum> for Spectrum {
+    type Output = Spectrum;
+    fn add(self, _rhs: &'a Spectrum) -> Spectrum {
+        self.elementwise(_rhs.clone(), |(x, y)| x + y)
+    }
+}
+
 impl Sub for Spectrum {
     type Output = Spectrum;
     fn sub(self, _rhs: Spectrum) -> Spectrum {
