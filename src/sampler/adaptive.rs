@@ -48,10 +48,6 @@ impl AdaptiveSampler {
         self.max_samples
     }
 
-    pub fn round_size(&self, sz: usize) -> usize {
-        sz.next_power_of_two()
-    }
-
     pub fn get_sub_sampler(&self, num: usize, count:usize) -> Option<AdaptiveSampler> {
         let (x0, x1, y0, y1) = self.base.compute_sub_window(num, count);
         if x0 == x1 || y0 == y1 {

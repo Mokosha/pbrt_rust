@@ -10,6 +10,8 @@ use intersection::Intersection;
 use ray::RayDifferential;
 use rng::RNG;
 use sampler::base::SamplerBase;
+use sampler::adaptive::AdaptiveTest;
+use sampler::adaptive::AdaptiveSampler;
 use sampler::halton::HaltonSampler;
 use sampler::lds::LDSampler;
 use sampler::sample::Sample;
@@ -20,7 +22,8 @@ use spectrum::Spectrum;
 pub enum Sampler {
     Stratified(StratifiedSampler),
     Halton(HaltonSampler),
-    LowDiscrepancy(LDSampler)
+    LowDiscrepancy(LDSampler),
+    Adaptive(AdaptiveSampler)
 }
 
 impl Sampler {
@@ -44,11 +47,20 @@ impl Sampler {
                                                samples_per_pixel, sopen, sclose))
     }
 
+    pub fn adaptive(x_start: i32, x_end: i32, y_start: i32, y_end: i32,
+                    min_samples: usize, max_samples: usize, method: AdaptiveTest,
+                    supersample: bool, sopen: f32, sclose: f32) -> Sampler {
+        Sampler::Adaptive(AdaptiveSampler::new(x_start, x_end, y_start, y_end,
+                                               min_samples, max_samples, method,
+                                               supersample, sopen, sclose))
+    }
+
     fn base(&self) -> &SamplerBase {
         match self {
             &Sampler::Stratified(ref sampler) => sampler.base(),
             &Sampler::Halton(ref sampler) => sampler.base(),
-            &Sampler::LowDiscrepancy(ref sampler) => sampler.base()
+            &Sampler::LowDiscrepancy(ref sampler) => sampler.base(),
+            &Sampler::Adaptive(ref sampler) => sampler.base()
         }
     }
 
@@ -67,6 +79,10 @@ impl Sampler {
                 sampler
                 .get_sub_sampler(task_idx, num_tasks)
                 .map(Sampler::LowDiscrepancy),
+            &Sampler::Adaptive(ref sampler) =>
+                sampler
+                .get_sub_sampler(task_idx, num_tasks)
+                .map(Sampler::Adaptive),
         }
     }
 
@@ -74,7 +90,8 @@ impl Sampler {
         match self {
             &Sampler::Stratified(ref sampler) => sampler.maximum_sample_count(),
             &Sampler::Halton(ref sampler) => sampler.maximum_sample_count(),
-            &Sampler::LowDiscrepancy(ref sampler) => sampler.maximum_sample_count()
+            &Sampler::LowDiscrepancy(ref sampler) => sampler.maximum_sample_count(),
+            &Sampler::Adaptive(ref sampler) => sampler.maximum_sample_count()
         }
     }
 
@@ -86,6 +103,8 @@ impl Sampler {
             &mut Sampler::Halton(ref mut sampler) =>
                 sampler.get_more_samples(samples, rng),
             &mut Sampler::LowDiscrepancy(ref mut sampler) =>
+                sampler.get_more_samples(samples, rng),
+            &mut Sampler::Adaptive(ref mut sampler) =>
                 sampler.get_more_samples(samples, rng)
         }
     }
@@ -97,6 +116,7 @@ impl Sampler {
     pub fn round_size(&self, sz: usize) -> usize {
         match self {
             &Sampler::LowDiscrepancy(_) => sz.next_power_of_two(),
+            &Sampler::Adaptive(_) => sz.next_power_of_two(),
             _ => sz
         }
     }
@@ -105,5 +125,11 @@ impl Sampler {
                           rays: &Vec<RayDifferential>,
                           ls: &Vec<Spectrum>,
                           isects: &Vec<Intersection>,
-                          sample_count: usize) -> bool { true }
+                          sample_count: usize) -> bool {
+        match self {
+            &mut Sampler::Adaptive(ref mut sampler) =>
+                sampler.report_results(samples, rays, ls, isects, sample_count),
+            _ => true
+        }
+    }
 }
