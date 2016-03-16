@@ -1,4 +1,11 @@
+use intersection::Intersection;
+use ray::RayDifferential;
+use rng::RNG;
+use sampler::sample::Sample;
 use sampler::base::SamplerBase;
+use spectrum::Spectrum;
+
+use sampler::utils::*;
 
 #[derive(Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Clone)]
 pub enum AdaptiveTest {
@@ -56,5 +63,70 @@ impl AdaptiveSampler {
                                       self.base.shutter_open,
                                       self.base.shutter_close))
         }
+    }
+
+    pub fn get_more_samples(&mut self, samples: &mut Vec<Sample>,
+                            rng: &mut RNG) -> usize {
+        assert!(samples.len() >= 1);
+        if self.y_pos == self.base.y_pixel_end { return 0 }
+
+        let ns = ld_pixel_sample_floats_needed(samples.get(0).unwrap(),
+                                               self.base.samples_per_pixel);
+        self.sample_buf.resize(ns, 0f32);
+
+        let num_samples =
+            if self.supersample_pixel {
+                self.max_samples
+            } else {
+                self.min_samples
+            };
+
+        ld_pixel_sample(self.x_pos, self.y_pos, self.base.shutter_open,
+                        self.base.shutter_close, num_samples, samples,
+                        &mut self.sample_buf, rng);
+
+        self.supersample_pixel = false;
+
+        num_samples
+    }
+
+    pub fn report_results(&mut self, samples: &Vec<Sample>,
+                          rays: &Vec<RayDifferential>,
+                          ls: &Vec<Spectrum>, isects: &Vec<Intersection>,
+                          sample_count: usize) -> bool {
+        let needs_supersample = !self.supersample_pixel && match self.method {
+            AdaptiveTest::CompreShapeID => {
+                let tail = isects.iter().skip(1);
+                isects.iter().zip(tail).fold(false, |acc, (i1, i2)| {
+                    acc
+                        || (i1.shape_id != i2.shape_id)
+                        || (i1.primitive_id != i2.primitive_id)
+                })
+            },
+
+            AdaptiveTest::ContrastThreshold => {
+                let lavg = ls.iter().fold(0.0, |acc, l| {
+                    acc + l.y()
+                });
+
+                let contrast_ratio = 0.5;
+                ls.iter().fold(false, |acc, l| {
+                    acc || ((l.y() - lavg).abs() / lavg) > contrast_ratio
+                })
+            }
+        };
+
+        if needs_supersample {
+            self.supersample_pixel = true;
+            return false;
+        }
+
+        self.x_pos += 1;
+        if self.x_pos == self.base.x_pixel_end {
+            self.x_pos = self.base.x_pixel_start;
+            self.y_pos += 1;
+        }
+
+        true
     }
 }
