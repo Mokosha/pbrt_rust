@@ -134,7 +134,7 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
         }
 
         // Report sample results to Sampler, add contributions to image
-        if sampler.report_results(&samples, &rays, &l_s, &isects, sample_count) {
+        if sampler.report_results(&mut samples, &rays, &l_s, &isects, sample_count) {
             for i in 0..sample_count {
                 // !FIXME! This synchronization is still a bit coarse grained, but
                 // we may be able to move the lock within a few levels to get finer

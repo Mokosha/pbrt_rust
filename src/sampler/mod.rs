@@ -101,7 +101,7 @@ impl Sampler {
         }
     }
 
-    pub fn report_results(&self, samples: &Vec<Sample>,
+    pub fn report_results(&mut self, samples: &Vec<Sample>,
                           rays: &Vec<RayDifferential>,
                           ls: &Vec<Spectrum>,
                           isects: &Vec<Intersection>,
