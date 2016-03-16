@@ -38,7 +38,7 @@ impl AdaptiveSampler {
     pub fn base(&self) -> &SamplerBase { &self.base }
 
     pub fn maximum_sample_count(&self) -> usize {
-        self.base.samples_per_pixel
+        self.max_samples
     }
 
     pub fn round_size(&self, sz: usize) -> usize {
