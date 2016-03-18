@@ -7,6 +7,7 @@ pub mod bbox;
 pub mod bsdf;
 pub mod camera;
 pub mod diff_geom;
+pub mod filter;
 pub mod geometry;
 pub mod intersection;
 pub mod integrator;
