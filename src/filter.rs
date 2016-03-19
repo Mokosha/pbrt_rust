@@ -16,32 +16,33 @@ impl FilterBase {
     }
 }
 
-pub enum Filter {
-    Mean(FilterBase),  // Also known as a box filter
+pub enum FilterType {
+    Mean    // Also known as a box filter
+}
+
+pub struct Filter {
+    base: FilterBase,
+    ty: FilterType
 }
 
 impl Filter {
     pub fn mean(xw: f32, yw: f32) -> Filter {
-        Filter::Mean(FilterBase::new(xw, yw))
+        Filter {
+            base: FilterBase::new(xw, yw),
+            ty: FilterType::Mean
+        }
     }
 
     pub fn evaluate(&self, x: f32, y: f32) -> f32 {
-        match self {
-            &Filter::Mean(_) => 1.0
+        match &self.ty {
+            &FilterType::Mean => 1.0
         }
     }
 
-    pub fn x_width(&self) -> f32 { self.base().x_width }
-    pub fn y_width(&self) -> f32 { self.base().y_width }
-    pub fn inv_x_width(&self) -> f32 { self.base().inv_x_width }
-    pub fn inv_y_width(&self) -> f32 { self.base().inv_y_width }
-
-    // Private fns
-    fn base(&self) -> &FilterBase {
-        match self {
-            &Filter::Mean(ref b) => b
-        }
-    }
+    pub fn x_width(&self) -> f32 { self.base.x_width }
+    pub fn y_width(&self) -> f32 { self.base.y_width }
+    pub fn inv_x_width(&self) -> f32 { self.base.inv_x_width }
+    pub fn inv_y_width(&self) -> f32 { self.base.inv_y_width }
 }
 
 #[cfg(test)]
