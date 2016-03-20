@@ -24,6 +24,11 @@ pub enum FilterType {
         exp_x: f32,
         exp_y: f32
     },
+    Mitchell {
+        b: f32,
+        c: f32
+    },
+    Lanczos(f32)
 }
 
 pub struct Filter {
@@ -57,6 +62,23 @@ impl Filter {
         }
     }
 
+    pub fn mitchell(xw: f32, yw: f32, b: f32, c: f32) -> Filter {
+        Filter {
+            base: FilterBase::new(xw, yw),
+            ty: FilterType::Mitchell {
+                b: b,
+                c: c
+            }
+        }
+    }
+
+    pub fn lanczos(xw: f32, yw: f32, tau: f32) -> Filter {
+        Filter {
+            base: FilterBase::new(xw, yw),
+            ty: FilterType::Lanczos(tau)
+        }
+    }
+
     pub fn evaluate(&self, x: f32, y: f32) -> f32 {
         match &self.ty {
             &FilterType::Mean => 1.0,
@@ -68,6 +90,41 @@ impl Filter {
             &FilterType::Gaussian { alpha, exp_x, exp_y } => {
                 let gaussian = |v: f32, ex: f32| ((-alpha * v * v).exp() - ex).max(0.0);
                 gaussian(x, exp_x) * gaussian(y, exp_y)
+            },
+            &FilterType::Mitchell { b, c } => {
+                let mitchell = |v: f32| {
+                    let t = (v * 2.0).abs();
+                    (1.0 / 6.0) * if t >= 2.0 { 0.0 }
+                    else if t > 1.0 {
+                        (-b - 6.0*c) * t*t*t +
+                            (6.0*b + 30.0*c) * t*t +
+                            (-12.0*b - 48.0*c) * t +
+                            (8.0*b + 24.0*c)
+                    } else {
+                        (12.0 - 9.0*b - 6.0*c) * t*t*t +
+                            (-18.0 + 12.0*b + 6.0*c) * t*t +
+                            (6.0 - 2.0*b)
+                    }
+                };
+
+                let mx = mitchell(x * self.inv_x_width());
+                let my = mitchell(y * self.inv_y_width());
+                mx * my
+            },
+            &FilterType::Lanczos(tau) => {
+                let sinc = |mut v: f32| {
+                    v = v.abs();
+                    if v < 1e-5 { 1.0 }
+                    else if v >= 1.0 { 0.0 }
+                    else {
+                        v *= ::std::f32::consts::PI;
+                        let vtau = v * tau;
+                        let s = vtau.sin() / vtau;
+                        s * v.sin() / v
+                    }
+                };
+
+                sinc(x * self.inv_x_width()) * sinc(y * self.inv_y_width())
             }
         }
     }
@@ -128,5 +185,33 @@ mod tests {
         assert!(filter.evaluate(1.0, -0.5) > 0.0);
         assert!(filter.evaluate(-1.0, -1.5) > 0.0);
         assert!(filter.evaluate(0.0, 0.0) > 0.9);
+    }
+
+    #[test]
+    fn it_can_evaluate_lanczos_filters() {
+        let filter = Filter::lanczos(2.0, 2.0, 1.0);
+
+        assert_eq!(filter.evaluate(20.0, 0.0), 0.0);
+        assert_eq!(filter.evaluate(-20.0, 0.0), 0.0);
+        assert_eq!(filter.evaluate(0.0, 20.0), 0.0);
+        assert_eq!(filter.evaluate(0.0, -20.0), 0.0);
+        assert_eq!(filter.evaluate(2.0, 0.0), 0.0);
+        assert_eq!(filter.evaluate(0.0, -2.0), 0.0);
+
+        assert!(filter.evaluate(0.0, 0.0) > 0.9);
+    }
+
+    #[test]
+    fn it_can_evaluate_mitchell_filters() {
+        let filter = Filter::mitchell(2.0, 2.0, 0.2, 0.4);
+
+        assert_eq!(filter.evaluate(20.0, 0.0), 0.0);
+        assert_eq!(filter.evaluate(-20.0, 0.0), 0.0);
+        assert_eq!(filter.evaluate(0.0, 20.0), 0.0);
+        assert_eq!(filter.evaluate(0.0, -20.0), 0.0);
+        assert_eq!(filter.evaluate(2.0, 0.0), 0.0);
+        assert_eq!(filter.evaluate(0.0, -2.0), 0.0);
+
+        assert!(filter.evaluate(0.0, 0.0) > 0.8);
     }
 }
