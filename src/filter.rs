@@ -19,6 +19,11 @@ impl FilterBase {
 pub enum FilterType {
     Mean,    // Also known as a box filter
     Triangle,
+    Gaussian {
+        alpha: f32,
+        exp_x: f32,
+        exp_y: f32
+    },
 }
 
 pub struct Filter {
@@ -41,6 +46,17 @@ impl Filter {
         }
     }
 
+    pub fn gaussian(xw: f32, yw: f32, a: f32) -> Filter {
+        Filter {
+            base: FilterBase::new(xw, yw),
+            ty: FilterType::Gaussian {
+                alpha: a,
+                exp_x: (-a * xw * xw).exp(),
+                exp_y: (-a * yw * yw).exp(),
+            }
+        }
+    }
+
     pub fn evaluate(&self, x: f32, y: f32) -> f32 {
         match &self.ty {
             &FilterType::Mean => 1.0,
@@ -48,6 +64,10 @@ impl Filter {
                 let dx = (self.x_width() - x.abs()) * self.inv_x_width();
                 let dy = (self.y_width() - y.abs()) * self.inv_y_width();
                 dx.max(0.0) * dy.max(0.0)
+            },
+            &FilterType::Gaussian { alpha, exp_x, exp_y } => {
+                let gaussian = |v: f32, ex: f32| ((-alpha * v * v).exp() - ex).max(0.0);
+                gaussian(x, exp_x) * gaussian(y, exp_y)
             }
         }
     }
@@ -90,5 +110,23 @@ mod tests {
         assert_eq!(filter.evaluate(0.5, 0.5), 0.5625);
         assert_eq!(filter.evaluate(2.0, 0.0), 0.0);
         assert_eq!(filter.evaluate(0.0, -2.0), 0.0);
+    }
+
+    #[test]
+    fn it_can_evaluate_gaussian_filters() {
+        let filter = Filter::gaussian(2.0, 2.0, 1.0);
+
+        assert_eq!(filter.evaluate(20.0, 0.0), 0.0);
+        assert_eq!(filter.evaluate(-20.0, 0.0), 0.0);
+        assert_eq!(filter.evaluate(0.0, 20.0), 0.0);
+        assert_eq!(filter.evaluate(0.0, -20.0), 0.0);
+        assert_eq!(filter.evaluate(2.0, 0.0), 0.0);
+        assert_eq!(filter.evaluate(0.0, -2.0), 0.0);
+
+        assert!(filter.evaluate(1.0, 1.0) > 0.0);
+        assert!(filter.evaluate(0.5, 0.0) > 0.0);
+        assert!(filter.evaluate(1.0, -0.5) > 0.0);
+        assert!(filter.evaluate(-1.0, -1.5) > 0.0);
+        assert!(filter.evaluate(0.0, 0.0) > 0.9);
     }
 }
