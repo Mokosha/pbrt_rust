@@ -72,3 +72,31 @@ impl Projection {
         ray.d = (p_focus - &ray.o).normalize();
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    #[ignore]
+    #[test]
+    fn it_can_setup_camera_to_screen_transform() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_setup_raster_to_screen_transform() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_setup_screen_to_raster_transform() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_setup_raster_to_camera_transform() {
+        unimplemented!()
+    }
+}
