@@ -1,3 +1,4 @@
+#[derive(Clone, Debug, PartialEq)]
 pub struct FilterBase {
     x_width: f32,
     y_width: f32,
@@ -16,6 +17,7 @@ impl FilterBase {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum FilterType {
     Mean,    // Also known as a box filter
     Triangle,
@@ -31,6 +33,7 @@ pub enum FilterType {
     Lanczos(f32)
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct Filter {
     base: FilterBase,
     ty: FilterType
