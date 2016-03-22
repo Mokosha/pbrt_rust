@@ -99,6 +99,62 @@ impl Film {
 
     pub fn num_pixels(&self) -> usize { self.x_res * self.y_res }
     pub fn add_sample(&mut self, sample: &CameraSample, ls: &Spectrum) {
+        match &mut self.ty {
+            &mut FilmTy::Image { ref filter, x_pixel_start, x_pixel_count,
+                                 y_pixel_start, y_pixel_count, ref mut pixels,
+                                 ref filter_table, .. } => {
+                // Compute sample's raster extent
+                let dimage_x = sample.image_x - 0.5;
+                let dimage_y = sample.image_y - 0.5;
+
+                let x0 = ::std::cmp::max(x_pixel_start,
+                                         (dimage_x - filter.x_width()).ceil() as i32);
+                let x1 = ::std::cmp::min(x_pixel_start + (x_pixel_count as i32) - 1,
+                                         (dimage_x + filter.x_width()).floor() as i32);
+                let y0 = ::std::cmp::max(y_pixel_start,
+                                         (dimage_y - filter.y_width()).ceil() as i32);
+                let y1 = ::std::cmp::min(y_pixel_start + (y_pixel_count as i32) - 1,
+                                         (dimage_y + filter.y_width()).floor() as i32);
+
+                if (x1 - x0) < 0 || (y1 - y0) < 0  { return; }
+
+                // Loop over filter support and add sample to pixel arrays
+                let xyz = ls.to_xyz();
+
+                // Precompute x and y filter table offsets
+                let ifx = (x0..(x1 + 1)).map(|x| {
+                    let fx = ((x as f32) - dimage_x) * filter.inv_x_width() * (FILTER_TABLE_DIM as f32);
+                    ::std::cmp::min(fx.abs().floor() as usize, FILTER_TABLE_DIM - 1)
+                }).collect::<Vec<_>>();
+
+                let ify = (y0..(y1 + 1)).map(|y| {
+                    let fy = ((y as f32) - dimage_y) * filter.inv_y_width() * (FILTER_TABLE_DIM as f32);
+                    ::std::cmp::min(fy.abs().floor() as usize, FILTER_TABLE_DIM - 1)
+                }).collect::<Vec<_>>();
+
+                for y in y0..(y1 + 1) {
+                    for x in x0..(x1 + 1) {
+                        // Evaluate filter value at (x, y) pixel
+                        let offset = ify[(y-y0) as usize] * FILTER_TABLE_DIM + ifx[(x - x0) as usize];
+                        let filter_wt = filter_table[offset];
+
+                        // Update pixel values with filtered sample contribution
+                        let pixel_idx = ((y - y_pixel_start) as usize) * x_pixel_count
+                            + ((x - x_pixel_start) as usize);
+                        let pixel: &mut Pixel = &mut pixels[pixel_idx];
+
+                        // Safely update xyz and weight_sum even with concurrency
+                        // !FIXME! These should be atomic once we fix the coarse grained
+                        // synchronization granularity after reporting results of samples
+                        // in src/sampler_renderer.rs
+                        pixel.xyz[0] += filter_wt * xyz[0];
+                        pixel.xyz[1] += filter_wt * xyz[1];
+                        pixel.xyz[2] += filter_wt * xyz[2];
+                        pixel.weight_sum += filter_wt;
+                    }
+                }
+            },
+        }
     }
 
     pub fn splat(&mut self, sample: &CameraSample, ls: &Spectrum) {

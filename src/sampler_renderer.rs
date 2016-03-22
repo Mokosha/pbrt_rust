@@ -139,7 +139,9 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
                 // !FIXME! This synchronization is still a bit coarse grained, but
                 // we may be able to move the lock within a few levels to get finer
                 // synchronization. Writing the computed sample is significantly
-                // cheaper than the render step, though
+                // cheaper than the render step, though. Once we figure out a good
+                // way to do the synchronization here, we should fix the atomicity of
+                // adding samples to pixels in src/camera/film.rs
                 let cs = samples[i].clone().to_camera_sample();
                 data.write().unwrap()
                     .renderer
