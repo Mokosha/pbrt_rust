@@ -158,18 +158,61 @@ impl Film {
     }
 
     pub fn splat(&mut self, sample: &CameraSample, ls: &Spectrum) {
+        match &mut self.ty {
+            &mut FilmTy::Image { x_pixel_start, x_pixel_count, y_pixel_start,
+                                 y_pixel_count, ref mut pixels, .. } => {
+                let xyz = ls.to_xyz();
+                let x = sample.image_x as i32;
+                let y = sample.image_y as i32;
+
+                let (dx, dy) = if x < x_pixel_start || y < y_pixel_start {
+                    return;
+                } else {
+                    ((x - x_pixel_start) as usize, (y - y_pixel_start) as usize)
+                };
+
+                if dx >= x_pixel_count || dy >= y_pixel_count { return }
+
+                let pixel_idx = dy * x_pixel_count + dx;
+                let pixel: &mut Pixel = &mut pixels[pixel_idx];
+
+                for (i, &x) in xyz.iter().enumerate() {
+                    pixel.splat_xyz[i] += x;
+                }
+            },
+        }
     }
 
     pub fn get_sample_extent(&self) -> (i32, i32, i32, i32) {
-        (0, 0, 0, 0)
+        match &self.ty {
+            &FilmTy::Image { ref filter, x_pixel_start, x_pixel_count,
+                             y_pixel_start, y_pixel_count, .. } => {
+                let x_start = ((x_pixel_start as f32) + 0.5 - filter.x_width()).floor();
+                let x_end = ((x_pixel_start as f32) + 0.5 + (x_pixel_count as f32)
+                             + filter.x_width()).floor();
+
+                let y_start = ((y_pixel_start as f32) + 0.5 - filter.y_width()).floor();
+                let y_end = ((y_pixel_start as f32) + 0.5 + (y_pixel_count as f32)
+                             + filter.y_width()).floor();
+
+                (x_start as i32, x_end as i32, y_start as i32, y_end as i32)
+            },
+        }
     }
 
     pub fn get_pixel_extent(&self) -> (i32, i32, i32, i32) {
-        (0, 0, 0, 0)
+        match &self.ty {
+            &FilmTy::Image { x_pixel_start, x_pixel_count,
+                             y_pixel_start, y_pixel_count, .. } => {
+                (x_pixel_start, x_pixel_start + x_pixel_count as i32,
+                 y_pixel_start, y_pixel_start + y_pixel_count as i32)
+            }
+        }
     }
 
     pub fn update_display(&mut self, x0: i32, y0: i32, x1: i32, y1: i32,
                           splat_scale: f32) {
+        unimplemented!()
     }
 
     pub fn write_image(&mut self, splat_scale: f32) {
