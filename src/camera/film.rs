@@ -2,8 +2,14 @@ use camera::CameraSample;
 use filter::Filter;
 use spectrum::Spectrum;
 
+use spectrum::xyz_to_rgb;
+
 const FILTER_TABLE_DIM: usize = 16;
 const FILTER_TABLE_SIZE: usize = FILTER_TABLE_DIM * FILTER_TABLE_DIM;
+
+fn write_img(filename: &String, rgb: &[f32], x_pixel_count: usize, y_pixel_count: usize) {
+    unimplemented!()
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pixel {
@@ -215,6 +221,42 @@ impl Film {
         unimplemented!()
     }
 
-    pub fn write_image(&mut self, splat_scale: f32) {
+    pub fn write_image(&self, splat_scale: f32) {
+        match &self.ty {
+            &FilmTy::Image { ref pixels, filename, x_pixel_count, y_pixel_count, .. } => {
+                // Convert image to RGB and compute final pixel values
+                let n_pix = x_pixel_count * y_pixel_count;
+                let rgb: Vec<f32> = vec![0.0, n_pix];
+
+                for y in 0..y_pixel_count {
+                    for x in 0..x_pixel_count {
+                        let offset = y * x_pixel_count + x;
+
+                        let pixel: &Pixel = &pixels[offset];
+
+                        // Convert pixel XYZ color to RGB
+                        let mut rgb = xyz_to_rgb(pixel.xyz.clone());
+
+                        // Normalize pixel with weight sum
+                        let weight_sum = pixel.weight_sum;
+                        if weight_sum != 0.0 {
+                            let inv_wt = 1.0 / weight_sum;
+                            rgb[0] = (rgb[0] * inv_wt).max(0.0);
+                            rgb[1] = (rgb[1] * inv_wt).max(0.0);
+                            rgb[2] = (rgb[2] * inv_wt).max(0.0);
+                        }
+
+                        // Add splat value at pixel
+                        let splat_rgb = xyz_to_rgb(pixel.splat_xyz.clone());
+                        rgb[0] = splat_rgb[0] * splat_scale;
+                        rgb[1] = splat_rgb[1] * splat_scale;
+                        rgb[2] = splat_rgb[2] * splat_scale;
+                    }
+                }
+
+                // Write RGB image
+                write_img(&filename, &rgb, x_pixel_count, y_pixel_count);
+            }
+        }
     }
 }

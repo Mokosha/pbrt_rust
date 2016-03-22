@@ -29,7 +29,7 @@ pub enum SpectrumType {
     Illumination
 }
 
-fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
+pub fn xyz_to_rgb(xyz: [f32; 3]) -> [f32; 3] {
     [3.240479*xyz[0] - 1.37150*xyz[1] - 0.498535*xyz[2],
     -0.969256*xyz[0] + 1.875991*xyz[1] + 0.041556*xyz[2],
      0.055648*xyz[0] - 0.204043*xyz[1] + 1.057311*xyz[2]]
