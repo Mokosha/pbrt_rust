@@ -1,14 +1,35 @@
+extern crate image;
+
+use self::image::ImageBuffer;
+
 use camera::CameraSample;
 use filter::Filter;
 use spectrum::Spectrum;
+use utils::Clamp;
 
 use spectrum::xyz_to_rgb;
 
 const FILTER_TABLE_DIM: usize = 16;
 const FILTER_TABLE_SIZE: usize = FILTER_TABLE_DIM * FILTER_TABLE_DIM;
 
-fn write_img(filename: &String, rgb: &[f32], x_pixel_count: usize, y_pixel_count: usize) {
-    unimplemented!()
+fn write_img(filename: &String, rgb: &[f32],
+             x_pixel_count: usize, y_pixel_count: usize) {
+    assert!(rgb.len() == x_pixel_count * y_pixel_count * 3);
+
+    let img = ImageBuffer::from_fn(
+        x_pixel_count as u32, y_pixel_count as u32, |x, y| {
+        let idx = 3 * ((y as usize) * x_pixel_count + (x as usize));
+        let to_byte = |p: f32| {
+            (255.0 * p.powf(1.0 / 2.2) + 0.5).clamp(0.0, 255.0) as u8
+        };
+        let r = to_byte(rgb[idx + 0]);
+        let g = to_byte(rgb[idx + 1]);
+        let b = to_byte(rgb[idx + 2]);
+
+        image::Rgb([r, g, b])
+    });
+
+    img.save(filename);
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -223,10 +244,11 @@ impl Film {
 
     pub fn write_image(&self, splat_scale: f32) {
         match &self.ty {
-            &FilmTy::Image { ref pixels, filename, x_pixel_count, y_pixel_count, .. } => {
+            &FilmTy::Image { ref pixels, ref filename,
+                             x_pixel_count, y_pixel_count, .. } => {
                 // Convert image to RGB and compute final pixel values
                 let n_pix = x_pixel_count * y_pixel_count;
-                let rgb: Vec<f32> = vec![0.0, n_pix];
+                let rgb: Vec<f32> = vec![0.0; n_pix];
 
                 for y in 0..y_pixel_count {
                     for x in 0..x_pixel_count {
@@ -255,7 +277,7 @@ impl Film {
                 }
 
                 // Write RGB image
-                write_img(&filename, &rgb, x_pixel_count, y_pixel_count);
+                write_img(filename, &rgb, x_pixel_count, y_pixel_count);
             }
         }
     }
