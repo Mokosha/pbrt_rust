@@ -282,3 +282,26 @@ impl Film {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[ignore]
+    #[test]
+    fn it_can_be_created() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_has_a_sample_extent() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_has_a_pixel_extent() {
+        unimplemented!()
+    }
+}
