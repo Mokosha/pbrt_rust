@@ -186,8 +186,9 @@ impl Film {
 
     pub fn splat(&mut self, sample: &CameraSample, ls: &Spectrum) {
         match &mut self.ty {
-            &mut FilmTy::Image { x_pixel_start, x_pixel_count, y_pixel_start,
-                                 y_pixel_count, ref mut pixels, .. } => {
+            &mut FilmTy::Image { x_pixel_start, x_pixel_count,
+                                 y_pixel_start, y_pixel_count,
+                                 ref mut pixels, .. } => {
                 let xyz = ls.to_xyz();
                 let x = sample.image_x as i32;
                 let y = sample.image_y as i32;
@@ -210,10 +211,13 @@ impl Film {
         }
     }
 
+    // Returns (x_start, x_end, y_start, y_end) in terms of image space coordinates that
+    // should be used to generate samples.
     pub fn get_sample_extent(&self) -> (i32, i32, i32, i32) {
         match &self.ty {
-            &FilmTy::Image { ref filter, x_pixel_start, x_pixel_count,
-                             y_pixel_start, y_pixel_count, .. } => {
+            &FilmTy::Image { x_pixel_start, x_pixel_count,
+                             y_pixel_start, y_pixel_count,
+                             ref filter, .. } => {
                 let x_start = ((x_pixel_start as f32) + 0.5 - filter.x_width()).floor();
                 let x_end = ((x_pixel_start as f32) + 0.5 + (x_pixel_count as f32)
                              + filter.x_width()).floor();
@@ -227,6 +231,9 @@ impl Film {
         }
     }
 
+    // Returns (x_start, x_end, y_start, y_end) in terms of image space pixel
+    // extents. Note: ranges are half-open, so valid pixel coordinates for this
+    // film are [x_start, x_end) X [y_start, y_end)
     pub fn get_pixel_extent(&self) -> (i32, i32, i32, i32) {
         match &self.ty {
             &FilmTy::Image { x_pixel_start, x_pixel_count,
@@ -286,22 +293,53 @@ impl Film {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use filter::Filter;
 
-    #[ignore]
     #[test]
     fn it_can_be_created() {
-        unimplemented!()
+        let ot = 1.0 / 3.0;
+        let tt = 2.0 / 3.0;
+        let film = Film::image(142, 12, Filter::mean(3.0, 3.0),
+                               [ot, tt, ot, tt], String::from(""), false);
+
+        assert_eq!(film.x_res(), 142);
+        assert_eq!(film.y_res(), 12);
+        assert_eq!(film.num_pixels(), 142 * 12);
     }
 
-    #[ignore]
     #[test]
     fn it_has_a_sample_extent() {
-        unimplemented!()
+        let ot = 1.0 / 3.0;
+        let tt = 2.0 / 3.0;
+        let film = Film::image(142, 12, Filter::mean(3.0, 3.0),
+                               [ot, tt, ot, tt], String::from(""), false);
+
+        let (x0, x1, y0, y1) = film.get_sample_extent();
+        assert_eq!(x0, 45); // x-start: 47.333...
+        assert_eq!(x1, 98); // x-end: 95.6666
+        assert_eq!(y0, 1);  // y-start: 4
+        assert_eq!(y1, 11); // y-end: 8
+
+        let adjacent = Film::image(142, 12, Filter::mean(3.0, 3.0),
+                                   [0.0, ot, ot, tt], String::from(""), false);
+        assert_eq!(adjacent.get_sample_extent(), (-3, 51, 1, 11));
     }
 
-    #[ignore]
     #[test]
     fn it_has_a_pixel_extent() {
-        unimplemented!()
+        let ot = 1.0 / 3.0;
+        let tt = 2.0 / 3.0;
+        let film = Film::image(142, 12, Filter::mean(3.0, 3.0),
+                               [ot, tt, ot, tt], String::from(""), false);
+
+        let (x0, x1, y0, y1) = film.get_pixel_extent();
+        assert_eq!(x0, 48);     // x-start: 47.333...
+        assert_eq!(x1, 95);     // x-end: 95.6666
+        assert_eq!(y0, 4);      // y-start: 4
+        assert_eq!(y1, 8);      // y-end: 8
+
+        let adjacent = Film::image(142, 12, Filter::mean(3.0, 3.0),
+                                   [0.0, ot, ot, tt], String::from(""), false);
+        assert_eq!(adjacent.get_pixel_extent(), (0, 48, 4, 8));
     }
 }
