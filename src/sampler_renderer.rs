@@ -6,15 +6,17 @@ use integrator::VolumeIntegrator;
 use integrator::SurfaceIntegrator;
 use intersection::Intersection;
 use intersection::Intersectable;
-use ray;
+use light::Light;
+use ray::RayDifferential;
 use rng::RNG;
 use renderer::Renderer;
 use sampler::sample::Sample;
 use sampler::Sampler;
-use scene;
+use scene::Scene;
 use scoped_threadpool::Pool;
 use spectrum::Spectrum;
 
+use std::cmp::max;
 use std::ops::BitAnd;
 use std::iter::Iterator;
 use std::sync::{RwLock, Arc};
@@ -24,19 +26,28 @@ pub struct SamplerRenderer {
     camera: Camera,
     surface_integrator: SurfaceIntegrator,
     volume_integrator: VolumeIntegrator,
+
+    num_tasks: usize,
     // SamplerRenderer Private Data
 }
 
 impl SamplerRenderer {
-    pub fn new(
-        sampler: Sampler, cam: Camera,
-        surf: SurfaceIntegrator,
-        vol: VolumeIntegrator) -> Self {
+    pub fn new(sampler: Sampler, cam: Camera,
+               surf: SurfaceIntegrator, vol: VolumeIntegrator) -> Self {
+        let num_cpus = num_cpus::get() as u32;
+        let num_pixels = cam.film().num_pixels() as u32;
+        let tasks_fn = |x: u32| {
+            31 - x.leading_zeros() + (if 0 == x.bitand(x - 1) { 0 } else { 1 })
+        };
+        let tasks = tasks_fn(max(32 * num_cpus, num_pixels / 256));
+
         SamplerRenderer {
             sampler: sampler,
             camera: cam,
             surface_integrator: surf,
             volume_integrator: vol,
+
+            num_tasks: tasks as usize
         }
     }
 
@@ -46,14 +57,14 @@ impl SamplerRenderer {
 }
 
 struct SamplerRendererTaskData<'a, 'b> {
-    scene: &'a scene::Scene,
+    scene: &'a Scene,
     renderer: &'a mut SamplerRenderer,
     sample: &'b mut Sample
 }
 
 impl<'a, 'b>
     SamplerRendererTaskData<'a, 'b> {
-        fn new(scene: &'a scene::Scene,
+        fn new(scene: &'a Scene,
                renderer: &'a mut SamplerRenderer,
                sample: &'b mut Sample) ->
             SamplerRendererTaskData<'a, 'b> {
@@ -73,17 +84,17 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
             .renderer.sampler.get_sub_sampler(task_idx, num_tasks)
         { s } else { return }
     };
-    
+
     let scene = data.read().unwrap().scene;
 
     // Declare local variables used for rendering loop
     let mut rng = RNG::new(task_idx);
-    
+
     // Allocate space for samples and intersections
     let max_samples = sampler.maximum_sample_count() as usize;
     let samplesample = data.read().unwrap().sample.clone();
     let mut samples : Vec<Sample> = vec![samplesample; max_samples];
-    let mut rays : Vec<ray::RayDifferential> = Vec::with_capacity(max_samples);
+    let mut rays : Vec<RayDifferential> = Vec::with_capacity(max_samples);
     let mut l_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
     let mut t_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
     let mut isects : Vec<Intersection> = Vec::with_capacity(max_samples);
@@ -150,22 +161,17 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
                     .add_sample(&cs, &l_s[i]);
             }
         }
-
-        samples.clear();
-        rays.clear();
-        l_s.clear();
-        t_s.clear();
-        isects.clear();
     }
 }
 
 impl Renderer for SamplerRenderer {
-    fn render(&mut self, scene : &scene::Scene) {
+    fn render(&mut self, scene : &Scene) {
         // Allow integrators to do preprocessing for the scene
         self.surface_integrator.preprocess(scene, &(self.camera));
         self.volume_integrator.preprocess(scene, &(self.camera));
 
         // Allocate and initialize sample
+        let num_tasks = self.num_tasks;
         let mut sample = Sample::new(&(self.sampler), Some(&self.surface_integrator),
                                      Some(&self.volume_integrator), &scene);
 
@@ -174,14 +180,12 @@ impl Renderer for SamplerRenderer {
             let num_cpus = num_cpus::get();
             let num_pixels = self.camera.film().num_pixels();
 
-            let num_tasks = (|x: usize| {
-                31 - x.leading_zeros() + (if 0 == x.bitand(x - 1) { 0 } else { 1 })
-            }) (::std::cmp::max(32 * num_cpus, num_pixels / (16 * 16))) as usize;
-
             let task_data = SamplerRendererTaskData::new(scene, self, &mut sample);
             let task_data_shared = Arc::new(RwLock::new(task_data));
 
-            println!("Running {} tasks on pool with {} cpus", num_tasks, num_cpus);
+            println!("Running {:?} tasks on pool with {} cpus",
+                     num_tasks, num_cpus);
+
             Pool::new(num_cpus as u32).scoped(|scope| {
                 for i in 0..num_tasks {
                     let data = task_data_shared.clone();
@@ -193,29 +197,32 @@ impl Renderer for SamplerRenderer {
         // Clean up after rendering and store final image    
     }
 
-    fn li<'a>(&self, scene: &'a scene::Scene,
-              ray: &ray::RayDifferential,
+    fn li<'a>(&self, scene: &'a Scene, ray: &RayDifferential,
               sample: &Sample,
               rng: &mut RNG) -> (Spectrum, Option<Intersection>, Spectrum) {
+
         // Allocate variables for isect and T if needed
         let (isect, li) =
             if let Some(mut scene_isect) = scene.intersect(&ray.ray) {
-                let l = self.surface_integrator.li(scene, self, ray, &mut scene_isect, sample, rng);
+                let l = self.surface_integrator.li(scene, self, ray,
+                                                   &mut scene_isect, sample, rng);
                 (Some(scene_isect), l)
             } else {
                 // Handle ray that doesn't intersect any geometry
-                (None, scene.lights().iter().fold(Spectrum::from_value(0f32), |acc, light| acc + light.le(ray)))
+                let zero_spect = Spectrum::from_value(0f32);
+                let accum = |acc, light: &Light| acc + light.le(ray);
+                (None, scene.lights().iter().fold(zero_spect, accum))
             };
 
         let mut local_trans = Spectrum::from_value(0f32);
-        let lvi = self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans);
+        let lvi = self.volume_integrator.li(scene, self, ray, sample,
+                                            rng, &mut local_trans);
 
         (local_trans * li + lvi, isect, local_trans)
     }
 
-    fn transmittance(
-        &self, scene: &scene::Scene, ray: &ray::RayDifferential,
-        sample: &Sample, rng: &mut RNG) -> Spectrum {
+    fn transmittance(&self, scene: &Scene, ray: &RayDifferential,
+                     sample: &Sample, rng: &mut RNG) -> Spectrum {
         let mut local_trans = Spectrum::from_value(0f32);
         self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans)
     }
