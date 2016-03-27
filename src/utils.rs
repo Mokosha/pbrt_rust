@@ -171,6 +171,42 @@ pub fn partition_by<T, F, B>(v: &mut [T], f: F)
     }
 }
 
+fn get_num_subwindows_2d(count: usize, aspect: usize) -> (usize, usize) {
+    let mut nx = 1;
+    let mut ny = count;
+    while (ny % 2) == 0 && 2*aspect*nx < ny {
+        ny /= 2;
+        nx *= 2;
+    }
+
+    (nx, ny)
+}
+
+// Aspect is ratio of x to y dimension
+pub fn get_crop_window(num: usize, count: usize,
+                       aspect: f32) -> (f32, f32, f32, f32) {
+    let (nx, ny) = if aspect < 1.0 {
+        // Y dimension is larger than X
+        let inva = (1.0 / aspect) as usize;
+        get_num_subwindows_2d(count, inva)
+    } else {
+        let (x, y) = get_num_subwindows_2d(count, aspect as usize);
+        (y, x)
+    };
+
+    // Compute x and y pixel sample range for sub window
+    let xo = num % nx;
+    let yo = num / nx;
+
+    let tx0 = (xo as f32) / (nx as f32);
+    let tx1 = ((xo + 1) as f32) / (nx as f32);
+
+    let ty0 = (yo as f32) / (ny as f32);
+    let ty1 = ((yo + 1) as f32) / (ny as f32);
+
+    (tx0, tx1, ty0, ty1)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -449,5 +485,18 @@ mod tests {
                 assert!(rs[i] <= rs[j]);
             }
         }
+    }
+
+    #[test]
+    fn it_can_get_a_cropped_window() {
+        assert_eq!(get_crop_window(0, 2, 2.0), (0.0, 0.5, 0.0, 1.0));
+        assert_eq!(get_crop_window(1, 2, 2.0), (0.5, 1.0, 0.0, 1.0));
+        assert_eq!(get_crop_window(0, 2, 0.5), (0.0, 1.0, 0.0, 0.5));
+        assert_eq!(get_crop_window(1, 2, 0.5), (0.0, 1.0, 0.5, 1.0));
+
+        assert_eq!(get_crop_window(0, 4, 1.0), (0.0, 0.5, 0.0, 0.5));
+        assert_eq!(get_crop_window(1, 4, 1.0), (0.5, 1.0, 0.0, 0.5));
+        assert_eq!(get_crop_window(2, 4, 1.0), (0.0, 0.5, 0.5, 1.0));
+        assert_eq!(get_crop_window(3, 4, 1.0), (0.5, 1.0, 0.5, 1.0));
     }
 }

@@ -1,4 +1,5 @@
 use utils::Lerp;
+use utils::get_crop_window;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SamplerBase {
@@ -30,34 +31,8 @@ impl SamplerBase {
         // Determine how many tiles to use in each dimension nx and ny
         let dx = (self.x_pixel_end - self.x_pixel_start) as usize;
         let dy = (self.y_pixel_end - self.y_pixel_start) as usize;
-
-        let (nx, ny) = if dx > dy {
-            let mut _nx = count;
-            let mut _ny = 1;
-            while (_nx % 2) == 0 && 2*dx*_ny < dy*_nx {
-                _nx /= 2;
-                _ny *= 2;
-            }
-            (_nx, _ny)
-        } else {
-            let mut _nx = 1;
-            let mut _ny = count;
-            while (_ny % 2) == 0 && 2*dy*_nx < dx*_ny {
-                _nx *= 2;
-                _ny /= 2;
-            }
-            (_nx, _ny)
-        };
-
-        // Compute x and y pixel sample range for sub window
-        let xo = num % nx;
-        let yo = num / nx;
-
-        let tx0 = (xo as f32) / (nx as f32);
-        let tx1 = ((xo + 1) as f32) / (nx as f32);
-
-        let ty0 = (yo as f32) / (ny as f32);
-        let ty1 = ((yo + 1) as f32) / (ny as f32);
+        let aspect = (dx as f32) / (dy as f32);
+        let (tx0, tx1, ty0, ty1) = get_crop_window(num, count, aspect);
 
         let psx = self.x_pixel_start as f32;
         let psy = self.y_pixel_start as f32;
