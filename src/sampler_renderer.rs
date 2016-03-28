@@ -56,18 +56,18 @@ impl SamplerRenderer {
     }
 }
 
-struct SamplerRendererTaskData<'a, 'b> {
+struct SamplerRendererTaskData<'a> {
     scene: &'a Scene,
     renderer: &'a mut SamplerRenderer,
-    sample: &'b mut Sample
+    sample: Sample
 }
 
 impl<'a, 'b>
-    SamplerRendererTaskData<'a, 'b> {
+    SamplerRendererTaskData<'a> {
         fn new(scene: &'a Scene,
                renderer: &'a mut SamplerRenderer,
-               sample: &'b mut Sample) ->
-            SamplerRendererTaskData<'a, 'b> {
+               sample: Sample) ->
+            SamplerRendererTaskData<'a> {
                 SamplerRendererTaskData {
                     scene: scene,
                     renderer: renderer,
@@ -76,12 +76,12 @@ impl<'a, 'b>
             }
     }
 
-fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
-                    task_idx: usize, num_tasks: usize) {
+fn run_task<'a>(data : Arc<RwLock<SamplerRendererTaskData<'a>>>,
+                task_idx: usize, num_tasks: usize) {
     // Get sub-sampler for SamplerRendererTask
     let mut sampler = {
-        if let Some(s) = data.read().unwrap()
-            .renderer.sampler.get_sub_sampler(task_idx, num_tasks)
+        if let Some(s) = data.read().unwrap().renderer.sampler
+            .get_sub_sampler(task_idx, num_tasks)
         { s } else { return }
     };
 
@@ -92,8 +92,8 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
 
     // Allocate space for samples and intersections
     let max_samples = sampler.maximum_sample_count() as usize;
-    let samplesample = data.read().unwrap().sample.clone();
-    let mut samples : Vec<Sample> = vec![samplesample; max_samples];
+    let sample = data.read().unwrap().sample.clone();
+    let mut samples : Vec<Sample> = vec![sample; max_samples];
     let mut rays : Vec<RayDifferential> = Vec::with_capacity(max_samples);
     let mut l_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
     let mut t_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
@@ -117,9 +117,8 @@ fn run_task<'a, 'b>(data : Arc<RwLock<SamplerRendererTaskData<'a, 'b>>>,
             // Evaluate radiance along camera ray
             if ray_weight > 0f32 {
                 // !FIXME! I think this synchronization is a bit too coarse grained
-                let (mut ls, isect, ts) =
-                    data.read().unwrap()
-                    .renderer.li(scene, &ray, &(samples[i]), &mut rng);
+                let (mut ls, isect, ts) = data.read().unwrap().renderer
+                    .li(scene, &ray, &samples[i], &mut rng);
                 ls = ls * ray_weight;
 
                 if !ls.has_nans() { panic!("Invalid radiance value!"); }
@@ -172,15 +171,15 @@ impl Renderer for SamplerRenderer {
 
         // Allocate and initialize sample
         let num_tasks = self.num_tasks;
-        let mut sample = Sample::new(&(self.sampler), Some(&self.surface_integrator),
-                                     Some(&self.volume_integrator), &scene);
+        let sample = Sample::new(&(self.sampler), Some(&self.surface_integrator),
+                                 Some(&self.volume_integrator), &scene);
 
         // Create and launch SampleRendererTasks for rendering image
         {
             let num_cpus = num_cpus::get();
             let num_pixels = self.camera.film().num_pixels();
 
-            let task_data = SamplerRendererTaskData::new(scene, self, &mut sample);
+            let task_data = SamplerRendererTaskData::new(scene, self, sample);
             let task_data_shared = Arc::new(RwLock::new(task_data));
 
             println!("Running {:?} tasks on pool with {} cpus",

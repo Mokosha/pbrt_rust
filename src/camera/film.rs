@@ -63,7 +63,7 @@ pub enum FilmTy {
         y_pixel_count: usize,
         pixels: Vec<Pixel>,  // !SPEED! Use a z-ordering here
         filter_table: Vec<f32>
-    }
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
