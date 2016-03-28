@@ -21,6 +21,7 @@ use std::ops::BitAnd;
 use std::iter::Iterator;
 use std::sync::{RwLock, Arc};
 
+#[derive(Debug, Clone)]
 pub struct SamplerRenderer {
     sampler: Sampler,
     camera: Camera,
@@ -56,47 +57,22 @@ impl SamplerRenderer {
     }
 }
 
-struct SamplerRendererTaskData<'a> {
-    scene: &'a Scene,
-    renderer: &'a mut SamplerRenderer,
-}
-
-impl<'a, 'b>
-    SamplerRendererTaskData<'a> {
-        fn new(scene: &'a Scene,
-               renderer: &'a mut SamplerRenderer) ->
-            SamplerRendererTaskData<'a> {
-                SamplerRendererTaskData {
-                    scene: scene,
-                    renderer: renderer
-                }
-            }
-    }
-
-fn run_task<'a>(data : Arc<RwLock<SamplerRendererTaskData<'a>>>,
+fn run_task<'a>(scene: &'a Scene,
+                renderer : Arc<RwLock<&'a mut SamplerRenderer>>,
                 task_idx: usize, num_tasks: usize) {
     // Get sub-sampler for SamplerRendererTask
     let mut sampler = {
-        if let Some(s) = data.read().unwrap().renderer.sampler
-            .get_sub_sampler(task_idx, num_tasks)
+        if let Some(s) = renderer.read().unwrap()
+            .sampler.get_sub_sampler(task_idx, num_tasks)
         { s } else { return }
     };
-
-    let scene = data.read().unwrap().scene;
 
     // Declare local variables used for rendering loop
     let mut rng = RNG::new(task_idx);
 
     // Allocate space for samples and intersections
     let max_samples = sampler.maximum_sample_count() as usize;
-    let sample = data.read().map(|task| {
-        let vint = Some(&(task.renderer.volume_integrator));
-        let sint = Some(&(task.renderer.surface_integrator));
-
-        Sample::new(&sampler, sint, vint, &task.scene)
-    }).unwrap();
-
-    let mut samples : Vec<Sample> = vec![sample; max_samples];
+    let mut samples : Vec<Sample> = vec![Sample::empty(); max_samples];
     let mut rays : Vec<RayDifferential> = Vec::with_capacity(max_samples);
     let mut l_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
     let mut t_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
@@ -113,15 +89,15 @@ fn run_task<'a>(data : Arc<RwLock<SamplerRendererTaskData<'a>>>,
             // Find camera ray for sample[i]
             let cs = samples[i].clone().to_camera_sample();
             let (ray_weight, mut ray) =
-                data.read().unwrap().renderer.camera.generate_ray_differential(&cs);
+                renderer.read().unwrap().camera.generate_ray_differential(&cs);
 
             ray.scale_differentials(1.0f32 / sampler.samples_per_pixel().sqrt());
 
             // Evaluate radiance along camera ray
             if ray_weight > 0f32 {
                 // !FIXME! I think this synchronization is a bit too coarse grained
-                let (mut ls, isect, ts) = data.read().unwrap().renderer
-                    .li(scene, &ray, &samples[i], &mut rng);
+                let (mut ls, isect, ts) =
+                    renderer.read().unwrap().li(scene, &ray, &samples[i], &mut rng);
                 ls = ls * ray_weight;
 
                 if !ls.has_nans() { panic!("Invalid radiance value!"); }
@@ -138,12 +114,13 @@ fn run_task<'a>(data : Arc<RwLock<SamplerRendererTaskData<'a>>>,
                     // Empty intersection
                     // isects.push(Intersection::new());
                 }
-            } else {
-                l_s.push(Spectrum::from_value(0f32));
-                t_s.push(Spectrum::from_value(0f32));
-                // Empty intersection
-                // isects.push(Intersection::new());
             }
+            // else {
+            //   l_s.push(Spectrum::from_value(0f32));
+            //   t_s.push(Spectrum::from_value(0f32));
+            //   // Empty intersection
+            //   isects.push(Intersection::new());
+            // }
         }
 
         // Report sample results to Sampler, add contributions to image
@@ -156,8 +133,7 @@ fn run_task<'a>(data : Arc<RwLock<SamplerRendererTaskData<'a>>>,
                 // way to do the synchronization here, we should fix the atomicity of
                 // adding samples to pixels in src/camera/film.rs
                 let cs = samples[i].clone().to_camera_sample();
-                data.write().unwrap()
-                    .renderer
+                renderer.write().unwrap()
                     .camera
                     .film_mut()
                     .add_sample(&cs, &l_s[i]);
@@ -180,16 +156,15 @@ impl Renderer for SamplerRenderer {
             let num_cpus = num_cpus::get();
             let num_pixels = self.camera.film().num_pixels();
 
-            let task_data = SamplerRendererTaskData::new(scene, self);
-            let task_data_shared = Arc::new(RwLock::new(task_data));
+            let task_data_shared = Arc::new(RwLock::new(self));
 
             println!("Running {:?} tasks on pool with {} cpus",
                      num_tasks, num_cpus);
 
             Pool::new(num_cpus as u32).scoped(|scope| {
                 for i in 0..num_tasks {
-                    let data = task_data_shared.clone();
-                    scope.execute(move || run_task(data, i, num_tasks));
+                    let rend = task_data_shared.clone();
+                    scope.execute(move || run_task(scene, rend, i, num_tasks));
                 }
             });
         }

@@ -53,6 +53,7 @@ pub fn specular_transmit<R: Renderer>(
                      bsdf::BSDF_TRANSMISSION | bsdf::BSDF_SPECULAR)
 }
 
+#[derive(Clone, Debug)]
 pub struct Integrator;
 
 impl Integrator {
@@ -61,6 +62,7 @@ impl Integrator {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum SurfaceIntegrator {
     Whitted {
         base: Integrator,
@@ -93,6 +95,7 @@ impl SurfaceIntegrator {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct VolumeIntegrator {
     base: Integrator
 }

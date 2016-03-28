@@ -11,6 +11,7 @@ use sampler::sample::Sample;
 use scene::Scene;
 use spectrum::Spectrum;
 
+#[derive(Clone, Debug)]
 pub struct WhittedIntegrator {
     // WhittedIntegrator Private Data
     max_depth: usize,

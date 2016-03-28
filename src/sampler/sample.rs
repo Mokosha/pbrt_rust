@@ -15,17 +15,20 @@ pub struct Sample {
 }
 
 impl Sample {
-    pub fn new(sampler: &Sampler, _surf: Option<&SurfaceIntegrator>,
-               _vol: Option<&VolumeIntegrator>, scene: &Scene) -> Sample {
-        let mut s = Sample {
+    pub fn empty() -> Sample {
+        Sample {
             camera_sample: CameraSample::empty(),
             num_1d: Vec::new(),
             num_2d: Vec::new(),
             offset_1d: Vec::new(),
             offset_2d: Vec::new(),
-            samples: Vec::new(),
-        };
+            samples: Vec::new(),            
+        }
+    }
 
+    pub fn new(sampler: &Sampler, _surf: Option<&SurfaceIntegrator>,
+               _vol: Option<&VolumeIntegrator>, scene: &Scene) -> Sample {
+        let mut s = Sample::empty();
         if let Some(vol) = _vol {
             vol.request_samples(sampler, &mut s, scene);
         }
