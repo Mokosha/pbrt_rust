@@ -59,19 +59,16 @@ impl SamplerRenderer {
 struct SamplerRendererTaskData<'a> {
     scene: &'a Scene,
     renderer: &'a mut SamplerRenderer,
-    sample: Sample
 }
 
 impl<'a, 'b>
     SamplerRendererTaskData<'a> {
         fn new(scene: &'a Scene,
-               renderer: &'a mut SamplerRenderer,
-               sample: Sample) ->
+               renderer: &'a mut SamplerRenderer) ->
             SamplerRendererTaskData<'a> {
                 SamplerRendererTaskData {
                     scene: scene,
-                    renderer: renderer,
-                    sample: sample
+                    renderer: renderer
                 }
             }
     }
@@ -92,7 +89,13 @@ fn run_task<'a>(data : Arc<RwLock<SamplerRendererTaskData<'a>>>,
 
     // Allocate space for samples and intersections
     let max_samples = sampler.maximum_sample_count() as usize;
-    let sample = data.read().unwrap().sample.clone();
+    let sample = data.read().map(|task| {
+        let vint = Some(&(task.renderer.volume_integrator));
+        let sint = Some(&(task.renderer.surface_integrator));
+
+        Sample::new(&sampler, sint, vint, &task.scene)
+    }).unwrap();
+
     let mut samples : Vec<Sample> = vec![sample; max_samples];
     let mut rays : Vec<RayDifferential> = Vec::with_capacity(max_samples);
     let mut l_s : Vec<Spectrum> = Vec::with_capacity(max_samples);
@@ -171,15 +174,13 @@ impl Renderer for SamplerRenderer {
 
         // Allocate and initialize sample
         let num_tasks = self.num_tasks;
-        let sample = Sample::new(&(self.sampler), Some(&self.surface_integrator),
-                                 Some(&self.volume_integrator), &scene);
 
         // Create and launch SampleRendererTasks for rendering image
         {
             let num_cpus = num_cpus::get();
             let num_pixels = self.camera.film().num_pixels();
 
-            let task_data = SamplerRendererTaskData::new(scene, self, sample);
+            let task_data = SamplerRendererTaskData::new(scene, self);
             let task_data_shared = Arc::new(RwLock::new(task_data));
 
             println!("Running {:?} tasks on pool with {} cpus",
