@@ -8,6 +8,7 @@ use spectrum::Spectrum;
 use utils::Clamp;
 
 use spectrum::xyz_to_rgb;
+use utils::get_crop_window;
 
 const FILTER_TABLE_DIM: usize = 16;
 const FILTER_TABLE_SIZE: usize = FILTER_TABLE_DIM * FILTER_TABLE_DIM;
@@ -117,6 +118,70 @@ impl Film {
                 pixels: vec![Pixel::new(); x_count * y_count],
 
                 filter_table: ft
+            }
+        }
+    }
+
+    pub fn get_sub_film(&self, num: usize, count: usize) -> Film {
+        let aspect = (self.x_res as f32) / (self.y_res as f32);
+        let (x0, x1, y0, y1) = get_crop_window(num, count, aspect);
+
+        match &self.ty {
+            &FilmTy::Image { ref filter, ref crop_window, ref filename, .. } => {
+                // If this isn't our crop window then we need to rethink our
+                // design... perhaps construct a new type for subfilms?
+                let ox0 = crop_window[0];
+                let ox1 = crop_window[1];
+                let oy0 = crop_window[2];
+                let oy1 = crop_window[3];
+
+                let dx = ox1 - ox0;
+                let dy = oy1 - oy0;
+
+                let cw = [ ox0 + x0 * dx, ox0 + x1 * dx,
+                           oy0 + y0 * dy, oy0 + y1 * dy ];
+
+                Film::image(self.x_res, self.y_res, filter.clone(),
+                            cw, filename.clone(), false)
+            }
+        }
+    }
+
+    fn assign_pixels(&mut self, new_pix: &[Pixel],
+                     lx0: i32, lx1: i32, ly0: i32, ly1: i32) {
+        let (gx0, gx1, gy0, gy1) = self.get_pixel_extent();
+
+        assert!(lx0 >= gx0);
+        assert!(ly0 >= gy0);
+
+        assert!(lx1 <= gx1);
+        assert!(ly1 <= gy1);
+
+        match &mut self.ty {
+            &mut FilmTy::Image { ref mut pixels, .. } => {
+                let lstride = lx1 - lx0;
+                let gstride = gx1 - gx0;
+                for x in lx0..lx1 {
+                    for y in ly0..ly1 {
+                        let local_idx = (y - ly0) * lstride + (x - lx0);
+                        let global_idx = (y - gy0) * gstride + (x - gx0);
+                        pixels[global_idx as usize] =
+                            new_pix[local_idx as usize].clone();
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn add_sub_film(&mut self, f: Film) {
+        assert_eq!(f.x_res, self.x_res);
+        assert_eq!(f.y_res, self.y_res);
+
+        let (lx0, lx1, ly0, ly1) = f.get_pixel_extent();
+
+        match &f.ty {
+            &FilmTy::Image { ref pixels, .. } => {
+                self.assign_pixels(&pixels, lx0, lx1, ly0, ly1);
             }
         }
     }

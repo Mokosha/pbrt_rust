@@ -2,6 +2,7 @@ extern crate scoped_threadpool;
 extern crate num_cpus;
 
 use camera::Camera;
+use camera::film::Film;
 use integrator::VolumeIntegrator;
 use integrator::SurfaceIntegrator;
 use intersection::Intersection;
@@ -36,7 +37,7 @@ impl SamplerRenderer {
     pub fn new(sampler: Sampler, cam: Camera,
                surf: SurfaceIntegrator, vol: VolumeIntegrator) -> Self {
         let num_cpus = num_cpus::get() as u32;
-        let num_pixels = cam.film().num_pixels() as u32;
+        let num_pixels = (cam.film().x_res() * cam.film().y_res()) as u32;
         let tasks_fn = |x: u32| {
             31 - x.leading_zeros() + (if 0 == x.bitand(x - 1) { 0 } else { 1 })
         };
@@ -58,14 +59,16 @@ impl SamplerRenderer {
 }
 
 fn run_task<'a>(scene: &'a Scene,
-                renderer : Arc<RwLock<&'a mut SamplerRenderer>>,
+                renderer: &'a SamplerRenderer,
+                film: Arc<RwLock<&'a mut Film>>,
                 task_idx: usize, num_tasks: usize) {
     // Get sub-sampler for SamplerRendererTask
     let mut sampler = {
-        if let Some(s) = renderer.read().unwrap()
-            .sampler.get_sub_sampler(task_idx, num_tasks)
+        if let Some(s) = renderer.sampler.get_sub_sampler(task_idx, num_tasks)
         { s } else { return }
     };
+
+    let mut task_film = film.read().unwrap().get_sub_film(task_idx, num_tasks);
 
     // Declare local variables used for rendering loop
     let mut rng = RNG::new(task_idx);
@@ -88,16 +91,15 @@ fn run_task<'a>(scene: &'a Scene,
         for i in 0..sample_count {
             // Find camera ray for sample[i]
             let cs = samples[i].clone().to_camera_sample();
-            let (ray_weight, mut ray) =
-                renderer.read().unwrap().camera.generate_ray_differential(&cs);
+            let (ray_weight, mut ray) = renderer.camera.generate_ray_differential(&cs);
 
             ray.scale_differentials(1.0f32 / sampler.samples_per_pixel().sqrt());
 
             // Evaluate radiance along camera ray
             if ray_weight > 0f32 {
                 // !FIXME! I think this synchronization is a bit too coarse grained
-                let (mut ls, isect, ts) =
-                    renderer.read().unwrap().li(scene, &ray, &samples[i], &mut rng);
+                let (mut ls, isect, ts) = renderer.li(scene, &ray, &samples[i],
+                                                      &mut rng);
                 ls = ls * ray_weight;
 
                 if !ls.has_nans() { panic!("Invalid radiance value!"); }
@@ -133,13 +135,12 @@ fn run_task<'a>(scene: &'a Scene,
                 // way to do the synchronization here, we should fix the atomicity of
                 // adding samples to pixels in src/camera/film.rs
                 let cs = samples[i].clone().to_camera_sample();
-                renderer.write().unwrap()
-                    .camera
-                    .film_mut()
-                    .add_sample(&cs, &l_s[i]);
+                task_film.add_sample(&cs, &l_s[i]);
             }
         }
     }
+
+    film.write().unwrap().add_sub_film(task_film);
 }
 
 impl Renderer for SamplerRenderer {
@@ -152,24 +153,32 @@ impl Renderer for SamplerRenderer {
         let num_tasks = self.num_tasks;
 
         // Create and launch SampleRendererTasks for rendering image
+        let mut film_clone = self.camera.film().clone();
         {
             let num_cpus = num_cpus::get();
-            let num_pixels = self.camera.film().num_pixels();
+            let num_pixels = film_clone.x_res() * film_clone.y_res();
 
-            let task_data_shared = Arc::new(RwLock::new(self));
+            let task_data_shared = Arc::new(RwLock::new(&mut film_clone));
 
             println!("Running {:?} tasks on pool with {} cpus",
                      num_tasks, num_cpus);
 
+            let rend: &SamplerRenderer = self;
+
             Pool::new(num_cpus as u32).scoped(|scope| {
                 for i in 0..num_tasks {
-                    let rend = task_data_shared.clone();
-                    scope.execute(move || run_task(scene, rend, i, num_tasks));
+                    let film = task_data_shared.clone();
+                    scope.execute(move || run_task(scene, rend, film, i, num_tasks));
                 }
             });
         }
 
-        // Clean up after rendering and store final image    
+        // Clean up after rendering and store final image
+
+        // !FIXME! This doesn't work... :(
+        // *(self.camera.film_mut()) = film_clone;
+
+        film_clone.write_image(1.0);
     }
 
     fn li<'a>(&self, scene: &'a Scene, ray: &RayDifferential,
