@@ -1,6 +1,7 @@
 mod whitted;
 
 use bsdf;
+use bsdf::BxDFType;
 use bsdf::BSDF;
 use bsdf::BSDFSample;
 use camera::Camera;
@@ -19,7 +20,7 @@ use integrator::whitted::WhittedIntegrator;
 fn process_specular<R: Renderer>(
     ray: &RayDifferential, bsdf: &BSDF,
     rng: &mut RNG, isect: &Intersection, renderer: &R,
-    scene: &Scene, sample: &Sample, sample_type: u32) -> Spectrum {
+    scene: &Scene, sample: &Sample, sample_type: BxDFType) -> Spectrum {
     let wo = -(&ray.ray.d);
     let p = &(bsdf.dg_shading.p);
     let n = &(bsdf.dg_shading.nn);

@@ -1,5 +1,5 @@
+use bsdf::BxDF;
 use geometry::vector::Dot;
-use integrator;
 use integrator::Integrator;
 use integrator::SurfaceIntegrator;
 use intersection::Intersection;
@@ -10,6 +10,9 @@ use rng::RNG;
 use sampler::sample::Sample;
 use scene::Scene;
 use spectrum::Spectrum;
+
+use integrator::specular_reflect;
+use integrator::specular_transmit;
 
 #[derive(Clone, Debug)]
 pub struct WhittedIntegrator {
@@ -62,10 +65,11 @@ impl WhittedIntegrator {
         l + (
             if ray.depth + 1 < self.max_depth {
                 // Trace rays for specular reflection and refraction
-                let refl = integrator::specular_reflect;
-                let tmit = integrator::specular_transmit;
-                refl(rayd, &bsdf, rng, isect, renderer, scene, sample) +
-                    tmit(rayd, &bsdf, rng, isect, renderer, scene, sample)
+                let refl = specular_reflect(rayd, &bsdf, rng, isect,
+                                            renderer, scene, sample);
+                let tmit = specular_transmit(rayd, &bsdf, rng, isect,
+                                             renderer, scene, sample);
+                refl + tmit
             } else { Spectrum::from_value(0f32) }
         )
     }

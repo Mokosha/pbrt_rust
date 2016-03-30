@@ -31,9 +31,28 @@ fn sin_phi(v: Vector) -> f32 {
     }
 }
 
-pub const BSDF_SPECULAR : u32 = (1 << 0);
-pub const BSDF_REFLECTION : u32 = (1 << 1);
-pub const BSDF_TRANSMISSION : u32 = (1 << 2);
+bitflags! {
+    pub flags BxDFType: u32 {
+        const BSDF_REFLECTION = (1 << 0),
+        const BSDF_TRANSMISSION = (1 << 1),
+        const BSDF_DIFFUSE = (1 << 2),
+        const BSDF_GLOSSY = (1 << 3),
+        const BSDF_SPECULAR = (1 << 4),
+        const BSDF_ALL_TYPES =
+            BSDF_DIFFUSE.bits | BSDF_GLOSSY.bits | BSDF_SPECULAR.bits,
+        const BSDF_ALL_REFLECTION =
+            BSDF_REFLECTION.bits | BSDF_ALL_TYPES.bits,
+        const BSDF_ALL_TRANSMISSION =
+            BSDF_TRANSMISSION.bits | BSDF_ALL_TYPES.bits,
+        const BSDF_ALL =
+            BSDF_ALL_TRANSMISSION.bits | BSDF_ALL_REFLECTION.bits
+    }
+}
+
+pub trait BxDF {
+    fn matches_flags(&self, BxDFType) -> bool;
+    fn f(&self, &Vector, &Vector) -> Spectrum;
+}
 
 pub struct BSDFSample;
 impl BSDFSample {
@@ -52,14 +71,20 @@ impl BSDF {
         }
     }
 
-    pub fn f(&self, vo: &Vector, vi: &Vector) -> Spectrum {
-        Spectrum::from_value(0f32)
+    pub fn sample_f(&self, vo: &Vector, sample: BSDFSample,
+                    bxdf_type: BxDFType) -> (Vector, f32, Spectrum) {
+            unimplemented!()
+        }
+}
+
+impl BxDF for BSDF {
+    fn matches_flags(&self, ty: BxDFType) -> bool {
+        unimplemented!()
     }
 
-    pub fn sample_f(&self, vo: &Vector, sample: BSDFSample, bxdf_type: u32) ->
-        (Vector, f32, Spectrum) {
-            (Vector::new(), 0f32, Spectrum::from_value(0f32))
-        }
+    fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
+        unimplemented!()
+    }
 }
 
 pub struct BSSRDF;
