@@ -135,6 +135,44 @@ impl<T: BxDF> BxDF for BRDFtoBTDF<T> {
     }
 }
 
+pub struct ScaledBxDF<T: BxDF> {
+    bxdf: T,
+    scale: Spectrum
+}
+
+impl<T: BxDF> ScaledBxDF<T> {
+    pub fn new(input: T, sc: Spectrum) -> ScaledBxDF<T> {
+        ScaledBxDF {
+            bxdf: input,
+            scale: sc
+        }
+    }
+
+
+    pub fn sample_f(&self, vo: &Vector, sample: BSDFSample,
+                    bxdf_type: BxDFType) -> (Vector, f32, Spectrum) {
+        unimplemented!()
+    }
+}
+
+impl<T: BxDF> BxDF for ScaledBxDF<T> {
+    fn matches_flags(&self, ty: BxDFType) -> bool {
+        self.bxdf.matches_flags(ty)
+    }
+
+    fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
+        self.bxdf.f(wo, wi) * self.scale
+    }
+
+    fn rho_hd(&self, v: &Vector, samples: &[f32]) -> Spectrum {
+        self.bxdf.rho_hd(v, samples) * self.scale
+    }
+
+    fn rho_hh(&self, samples1: &[f32], samples2: &[f32]) -> Spectrum {
+        self.bxdf.rho_hh(samples1, samples2) * self.scale
+    }
+}
+
 pub struct BSSRDF;
 
 #[cfg(test)]
