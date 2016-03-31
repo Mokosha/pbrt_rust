@@ -52,6 +52,9 @@ bitflags! {
 pub trait BxDF {
     fn matches_flags(&self, BxDFType) -> bool;
     fn f(&self, &Vector, &Vector) -> Spectrum;
+
+    fn rho_hd(&self, &Vector, &[f32]) -> Spectrum;
+    fn rho_hh(&self, &[f32], &[f32]) -> Spectrum;
 }
 
 pub struct BSDFSample;
@@ -84,6 +87,51 @@ impl BxDF for BSDF {
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
         unimplemented!()
+    }
+
+    fn rho_hd(&self, v: &Vector, samples: &[f32]) -> Spectrum {
+        unimplemented!()
+    }
+
+    fn rho_hh(&self, samples1: &[f32], samples2: &[f32]) -> Spectrum {
+        unimplemented!()
+    }
+}
+
+pub struct BRDFtoBTDF<T: BxDF> {
+    brdf: T
+}
+
+impl<T: BxDF> BRDFtoBTDF<T> {
+    pub fn new(input: T) -> BRDFtoBTDF<T> { BRDFtoBTDF { brdf: input } }
+
+
+    pub fn sample_f(&self, vo: &Vector, sample: BSDFSample,
+                    bxdf_type: BxDFType) -> (Vector, f32, Spectrum) {
+        unimplemented!()
+    }
+}
+
+fn other_hemi(v: &Vector) -> Vector {
+    Vector::new_with(v.x, v.y, -v.z)
+}
+
+impl<T: BxDF> BxDF for BRDFtoBTDF<T> {
+    fn matches_flags(&self, ty: BxDFType) -> bool {
+        let flags = BSDF_REFLECTION | BSDF_TRANSMISSION;
+        self.brdf.matches_flags(ty ^ flags)
+    }
+
+    fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
+        self.brdf.f(wo, &other_hemi(wi))
+    }
+
+    fn rho_hd(&self, v: &Vector, samples: &[f32]) -> Spectrum {
+        self.brdf.rho_hd(v, samples)
+    }
+
+    fn rho_hh(&self, samples1: &[f32], samples2: &[f32]) -> Spectrum {
+        self.brdf.rho_hh(samples1, samples2)
     }
 }
 
