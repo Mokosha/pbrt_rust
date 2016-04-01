@@ -37,7 +37,7 @@ impl Intersection {
     }
 
     pub fn get_bsdf(&self) -> &BSDF { &self.bsdf }
-    pub fn le(&self, dir: &Vector) -> Spectrum { Spectrum::from_value(0f32) }
+    pub fn le(&self, dir: &Vector) -> Spectrum { Spectrum::from(0f32) }
 }
 
 pub trait Intersectable<T = Intersection> {

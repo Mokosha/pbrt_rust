@@ -118,8 +118,8 @@ fn run_task<'a>(scene: &'a Scene,
                 }
             }
             // else {
-            //   l_s.push(Spectrum::from_value(0f32));
-            //   t_s.push(Spectrum::from_value(0f32));
+            //   l_s.push(Spectrum::from(0f32));
+            //   t_s.push(Spectrum::from(0f32));
             //   // Empty intersection
             //   isects.push(Intersection::new());
             // }
@@ -193,12 +193,12 @@ impl Renderer for SamplerRenderer {
                 (Some(scene_isect), l)
             } else {
                 // Handle ray that doesn't intersect any geometry
-                let zero_spect = Spectrum::from_value(0f32);
+                let zero_spect = Spectrum::from(0f32);
                 let accum = |acc, light: &Light| acc + light.le(ray);
                 (None, scene.lights().iter().fold(zero_spect, accum))
             };
 
-        let mut local_trans = Spectrum::from_value(0f32);
+        let mut local_trans = Spectrum::from(0f32);
         let lvi = self.volume_integrator.li(scene, self, ray, sample,
                                             rng, &mut local_trans);
 
@@ -207,7 +207,7 @@ impl Renderer for SamplerRenderer {
 
     fn transmittance(&self, scene: &Scene, ray: &RayDifferential,
                      sample: &Sample, rng: &mut RNG) -> Spectrum {
-        let mut local_trans = Spectrum::from_value(0f32);
+        let mut local_trans = Spectrum::from(0f32);
         self.volume_integrator.li(scene, self, ray, sample, rng, &mut local_trans)
     }
 

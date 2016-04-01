@@ -70,7 +70,7 @@ impl WhittedIntegrator {
                 let tmit = specular_transmit(rayd, &bsdf, rng, isect,
                                              renderer, scene, sample);
                 refl + tmit
-            } else { Spectrum::from_value(0f32) }
+            } else { Spectrum::from(0f32) }
         )
     }
 }

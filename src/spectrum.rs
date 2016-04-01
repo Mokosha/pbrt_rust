@@ -421,8 +421,6 @@ impl Spectrum {
         self.coeffs().iter().fold(false, |r, x| r || x.is_nan())
     }
 
-    pub fn from_value(f: f32) -> Spectrum { Spectrum::rgb([f, f, f]) }
-
     pub fn is_black(&self) -> bool {
         self.coeffs().iter().fold(true, |r, x| r && *x == 0.0)
     }
@@ -491,6 +489,13 @@ impl Spectrum {
     }
 }
 
+impl ::std::convert::From<f32> for Spectrum {
+    fn from(f: f32) -> Spectrum {
+        Spectrum::rgb([f, f, f])
+    }
+}
+
+
 impl Add for Spectrum {
     type Output = Spectrum;
     fn add(self, _rhs: Spectrum) -> Spectrum {
@@ -505,10 +510,46 @@ impl<'a> Add<&'a Spectrum> for Spectrum {
     }
 }
 
+impl Add<f32> for Spectrum {
+    type Output = Spectrum;
+    fn add(self, _rhs: f32) -> Spectrum {
+        self + Spectrum::from(_rhs)
+    }
+}
+
+impl Add<Spectrum> for f32 {
+    type Output = Spectrum;
+    fn add(self, _rhs: Spectrum) -> Spectrum {
+        Spectrum::from(self) + _rhs
+    }
+}
+
 impl Sub for Spectrum {
     type Output = Spectrum;
     fn sub(self, _rhs: Spectrum) -> Spectrum {
         self.elementwise(_rhs, |(x, y)| x - y)
+    }
+}
+
+impl<'a, 'b> Mul<&'b Spectrum> for &'a Spectrum {
+    type Output = Spectrum;
+    fn mul(self, _rhs: &'b Spectrum) -> Spectrum {
+        self.clone().elementwise(_rhs.clone(),
+                                 |(x, y)| x * y)
+    }
+}
+
+impl<'a> Mul<Spectrum> for &'a Spectrum {
+    type Output = Spectrum;
+    fn mul(self, _rhs: Spectrum) -> Spectrum {
+        self.clone().elementwise(_rhs, |(x, y)| x * y)
+    }
+}
+
+impl<'a> Mul<&'a Spectrum> for Spectrum {
+    type Output = Spectrum;
+    fn mul(self, _rhs: &'a Spectrum) -> Spectrum {
+        self.elementwise(_rhs.clone(), |(x, y)| x * y)
     }
 }
 
@@ -526,10 +567,24 @@ impl Mul<f32> for Spectrum {
     }
 }
 
+impl<'a> Mul<f32> for &'a Spectrum {
+    type Output = Spectrum;
+    fn mul(self, _rhs: f32) -> Spectrum {
+        self.transform(|x| x * _rhs.clone())
+    }
+}
+
 impl Mul<Spectrum> for f32 {
     type Output = Spectrum;
     fn mul(self, _rhs: Spectrum) -> Spectrum {
         _rhs.transform(|x| x * self)
+    }
+}
+
+impl<'a> Mul<&'a Spectrum> for f32 {
+    type Output = Spectrum;
+    fn mul(self, _rhs: &'a Spectrum) -> Spectrum {
+        _rhs.clone().transform(|x| x * self)
     }
 }
 
@@ -544,6 +599,13 @@ impl Div<f32> for Spectrum {
     type Output = Spectrum;
     fn div(self, _rhs: f32) -> Spectrum {
         self.transform(|x| x / _rhs)
+    }
+}
+
+impl<'a> Div<f32> for &'a Spectrum {
+    type Output = Spectrum;
+    fn div(self, _rhs: f32) -> Spectrum {
+        self.clone().transform(|x| x / _rhs)
     }
 }
 

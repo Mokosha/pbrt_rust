@@ -10,6 +10,6 @@ impl VisibilityTester {
     pub fn transmittance<R: Renderer>(
         &self, scene: &Scene, renderer: &R,
         sample: &Sample, rng: &mut RNG) -> Spectrum {
-        Spectrum::from_value(0f32)
+        unimplemented!()
     }
 }

@@ -34,7 +34,7 @@ fn process_specular<R: Renderer>(
         let li = renderer.li_simple(scene, &rd, sample, rng);
         f * li * win / pdf
     } else {
-        Spectrum::from_value(0f32)
+        Spectrum::from(0f32)
     }
 }
 

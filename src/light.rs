@@ -16,12 +16,12 @@ impl LightSample {
 
 impl Light {
     pub fn le(&self, ray: &RayDifferential) -> Spectrum {
-        Spectrum::from_value(0f32)
+        unimplemented!()
     }
 
     pub fn sample_l(&self, p: &Point, eps: f32,
                     sample: LightSample, time: Time) ->
         (Spectrum, Vector, f32, VisibilityTester) {
-            (Spectrum::from_value(0f32), Vector::new(), 0f32, VisibilityTester)
+            unimplemented!()
         }
 }
