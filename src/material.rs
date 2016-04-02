@@ -1,6 +1,6 @@
 use diff_geom::DifferentialGeometry;
 use bsdf::BSDF;
-use bsdf::BSSRDF;
+use bsdf::bssrdf::BSSRDF;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Material;

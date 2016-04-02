@@ -1,63 +1,12 @@
+mod utils;
+pub mod bssrdf;
+pub mod fresnel;
+
+use bsdf::utils::*;
 use diff_geom::DifferentialGeometry;
 use geometry::vector::Vector;
 use rng::RNG;
 use spectrum::Spectrum;
-use utils::Clamp;
-
-use std::f32;
-
-fn cos_theta(v: Vector) -> f32 { v.z }
-fn abs_cos_theta(v: Vector) -> f32 { v.z.abs() }
-fn sin_theta2(v: Vector) -> f32 { 0f32.max(1.0 - v.z*v.z) }
-fn sin_theta(v: Vector) -> f32 { sin_theta2(v).sqrt() }
-
-fn cos_phi(v: Vector) -> f32 {
-    let vx = v.x;
-    let sintheta = sin_theta(v);
-    if sintheta == 0.0 {
-        1.0
-    } else {
-        (vx / sintheta).clamp(-1.0, 1.0)
-    }
-}
-
-fn sin_phi(v: Vector) -> f32 {
-    let vy = v.y;
-    let sintheta = sin_theta(v);
-    if sintheta == 0.0 {
-        0.0
-    } else {
-        (vy / sintheta).clamp(-1.0, 1.0)
-    }
-}
-
-fn fr_diel(cosi: f32, cost: f32, etai: &Spectrum,
-           etat: &Spectrum) -> Spectrum {
-    let rparl =
-        ((etat * cosi) - (etai * cost)) /
-        ((etat * cosi) + (etai * cost));
-    let rperp =
-        ((etai * cosi) - (etat * cost)) /
-        ((etai * cosi) + (etat * cost));
-
-    (rparl * rparl + rperp * rperp) / 2.0
-}
-
-fn fr_cond(cosi: f32, eta: &Spectrum,
-           k: &Spectrum) -> Spectrum {
-    let tmp: Spectrum = (eta * eta + k * k) * cosi * cosi;
-    let rparl2 = {
-        let t: Spectrum = 2.0 * eta * cosi;
-        (tmp - t + 1.0) / (tmp + t + 1.0)
-    };
-
-    let tmp_f: Spectrum = eta*eta + k*k;
-    let rperp2 =
-        (tmp_f - (2.0 * eta * cosi) + cosi * cosi) /
-        (tmp_f + (2.0 * eta * cosi) + cosi * cosi);
-
-    (rparl2 + rperp2) / 2.0
-}
 
 bitflags! {
     pub flags BxDFType: u32 {
@@ -201,9 +150,3 @@ impl<T: BxDF> BxDF for ScaledBxDF<T> {
     }
 }
 
-pub struct BSSRDF;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-}

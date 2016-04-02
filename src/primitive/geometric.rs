@@ -4,7 +4,7 @@ use area_light::AreaLight;
 use bbox::BBox;
 use bbox::HasBounds;
 use bsdf::BSDF;
-use bsdf::BSSRDF;
+use bsdf::bssrdf::BSSRDF;
 use diff_geom::DifferentialGeometry;
 use intersection::Intersectable;
 use intersection::Intersection;
