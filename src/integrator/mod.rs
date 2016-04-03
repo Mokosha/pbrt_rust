@@ -24,7 +24,7 @@ fn process_specular<R: Renderer>(
     let wo = -(&ray.ray.d);
     let p = &(bsdf.dg_shading.p);
     let n = &(bsdf.dg_shading.nn);
-    let (wi, pdf, f) = bsdf.sample_f(
+    let (wi, pdf, f) = bsdf.sample_bsdf_f(
         &wo, BSDFSample::new(rng), sample_type);
 
     let win = wi.abs_dot(n);

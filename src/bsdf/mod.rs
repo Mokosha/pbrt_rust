@@ -29,6 +29,7 @@ bitflags! {
 pub trait BxDF {
     fn matches_flags(&self, BxDFType) -> bool;
     fn f(&self, &Vector, &Vector) -> Spectrum;
+    fn sample_f(&self, &Vector, f32, f32) -> (Vector, f32, Spectrum);
 
     fn rho_hd(&self, &Vector, &[f32]) -> Spectrum;
     fn rho_hh(&self, &[f32], &[f32]) -> Spectrum;
@@ -51,10 +52,10 @@ impl BSDF {
         }
     }
 
-    pub fn sample_f(&self, vo: &Vector, sample: BSDFSample,
-                    bxdf_type: BxDFType) -> (Vector, f32, Spectrum) {
-            unimplemented!()
-        }
+    pub fn sample_bsdf_f(&self, vo: &Vector, sample: BSDFSample,
+                         bxdf_type: BxDFType) -> (Vector, f32, Spectrum) {
+        unimplemented!()
+    }
 }
 
 impl BxDF for BSDF {
@@ -63,6 +64,11 @@ impl BxDF for BSDF {
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
+        unimplemented!()
+    }
+
+    fn sample_f(&self, wo: &Vector, u1: f32,
+                u2: f32) -> (Vector, f32, Spectrum) {
         unimplemented!()
     }
 
@@ -81,12 +87,6 @@ pub struct BRDFtoBTDF<T: BxDF> {
 
 impl<T: BxDF> BRDFtoBTDF<T> {
     pub fn new(input: T) -> BRDFtoBTDF<T> { BRDFtoBTDF { brdf: input } }
-
-
-    pub fn sample_f(&self, vo: &Vector, sample: BSDFSample,
-                    bxdf_type: BxDFType) -> (Vector, f32, Spectrum) {
-        unimplemented!()
-    }
 }
 
 fn other_hemi(v: &Vector) -> Vector {
@@ -101,6 +101,12 @@ impl<T: BxDF> BxDF for BRDFtoBTDF<T> {
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
         self.brdf.f(wo, &other_hemi(wi))
+    }
+
+    fn sample_f(&self, wo: &Vector, u1: f32,
+                u2: f32) -> (Vector, f32, Spectrum) {
+        let (wi, pdf, v) = self.brdf.sample_f(wo, u1, u2);
+        (other_hemi(&wi), pdf, v)
     }
 
     fn rho_hd(&self, v: &Vector, samples: &[f32]) -> Spectrum {
@@ -124,12 +130,6 @@ impl<T: BxDF> ScaledBxDF<T> {
             scale: sc
         }
     }
-
-
-    pub fn sample_f(&self, vo: &Vector, sample: BSDFSample,
-                    bxdf_type: BxDFType) -> (Vector, f32, Spectrum) {
-        unimplemented!()
-    }
 }
 
 impl<T: BxDF> BxDF for ScaledBxDF<T> {
@@ -139,6 +139,12 @@ impl<T: BxDF> BxDF for ScaledBxDF<T> {
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
         self.bxdf.f(wo, wi) * self.scale
+    }
+
+    fn sample_f(&self, wo: &Vector, u1: f32,
+                u2: f32) -> (Vector, f32, Spectrum) {
+        let (wi, pdf, v) = self.bxdf.sample_f(wo, u1, u2);
+        (wi, pdf, self.scale * v)
     }
 
     fn rho_hd(&self, v: &Vector, samples: &[f32]) -> Spectrum {
