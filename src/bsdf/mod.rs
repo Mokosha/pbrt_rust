@@ -31,8 +31,13 @@ pub trait BxDF {
     fn f(&self, &Vector, &Vector) -> Spectrum;
     fn sample_f(&self, &Vector, f32, f32) -> (Vector, f32, Spectrum);
 
-    fn rho_hd(&self, &Vector, &[f32]) -> Spectrum;
-    fn rho_hh(&self, &[f32], &[f32]) -> Spectrum;
+    fn rho_hd(&self, v: &Vector, samples: &[f32]) -> Spectrum {
+        unimplemented!()
+    }
+
+    fn rho_hh(&self, samples1: &[f32], samples2: &[f32]) -> Spectrum {
+        unimplemented!()
+    }
 }
 
 pub struct BSDFSample;
@@ -69,14 +74,6 @@ impl BxDF for BSDF {
 
     fn sample_f(&self, wo: &Vector, u1: f32,
                 u2: f32) -> (Vector, f32, Spectrum) {
-        unimplemented!()
-    }
-
-    fn rho_hd(&self, v: &Vector, samples: &[f32]) -> Spectrum {
-        unimplemented!()
-    }
-
-    fn rho_hh(&self, samples1: &[f32], samples2: &[f32]) -> Spectrum {
         unimplemented!()
     }
 }
