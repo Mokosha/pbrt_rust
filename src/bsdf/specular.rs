@@ -38,3 +38,64 @@ impl BxDF for SpecularReflection {
         (wi.clone(), 1.0, v * self.r / abs_cos_theta(wi))
     }
 }
+
+pub struct SpecularTransmission {
+    t: Spectrum,
+    etai: f32,
+    etat: f32,
+    fresnel: Fresnel
+}
+
+impl SpecularTransmission {
+    fn new(_t: Spectrum, _etai: f32, _etat: f32, _f: Fresnel) -> SpecularTransmission {
+        SpecularTransmission {
+            t: _t,
+            etai: _etai,
+            etat: _etat,
+            fresnel: _f
+        }
+    }
+}
+
+impl BxDF for SpecularTransmission {
+    fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
+        ty.contains(bsdf::BSDF_TRANSMISSION | bsdf::BSDF_SPECULAR)
+    }
+
+    fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
+        // Chances here are zero, too
+        Spectrum::from(0f32)
+    }
+
+    fn sample_f(&self, wo: &Vector, u1: f32,
+                u2: f32) -> (Vector, f32, Spectrum) {
+        let ct = cos_theta(wo.clone());
+
+        // Figure out which eta is incident and which is transmitted
+        let entering = ct > 0f32;
+        let mut ei = self.etai;
+        let mut et = self.etat;
+        if entering {
+            ::std::mem::swap(&mut ei, &mut et);
+        }
+
+        // Computed transmitted ray direction
+        let sini2 = sin_theta(wo.clone());
+        let eta = ei / et;
+        let sint2 = eta * eta * sini2;
+
+        // Handle total internal reflection for transmission
+        if sint2 >= 1f32 {
+            return (Vector::new(), 1f32, Spectrum::from(0f32))
+        }
+
+        let cost = (1f32 - sint2).max(0.0).sqrt() * (if entering { -1.0 } else { 1.0 });
+        let sint_over_sini = eta;
+        let wi = Vector::new_with(sint_over_sini * -wo.x, sint_over_sini * -wo.y, cost);
+
+        let pdf = 1f32;
+        let f = self.fresnel.evaluate(ct);
+        let v = (et * et) / (ei * ei) * (Spectrum::from(1f32) - self.t);
+        (wi.clone(), pdf, v / abs_cos_theta(wi))
+    }
+}
