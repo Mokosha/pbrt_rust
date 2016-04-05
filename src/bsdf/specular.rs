@@ -5,6 +5,7 @@ use bsdf::utils::*;
 use geometry::vector::Vector;
 use spectrum::Spectrum;
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct SpecularReflection {
     r: Spectrum,
     fresnel: Fresnel
@@ -39,6 +40,7 @@ impl BxDF for SpecularReflection {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct SpecularTransmission {
     t: Spectrum,
     etai: f32,
@@ -97,5 +99,18 @@ impl BxDF for SpecularTransmission {
         let f = self.fresnel.evaluate(ct);
         let v = (et * et) / (ei * ei) * (Spectrum::from(1f32) - self.t);
         (wi.clone(), pdf, v / abs_cos_theta(wi))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use spectrum::Spectrum;
+    use bsdf::fresnel::Fresnel;
+
+    #[test]
+    fn spec_refl_can_be_created() {
+        let _ = SpecularReflection::new(Spectrum::from(1f32),
+                                        Fresnel::dielectric(1.0, 1.0));
     }
 }

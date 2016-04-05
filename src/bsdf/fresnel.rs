@@ -30,6 +30,7 @@ fn fr_cond(cosi: f32, eta: &Spectrum,
     (rparl2 + rperp2) / 2.0
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Fresnel {
     Conductor {
         eta: Spectrum,  // Index of refraction
