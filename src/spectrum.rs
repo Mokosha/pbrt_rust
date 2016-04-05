@@ -679,12 +679,12 @@ mod tests {
         assert_eq!(Spectrum::from_samples(&[(400.0, 3.0); 1]),
                    Spectrum::Sampled([3f32; NUM_SPECTRUM_SAMPLES]));
 
-        assert_eq!(Spectrum::from_value(3f32),
+        assert_eq!(Spectrum::from(3f32),
                    Spectrum::RGB([3f32; 3]));
     }
 
     #[test]
-    fn it_can_be_created_from_values() {
+    fn it_can_be_created_froms() {
         assert_eq!(Spectrum::from_samples(
             &[(400.0, 3.0), (500.0, 3.0), (600.0, 3.0), (700.0, 3.0)]),
                    Spectrum::Sampled([3f32; NUM_SPECTRUM_SAMPLES]));
@@ -709,8 +709,8 @@ mod tests {
         assert!((Spectrum::from_samples(&s1) -
                  Spectrum::from_samples(&s2)).is_black());
 
-        assert_eq!(Spectrum::from_value(10.0) - Spectrum::from_value(6.0),
-                   Spectrum::from_value(4.0));
+        assert_eq!(Spectrum::from(10.0) - Spectrum::from(6.0),
+                   Spectrum::from(4.0));
     }
 
     #[test]
@@ -720,8 +720,8 @@ mod tests {
         assert!((Spectrum::from_samples(&s1) +
                  Spectrum::from_samples(&s2)).is_black());
 
-        assert_eq!(Spectrum::from_value(10.0) + Spectrum::from_value(6.0),
-                   Spectrum::from_value(16.0));
+        assert_eq!(Spectrum::from(10.0) + Spectrum::from(6.0),
+                   Spectrum::from(16.0));
     }
 
     #[test]
@@ -730,8 +730,8 @@ mod tests {
         assert!((Spectrum::from_samples(&s1) +
                  (-1.0) * Spectrum::from_samples(&s1)).is_black());
 
-        assert_eq!(Spectrum::from_value(10.0) * 6.0,
-                   Spectrum::from_value(10.0 * 6.0));
+        assert_eq!(Spectrum::from(10.0) * 6.0,
+                   Spectrum::from(10.0 * 6.0));
     }
 
     #[test]
@@ -740,8 +740,8 @@ mod tests {
         assert!((Spectrum::from_samples(&s1) +
                  (-3.0) * (Spectrum::from_samples(&s1) / 3.0)).is_black());
 
-        assert_eq!(Spectrum::from_value(10.0) / 6.0,
-                   Spectrum::from_value(10.0 / 6.0));
+        assert_eq!(Spectrum::from(10.0) / 6.0,
+                   Spectrum::from(10.0 / 6.0));
     }
 
     #[test]
@@ -750,8 +750,8 @@ mod tests {
         assert!((Spectrum::from_samples(&s1) +
                  -Spectrum::from_samples(&s1)).is_black());
 
-        assert_eq!(-Spectrum::from_value(10.0),
-                   Spectrum::from_value(-10.0));
+        assert_eq!(-Spectrum::from(10.0),
+                   Spectrum::from(-10.0));
     }
 
     #[test]
@@ -766,7 +766,7 @@ mod tests {
         assert_eq!(s2[4], 3.0);
         assert_eq!(s2[29], 3.0);
 
-        let s = Spectrum::from_value(1.0);
+        let s = Spectrum::from(1.0);
         for i in 0..3 {
             assert_eq!(s[i], 1.0);
         }
@@ -782,7 +782,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn it_cant_be_indexed_too_much2() {
-        assert_eq!(Spectrum::from_value(1.0)[3], 3.0);
+        assert_eq!(Spectrum::from(1.0)[3], 3.0);
     }
 
     #[test]
@@ -796,7 +796,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn it_cant_be_mutably_indexed_too_much_either2() {
-        let mut sp = Spectrum::from_value(1.0);
+        let mut sp = Spectrum::from(1.0);
         assert_eq!(sp[3], 3.0);
     }
 
@@ -810,8 +810,8 @@ mod tests {
         assert_eq!(s1.lerp(&s2, 0.0).coeffs(), [3.0; NUM_SPECTRUM_SAMPLES]);
         assert_eq!(s1.lerp(&s2, 1.0).coeffs(), [2.0; NUM_SPECTRUM_SAMPLES]);
 
-        let s3 = Spectrum::from_value(10.0);
-        let s4 = Spectrum::from_value(6.0);
+        let s3 = Spectrum::from(10.0);
+        let s4 = Spectrum::from(6.0);
         assert_eq!(s3.lerp(&s4, 0.75).coeffs(), [7.0; 3]);
         assert_eq!(s3.lerp(&s4, 0.0).coeffs(), [10.0; 3]);
         assert_eq!(s3.lerp(&s4, 1.0).coeffs(), [6.0; 3]);

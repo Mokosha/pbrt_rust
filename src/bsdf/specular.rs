@@ -110,7 +110,12 @@ mod tests {
 
     #[test]
     fn spec_refl_can_be_created() {
-        let _ = SpecularReflection::new(Spectrum::from(1f32),
-                                        Fresnel::dielectric(1.0, 1.0));
+        let brdf1 = SpecularReflection::new(Spectrum::from(1f32),
+                                            Fresnel::dielectric(1.0, 1.0));
+
+        let brdf2 = SpecularReflection::new(Spectrum::from(1f32),
+                                            Fresnel::dielectric(1.0, 1.0));
+
+        assert_eq!(brdf1, brdf2);
     }
 }
