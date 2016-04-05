@@ -22,7 +22,7 @@ impl SpecularReflection {
 
 impl BxDF for SpecularReflection {
     fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
-        ty.contains(bsdf::BSDF_REFLECTION | bsdf::BSDF_SPECULAR)
+        (bsdf::BSDF_REFLECTION | bsdf::BSDF_SPECULAR).contains(ty)
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
@@ -49,19 +49,19 @@ pub struct SpecularTransmission {
 }
 
 impl SpecularTransmission {
-    fn new(_t: Spectrum, _etai: f32, _etat: f32, _f: Fresnel) -> SpecularTransmission {
+    fn new(_t: Spectrum, _etai: f32, _etat: f32) -> SpecularTransmission {
         SpecularTransmission {
             t: _t,
             etai: _etai,
             etat: _etat,
-            fresnel: _f
+            fresnel: Fresnel::dielectric(_etai, _etat)
         }
     }
 }
 
 impl BxDF for SpecularTransmission {
     fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
-        ty.contains(bsdf::BSDF_TRANSMISSION | bsdf::BSDF_SPECULAR)
+        (bsdf::BSDF_TRANSMISSION | bsdf::BSDF_SPECULAR).contains(ty)
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
@@ -105,8 +105,10 @@ impl BxDF for SpecularTransmission {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use spectrum::Spectrum;
+    use bsdf;
+    use bsdf::BxDF;
     use bsdf::fresnel::Fresnel;
+    use spectrum::Spectrum;
 
     #[test]
     fn spec_refl_can_be_created() {
@@ -117,5 +119,60 @@ mod tests {
                                             Fresnel::dielectric(1.0, 1.0));
 
         assert_eq!(brdf1, brdf2);
+    }
+
+    #[test]
+    fn spec_refl_is_spec_and_refl() {
+        let brdf = SpecularReflection::new(Spectrum::from(1f32),
+                                           Fresnel::dielectric(1.0, 1.0));
+        assert!(brdf.matches_flags(bsdf::BSDF_SPECULAR));
+        assert!(brdf.matches_flags(bsdf::BSDF_REFLECTION));
+        assert!(!brdf.matches_flags(bsdf::BSDF_TRANSMISSION));
+        assert!(!brdf.matches_flags(bsdf::BSDF_DIFFUSE));
+    }
+
+    #[test]
+    fn spec_refl_has_no_f() {
+        let brdf = SpecularReflection::new(Spectrum::from(1f32),
+                                           Fresnel::dielectric(1.0, 1.0));
+        assert_eq!(brdf.f(Vector::new(), Vector::new()), Spectrum::from(0.0));
+        assert_eq!(brdf.f(Vector::new_with(1.0, -1.0, 0.0),
+                          Vector::new_with(10.0, -3.14, 15.0)), Spectrum::from(0.0));
+    }
+
+    #[ignore]
+    #[test]
+    fn spec_refl_can_sample_direction() {
+        unimplemented!() // Test sample_f
+    }
+
+    #[test]
+    fn spec_trans_can_be_created() {
+        let btdf1 = SpecularTransmission::new(Spectrum::from(1f32), 1.0, 1.0);
+        let btdf2 = SpecularTransmission::new(Spectrum::from(1f32), 1.0, 1.0);
+        assert_eq!(btdf1, btdf2);
+    }
+
+    #[test]
+    fn spec_trans_is_spec_and_refl() {
+        let brdf = SpecularTransmission::new(Spectrum::from(1f32), 1.0, 1.0);
+        assert!(brdf.matches_flags(bsdf::BSDF_TRANSMISSION));
+        assert!(brdf.matches_flags(bsdf::BSDF_SPECULAR));
+        assert!(!brdf.matches_flags(bsdf::BSDF_REFLECTION));
+        assert!(!brdf.matches_flags(bsdf::BSDF_DIFFUSE));
+    }
+
+    #[test]
+    fn spec_trans_has_no_f() {
+        let btdf = SpecularTransmission::new(Spectrum::from(1f32), 1.0, 1.0);
+        assert_eq!(btdf.f(Vector::new(), Vector::new()), Spectrum::from(0.0));
+        assert_eq!(btdf.f(Vector::new_with(1.0, -1.0, 0.0),
+                          Vector::new_with(10.0, -3.14, 15.0)), Spectrum::from(0.0));
+    }
+
+    #[ignore]
+    #[test]
+    fn spec_trans_can_sample_direction() {
+        unimplemented!() // Test sample_f
     }
 }
