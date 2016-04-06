@@ -108,6 +108,7 @@ mod tests {
     use bsdf;
     use bsdf::BxDF;
     use bsdf::fresnel::Fresnel;
+    use geometry::vector::Vector;
     use spectrum::Spectrum;
 
     #[test]
@@ -135,15 +136,31 @@ mod tests {
     fn spec_refl_has_no_f() {
         let brdf = SpecularReflection::new(Spectrum::from(1f32),
                                            Fresnel::dielectric(1.0, 1.0));
-        assert_eq!(brdf.f(Vector::new(), Vector::new()), Spectrum::from(0.0));
-        assert_eq!(brdf.f(Vector::new_with(1.0, -1.0, 0.0),
-                          Vector::new_with(10.0, -3.14, 15.0)), Spectrum::from(0.0));
+        assert_eq!(brdf.f(&Vector::new(), &Vector::new()), Spectrum::from(0.0));
+        assert_eq!(brdf.f(&Vector::new_with(1.0, -1.0, 0.0),
+                          &Vector::new_with(10.0, -3.14, 15.0)), Spectrum::from(0.0));
     }
 
-    #[ignore]
     #[test]
     fn spec_refl_can_sample_direction() {
-        unimplemented!() // Test sample_f
+        let brdf = SpecularReflection::new(Spectrum::from(1f32),
+                                           Fresnel::dielectric(1.0, 1.0));
+
+        let (wi, _, _) = brdf.sample_f(&Vector::new_with(-(2f32.sqrt()), 0.0, 2f32.sqrt()),
+                                       0.0, 0.0);
+        assert_eq!(wi, Vector::new_with(2f32.sqrt(), 0.0, 2f32.sqrt()));
+
+        let (wi2, _, _) = brdf.sample_f(&Vector::new_with(2f32.sqrt(), 0.0, 2f32.sqrt()),
+                                        0.0, 0.0);
+        assert_eq!(wi2, Vector::new_with(-2f32.sqrt(), 0.0, 2f32.sqrt()));
+
+        let (wi3, _, _) = brdf.sample_f(&Vector::new_with(-(2f32.sqrt()), 0.0, -2f32.sqrt()),
+                                       0.0, 0.0);
+        assert_eq!(wi3, Vector::new_with(2f32.sqrt(), 0.0, -2f32.sqrt()));
+
+        let (wi4, _, _) = brdf.sample_f(&Vector::new_with(2f32.sqrt(), 0.0, -2f32.sqrt()),
+                                        0.0, 0.0);
+        assert_eq!(wi4, Vector::new_with(-2f32.sqrt(), 0.0, -2f32.sqrt()));
     }
 
     #[test]
@@ -165,9 +182,9 @@ mod tests {
     #[test]
     fn spec_trans_has_no_f() {
         let btdf = SpecularTransmission::new(Spectrum::from(1f32), 1.0, 1.0);
-        assert_eq!(btdf.f(Vector::new(), Vector::new()), Spectrum::from(0.0));
-        assert_eq!(btdf.f(Vector::new_with(1.0, -1.0, 0.0),
-                          Vector::new_with(10.0, -3.14, 15.0)), Spectrum::from(0.0));
+        assert_eq!(btdf.f(&Vector::new(), &Vector::new()), Spectrum::from(0.0));
+        assert_eq!(btdf.f(&Vector::new_with(1.0, -1.0, 0.0),
+                          &Vector::new_with(10.0, -3.14, 15.0)), Spectrum::from(0.0));
     }
 
     #[ignore]
