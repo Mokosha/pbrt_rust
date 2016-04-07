@@ -77,12 +77,12 @@ impl BxDF for SpecularTransmission {
         let entering = ct > 0f32;
         let mut ei = self.etai;
         let mut et = self.etat;
-        if entering {
+        if !entering {
             ::std::mem::swap(&mut ei, &mut et);
         }
 
         // Computed transmitted ray direction
-        let sini2 = sin_theta(wo.clone());
+        let sini2 = sin_theta2(wo.clone());
         let eta = ei / et;
         let sint2 = eta * eta * sini2;
 
@@ -93,6 +93,7 @@ impl BxDF for SpecularTransmission {
 
         let cost = (1f32 - sint2).max(0.0).sqrt() * (if entering { -1.0 } else { 1.0 });
         let sint_over_sini = eta;
+
         let wi = Vector::new_with(sint_over_sini * -wo.x, sint_over_sini * -wo.y, cost);
 
         let pdf = 1f32;
@@ -187,9 +188,26 @@ mod tests {
                           &Vector::new_with(10.0, -3.14, 15.0)), Spectrum::from(0.0));
     }
 
-    #[ignore]
     #[test]
     fn spec_trans_can_sample_direction() {
-        unimplemented!() // Test sample_f
+        let etai = 3f32.sqrt();
+        let etat = 1f32;
+        let btdf = SpecularTransmission::new(Spectrum::from(1f32), etai, etat);
+
+        let (wi, _, _) = btdf.sample_f(&Vector::new_with(-0.5, 0.0, 3f32.sqrt() / 2.0),
+                                       1.0, 1.0);
+        assert!((wi - Vector::new_with(3f32.sqrt() / 2.0, 0.0, -0.5)).length_squared() < 1e-6);
+
+        let (wi2, _, _) = btdf.sample_f(&Vector::new_with(0.5, 0.0, 3f32.sqrt() / 2.0),
+                                        0.0, 0.0);
+        assert!((wi2 - Vector::new_with(-3f32.sqrt() / 2.0, 0.0, -0.5)).length_squared() < 1e-6);
+
+        let (wi3, _, _) = btdf.sample_f(&Vector::new_with(-3f32.sqrt() / 2.0, 0.0, -0.5),
+                                        0.0, 0.0);
+        assert!((wi3 - Vector::new_with(0.5, 0.0, 3f32.sqrt() / 2.0)).length_squared() < 1e-6);
+
+        let (wi4, _, _) = btdf.sample_f(&Vector::new_with(3f32.sqrt() / 2.0, 0.0, -0.5),
+                                        0.0, 0.0);
+        assert!((wi4 - Vector::new_with(-0.5, 0.0, 3f32.sqrt() / 2.0)).length_squared() < 1e-6);
     }
 }
