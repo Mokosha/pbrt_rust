@@ -2,6 +2,7 @@ mod utils;
 pub mod bssrdf;
 pub mod fresnel;
 pub mod specular;
+pub mod lambertian;
 
 use bsdf::utils::*;
 use diff_geom::DifferentialGeometry;
