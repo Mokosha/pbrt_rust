@@ -35,8 +35,8 @@ impl BxDF for SpecularReflection {
                 u2: f32) -> (Vector, f32, Spectrum) {
         // Compute perfect specular reflection direction
         let wi = Vector::new_with(-wo.x, -wo.y, wo.z);
-        let v = self.fresnel.evaluate(cos_theta(wo.clone()));
-        (wi.clone(), 1.0, v * self.r / abs_cos_theta(wi))
+        let v = self.fresnel.evaluate(cos_theta(&wo));
+        (wi.clone(), 1.0, v * self.r / abs_cos_theta(&wi))
     }
 }
 
@@ -71,7 +71,7 @@ impl BxDF for SpecularTransmission {
 
     fn sample_f(&self, wo: &Vector, u1: f32,
                 u2: f32) -> (Vector, f32, Spectrum) {
-        let ct = cos_theta(wo.clone());
+        let ct = cos_theta(&wo);
 
         // Figure out which eta is incident and which is transmitted
         let entering = ct > 0f32;
@@ -82,7 +82,7 @@ impl BxDF for SpecularTransmission {
         }
 
         // Computed transmitted ray direction
-        let sini2 = sin_theta2(wo.clone());
+        let sini2 = sin_theta2(&wo);
         let eta = ei / et;
         let sint2 = eta * eta * sini2;
 
@@ -99,7 +99,7 @@ impl BxDF for SpecularTransmission {
         let pdf = 1f32;
         let f = self.fresnel.evaluate(ct);
         let v = (et * et) / (ei * ei) * (Spectrum::from(1f32) - self.t);
-        (wi.clone(), pdf, v / abs_cos_theta(wi))
+        (wi.clone(), pdf, v / abs_cos_theta(&wi))
     }
 }
 

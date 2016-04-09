@@ -33,25 +33,25 @@ impl BxDF for OrenNayar {
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
-        let sinthetai = sin_theta(wi.clone());
-        let sinthetao = sin_theta(wo.clone());
+        let sinthetai = sin_theta(&wi);
+        let sinthetao = sin_theta(&wo);
 
         // Compute cosine term of oren-nayar model
         let maxcos = if sinthetai < 1e-4 || sinthetao < 1e-4 { 0.0 } else {
-            let sinphii = sin_phi(wi.clone());
-            let cosphii = cos_phi(wi.clone());
+            let sinphii = sin_phi(&wi);
+            let cosphii = cos_phi(&wi);
 
-            let sinphio = sin_phi(wo.clone());
-            let cosphio = cos_phi(wo.clone());
+            let sinphio = sin_phi(&wo);
+            let cosphio = cos_phi(&wo);
 
             (cosphii * cosphio + sinphii * sinphio).max(0.0)
         };
 
         // Compute sine and tangent terms of oren-nayar model
-        let (sinalpha, tanbeta) = if abs_cos_theta(wi.clone()) > abs_cos_theta(wo.clone()) {
-            (sinthetao, sinthetai / abs_cos_theta(wi.clone()))
+        let (sinalpha, tanbeta) = if abs_cos_theta(&wi) > abs_cos_theta(&wo) {
+            (sinthetao, sinthetai / abs_cos_theta(&wi))
         } else {
-            (sinthetai, sinthetao / abs_cos_theta(wo.clone()))
+            (sinthetai, sinthetao / abs_cos_theta(&wo))
         };
 
         let invpi = 1.0 / ::std::f32::consts::PI;
