@@ -4,6 +4,7 @@ pub mod fresnel;
 pub mod specular;
 pub mod lambertian;
 pub mod orennayar;
+pub mod microfacet;
 
 use bsdf::utils::*;
 use diff_geom::DifferentialGeometry;
