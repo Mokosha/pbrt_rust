@@ -9,12 +9,43 @@ use spectrum::Spectrum;
 use utils::Degrees;
 
 pub enum MicrofacetDistribution {
-    Empty
+    Blinn(f32),
+    Anisotropic(f32, f32)
 }
 
 impl MicrofacetDistribution {
+    pub fn blinn(e: f32) -> MicrofacetDistribution {
+        if e > 1000.0 || e.is_nan() {
+            MicrofacetDistribution::Blinn(1000.0)
+        } else {
+            MicrofacetDistribution::Blinn(e)
+        }
+    }
+
+    pub fn anisotropic(e1: f32, e2: f32) -> MicrofacetDistribution {
+        let x1 = if e1 > 1000.0 || e1.is_nan() { 1000.0 } else { e1 };
+        let x2 = if e2 > 1000.0 || e2.is_nan() { 1000.0 } else { e2 };
+        MicrofacetDistribution::Anisotropic(x1, x2)
+    }
+
     fn d(&self, wh: &Vector) -> f32 {
-        unimplemented!()
+        let invtwopi = 1.0 / (2.0 * ::std::f32::consts::PI);
+        match self {
+            &MicrofacetDistribution::Blinn(e) => {
+                let costhetah = abs_cos_theta(wh);
+                (e + 2.0) * invtwopi * costhetah.powf(e)
+            }
+            &MicrofacetDistribution::Anisotropic(ex, ey) => {
+                let costhetah = abs_cos_theta(wh);
+                let d = 1.0 - (costhetah * costhetah);
+                if d == 0.0 {
+                    return 0.0;
+                }
+
+                let e = (ex * wh.x * wh.x + ey * wh.y * wh.y) / d;
+                ((ex + 2.0) * (ey + 2.0)).sqrt() * invtwopi * costhetah.powf(e)
+            }
+        }
     }
 }
 
