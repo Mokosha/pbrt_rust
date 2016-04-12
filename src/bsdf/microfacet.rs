@@ -100,3 +100,47 @@ impl BxDF for Microfacet {
         unimplemented!()
     }
 }
+
+pub struct FresnelBlend {
+    r_d: Spectrum,
+    r_s: Spectrum,
+    distribution: MicrofacetDistribution
+}
+
+impl FresnelBlend {
+    pub fn new(rd: Spectrum, s: Spectrum,
+               dist: MicrofacetDistribution) -> FresnelBlend {
+        FresnelBlend {
+            r_d: rd,
+            r_s: s,
+            distribution: dist
+        }
+    }
+
+    fn schlick_fresnel(&self, cos_theta: f32) -> Spectrum {
+        self.r_s + (1.0 - cos_theta).powf(5.0) * (Spectrum::from(1.0) - self.r_s)
+    }
+}
+
+impl BxDF for FresnelBlend {
+    fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
+        (bsdf::BSDF_REFLECTION | bsdf::BSDF_GLOSSY).contains(ty)
+    }
+
+    fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
+        let diffuse = (28.0 / (23.0 * ::std::f32::consts::PI)) * self.r_d *
+            (Spectrum::from(1.0) - self.r_s) *
+            (1.0 - (1.0 - 0.5 * abs_cos_theta(wi)).powf(5.0)) *
+            (1.0 - (1.0 - 0.5 * abs_cos_theta(wo)).powf(5.0));
+
+        let wh = (wi + wo).normalize();
+        let specular = self.distribution.d(&wh) /
+            (4.0 * wi.abs_dot(&wh) * abs_cos_theta(wi).max(abs_cos_theta(wo))) *
+            self.schlick_fresnel(wi.dot(&wh));
+        diffuse + specular
+    }
+
+    fn sample_f(&self, _: &Vector, _: f32, _: f32) -> (Vector, f32, Spectrum) {
+        unimplemented!()
+    }
+}
