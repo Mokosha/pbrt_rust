@@ -1,10 +1,11 @@
 mod utils;
 pub mod bssrdf;
 pub mod fresnel;
-pub mod specular;
 pub mod lambertian;
-pub mod orennayar;
+pub mod measured;
 pub mod microfacet;
+pub mod orennayar;
+pub mod specular;
 
 use bsdf::utils::*;
 use diff_geom::DifferentialGeometry;
