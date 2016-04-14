@@ -1,3 +1,5 @@
+pub mod kdtree;
+
 pub trait Lerp<F = Self> {
     fn lerp(&self, b: &Self, t: F) -> Self;
 }

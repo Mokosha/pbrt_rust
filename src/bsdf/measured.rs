@@ -5,6 +5,7 @@ use geometry::vector::*;
 use geometry::point::Point;
 use spectrum::Spectrum;
 use utils::Clamp;
+use utils::kdtree::*;
 
 fn brdf_remap(wo: &Vector, wi: &Vector) -> Point {
     let cosi = cos_theta(wi);
@@ -46,20 +47,8 @@ impl IrregIsotropicSample {
     }
 }
 
-// !FIXME! Needs implementation!
-struct KdTree<T> {
-    data: Vec<T>
-}
-
-trait KdTreeProc<T> {
-    fn run(&mut self, &Point, &T, f32, &mut f32);
-}
-
-impl<T> KdTree<T> {
-    fn lookup<U: KdTreeProc<T>>(&self, m: &Point, p: &mut U, max_dist_sq: f32) {
-        // Actually need a KdTree here...
-        unimplemented!()
-    }
+impl HasPoint for IrregIsotropicSample {
+    fn p<'a>(&'a self) -> &'a Point { &(self.p) }
 }
 
 pub struct IrregIsotropic {
@@ -67,9 +56,8 @@ pub struct IrregIsotropic {
 }
 
 impl IrregIsotropic {
-    fn new(data: &KdTree<IrregIsotropicSample>) -> IrregIsotropic {
-        // Actually need a KdTree here...
-        unimplemented!()
+    fn new(data: KdTree<IrregIsotropicSample>) -> IrregIsotropic {
+        IrregIsotropic { iso_data: data }
     }
 }
 
