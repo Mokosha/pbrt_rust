@@ -104,8 +104,44 @@ impl<NodeData: HasPoint+Clone> KdTree<NodeData> {
         }
     }
 
-    pub fn lookup<U: KdTreeProc<NodeData>>(&self, m: &Point, p: &mut U, max_dist_sq: f32) {
-        // Actually need a KdTree here...
-        unimplemented!()
+    fn private_lookup<U: KdTreeProc<NodeData>>(&self, node_num: usize, m: &Point,
+                                               p: &mut U, max_dist_sq: &mut f32) {
+        let node = &self.nodes[node_num];
+
+        // Process kd-tree node's children
+        let axis = node.split_axis;
+        if axis != 3 {
+            let dist_sq = (m[axis] - node.split_pos) * (m[axis] - node.split_pos);
+            let look_both = dist_sq <= *max_dist_sq;
+
+            let on_left = m[axis] <= node.split_pos;
+            let can_left = node.has_left_child;
+
+            let on_right = !on_left;
+            let can_right = node.right_child < self.nodes.len();
+
+            let look_left = (look_both || on_left) && can_left;
+            let look_right = (look_both || on_right) && can_right;
+
+            if look_left {
+                self.private_lookup(node_num + 1, m, p, max_dist_sq);
+            }
+
+            if look_right {
+                self.private_lookup(node.right_child, m, p, max_dist_sq);
+            }
+        }
+
+        // Hand kd-tree node to processing function
+        let dist_sq = (self.node_data[node_num].p() - m).length_squared();
+        if dist_sq <= *max_dist_sq {
+            p.run(m, &self.node_data[node_num], dist_sq, max_dist_sq);
+        }
+    }
+
+    pub fn lookup<U: KdTreeProc<NodeData>>(&self, m: &Point, p: &mut U,
+                                           max_dist_sq: f32) {
+        let mut mdsq = max_dist_sq;
+        self.private_lookup(0, m, p, &mut mdsq);
     }
 }
