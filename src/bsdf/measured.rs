@@ -33,6 +33,7 @@ fn brdf_remap(wo: &Vector, wi: &Vector) -> Point {
     Point::new_with(sini * sino, dphi / ::std::f32::consts::PI, cosi * coso)
 }
 
+#[derive(Clone, Debug, PartialEq)]
 struct IrregIsotropicSample {
     p: Point,
     v: Spectrum
