@@ -104,6 +104,8 @@ impl<NodeData: HasPoint+Clone> KdTree<NodeData> {
         }
     }
 
+    pub fn size(&self) -> usize { self.nodes.len() }
+
     fn private_lookup<U: KdTreeProc<NodeData>>(&self, node_num: usize, m: &Point,
                                                p: &mut U, max_dist_sq: &mut f32) {
         let node = &self.nodes[node_num];
@@ -118,7 +120,7 @@ impl<NodeData: HasPoint+Clone> KdTree<NodeData> {
             let can_left = node.has_left_child;
 
             let on_right = !on_left;
-            let can_right = node.right_child < self.nodes.len();
+            let can_right = node.right_child < self.size();
 
             let look_left = (look_both || on_left) && can_left;
             let look_right = (look_both || on_right) && can_right;
@@ -143,5 +145,40 @@ impl<NodeData: HasPoint+Clone> KdTree<NodeData> {
                                            max_dist_sq: f32) {
         let mut mdsq = max_dist_sq;
         self.private_lookup(0, m, p, &mut mdsq);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use geometry::point::Point;
+
+    fn box_at(p: f32) -> Vec<Point> {
+        vec![
+            Point::new_with(p, p, p),
+            Point::new_with(p, p, -p),
+            Point::new_with(p, -p, p),
+            Point::new_with(p, -p, -p),
+            Point::new_with(-p, p, p),
+            Point::new_with(-p, p, -p),
+            Point::new_with(-p, -p, p),
+            Point::new_with(-p, -p, -p)]
+    }
+
+    #[test]
+    fn it_can_be_created() {
+        let points = box_at(1.0);
+        let kdtree = KdTree::new(&points);
+        assert_eq!(kdtree.size(), points.len());
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_find_points() {
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_run_procedures() {
     }
 }
