@@ -43,7 +43,7 @@ impl HasPoint for Point {
     fn p<'a>(&'a self) -> &'a Point { self }
 }
 
-fn recursive_build<NodeData: HasPoint+Clone>(build_nodes: &mut [&NodeData],
+fn recursive_build<NodeData: HasPoint+Clone+::std::fmt::Debug>(build_nodes: &mut [&NodeData],
                                              node_data: &mut Vec<NodeData>, nodes: &mut Vec<KdNode>) {
     // Create leaf node of kd-tree if we've reached the bottom
     if build_nodes.len() == 1 {
@@ -58,7 +58,7 @@ fn recursive_build<NodeData: HasPoint+Clone>(build_nodes: &mut [&NodeData],
     });
 
     let split_axis = bound.max_extent();
-    let split_pos = build_nodes.len() / 2;
+    let split_pos = (build_nodes.len() / 2) - 1;
     partition_by(build_nodes, |bn| bn.p()[split_axis]);
 
     // Allocate kd-tree node and continue recursively
@@ -111,7 +111,6 @@ impl<NodeData: HasPoint+Clone+::std::fmt::Debug> KdTree<NodeData> {
     fn private_lookup<U: KdTreeProc<NodeData>>(&self, node_num: usize, m: &Point,
                                                p: &mut U, max_dist_sq: &mut f32) {
         let node = &self.nodes[node_num];
-        // println!("num: {:?} -- {:?}", node_num, node);
 
         // Process kd-tree node's children
         let axis = node.split_axis;
@@ -139,7 +138,6 @@ impl<NodeData: HasPoint+Clone+::std::fmt::Debug> KdTree<NodeData> {
 
         // Hand kd-tree node to processing function
         let dist_sq = (self.node_data[node_num].p() - m).length_squared();
-        // println!("num: {:?} -- {:?}", node_num, dist_sq);
         if dist_sq <= *max_dist_sq {
             p.run(m, &self.node_data[node_num], dist_sq, max_dist_sq);
         }
@@ -167,7 +165,6 @@ mod tests {
 
     impl<T: HasPoint> KdTreeProc<T> for PointCounter {
         fn run(&mut self, _: &Point, data: &T, _: f32, _: &mut f32) {
-            // println!("Found point: {:?}", data.p());
             self.counter += 1;
         }
     }
@@ -214,9 +211,8 @@ mod tests {
             let mut ctr = PointCounter::new();
             kdtree.lookup(&Point::new_with(0.0, 0.0, 0.0), &mut ctr, 3f32 - 1e-6);
             assert_eq!(ctr.counter, 0);
-            // println!("TESTCASE");
             kdtree.lookup(&Point::new_with(0.0, 0.0, 0.0), &mut ctr, 3f32 + 1e-6);
-            // assert_eq!(ctr.counter, 8);
+            assert_eq!(ctr.counter, 8);
         }
 
         {

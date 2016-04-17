@@ -170,9 +170,9 @@ pub fn partition_by<T, F, B>(v: &mut [T], f: F)
     debug_assert!(right.len() > 0);
     debug_assert!(left.len() > 0);
 
-    if pivot_idx + num_pivots < (nv / 2) {
+    if pivot_idx + num_pivots <= (nv / 2) {
         partition_by(right, f);
-    } else if pivot_idx > (nv / 2) {
+    } else if pivot_idx >= (nv / 2) {
         partition_by(left, f);
     }
 }
