@@ -146,16 +146,20 @@ pub fn partition_by<T, F, B>(v: &mut [T], f: F)
         }
     };
 
-    let mut first_larger = 0;
+    let mut last_smaller = 0;
     let mut num_pivots = 0;
     for i in 0..nv {
         let bv = f(&v[i]);
-        if bv <= pivot {
-            v.swap(first_larger, i);
-            first_larger += 1;
+        if bv < pivot {
+            v.swap(last_smaller + num_pivots, i);
+            v.swap(last_smaller + num_pivots, last_smaller);
+            last_smaller += 1;
+        } else if bv == pivot {
+            v.swap(last_smaller + num_pivots, i);
+            num_pivots += 1;
         }
     }
-    let mut pivot_idx = first_larger - 1;
+    let mut pivot_idx = last_smaller;
 
     // We can do this because if pivot_idx == 0, then all
     // of the values are larger than the pivot...
@@ -166,9 +170,9 @@ pub fn partition_by<T, F, B>(v: &mut [T], f: F)
     debug_assert!(right.len() > 0);
     debug_assert!(left.len() > 0);
 
-    if pivot_idx < (nv / 2) {
+    if pivot_idx + num_pivots < (nv / 2) {
         partition_by(right, f);
-    } else {
+    } else if pivot_idx > (nv / 2) {
         partition_by(left, f);
     }
 }
@@ -476,10 +480,8 @@ mod tests {
             }
         }
 
-        println!("Problem");
         rs = [-2, -4, 2, 2, 2, 4, 4, 4, 4, 4, 4, -5];
         partition_by(&mut rs, |x| *x);
-        println!("Result: {:?}", rs);
 
         let m3 = rs.len() / 2;
         for i in 0..m3 {
@@ -487,6 +489,16 @@ mod tests {
                 assert!(rs[i] <= rs[j]);
             }
         }
+    }
+
+    #[test]
+    fn it_can_partition_points() {
+        let mut pts = vec![
+            ::geometry::point::Point::new_with(1.0, 1.0, -1.0),
+            ::geometry::point::Point::new_with(-2.0, 2.0, -2.0),
+            ::geometry::point::Point::new_with(2.0, 2.0, -2.0)];
+        partition_by(&mut pts, |p| p[0]);
+        assert_eq!(pts[0][0], -2.0);
     }
 
     #[test]
