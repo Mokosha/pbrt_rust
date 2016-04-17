@@ -3,6 +3,7 @@ use geometry::point::Point;
 
 use utils::partition_by;
 
+#[derive(Debug, PartialEq, Clone)]
 struct KdNode {
     split_pos: f32,
     split_axis: usize,
@@ -84,12 +85,13 @@ fn recursive_build<NodeData: HasPoint+Clone>(build_nodes: &mut [&NodeData],
     }
 }
 
-pub struct KdTree<NodeData: HasPoint+Clone> {
+#[derive(Debug, Clone)]
+pub struct KdTree<NodeData: HasPoint+Clone+::std::fmt::Debug> {
     nodes: Vec<KdNode>,
     node_data: Vec<NodeData>
 }
 
-impl<NodeData: HasPoint+Clone> KdTree<NodeData> {
+impl<NodeData: HasPoint+Clone+::std::fmt::Debug> KdTree<NodeData> {
     pub fn new(d: &Vec<NodeData>) -> KdTree<NodeData> {
         let num_nodes = d.len();
         let mut nodes = Vec::with_capacity(num_nodes);
@@ -109,6 +111,7 @@ impl<NodeData: HasPoint+Clone> KdTree<NodeData> {
     fn private_lookup<U: KdTreeProc<NodeData>>(&self, node_num: usize, m: &Point,
                                                p: &mut U, max_dist_sq: &mut f32) {
         let node = &self.nodes[node_num];
+        // println!("num: {:?} -- {:?}", node_num, node);
 
         // Process kd-tree node's children
         let axis = node.split_axis;
@@ -119,7 +122,7 @@ impl<NodeData: HasPoint+Clone> KdTree<NodeData> {
             let on_left = m[axis] <= node.split_pos;
             let can_left = node.has_left_child;
 
-            let on_right = !on_left;
+            let on_right = m[axis] >= node.split_pos;
             let can_right = node.right_child < self.size();
 
             let look_left = (look_both || on_left) && can_left;
@@ -136,6 +139,7 @@ impl<NodeData: HasPoint+Clone> KdTree<NodeData> {
 
         // Hand kd-tree node to processing function
         let dist_sq = (self.node_data[node_num].p() - m).length_squared();
+        // println!("num: {:?} -- {:?}", node_num, dist_sq);
         if dist_sq <= *max_dist_sq {
             p.run(m, &self.node_data[node_num], dist_sq, max_dist_sq);
         }
@@ -152,6 +156,21 @@ impl<NodeData: HasPoint+Clone> KdTree<NodeData> {
 mod tests {
     use super::*;
     use geometry::point::Point;
+
+    struct PointCounter {
+        counter: usize
+    }
+
+    impl PointCounter {
+        fn new() -> PointCounter { PointCounter { counter: 0 } }
+    }
+
+    impl<T: HasPoint> KdTreeProc<T> for PointCounter {
+        fn run(&mut self, _: &Point, data: &T, _: f32, _: &mut f32) {
+            // println!("Found point: {:?}", data.p());
+            self.counter += 1;
+        }
+    }
 
     fn box_at(p: f32) -> Vec<Point> {
         vec![
@@ -172,9 +191,39 @@ mod tests {
         assert_eq!(kdtree.size(), points.len());
     }
 
-    #[ignore]
     #[test]
     fn it_can_find_points() {
+        let mut points = box_at(1.0);
+        points.append(&mut box_at(2.0));
+
+        let kdtree = KdTree::new(&points);
+
+        {
+            let mut ctr = PointCounter::new();
+            kdtree.lookup(&Point::new_with(1.5, 1.5, 1.5), &mut ctr, 0.76);
+            assert_eq!(ctr.counter, 2);
+        }
+
+        {
+            let mut ctr = PointCounter::new();
+            kdtree.lookup(&Point::new_with(1.5, 1.5, 1.5), &mut ctr, 0.74);
+            assert_eq!(ctr.counter, 0);
+        }
+
+        {
+            let mut ctr = PointCounter::new();
+            kdtree.lookup(&Point::new_with(0.0, 0.0, 0.0), &mut ctr, 3f32 - 1e-6);
+            assert_eq!(ctr.counter, 0);
+            // println!("TESTCASE");
+            kdtree.lookup(&Point::new_with(0.0, 0.0, 0.0), &mut ctr, 3f32 + 1e-6);
+            // assert_eq!(ctr.counter, 8);
+        }
+
+        {
+            let mut ctr = PointCounter::new();
+            kdtree.lookup(&Point::new_with(0.0, 0.0, 0.0), &mut ctr, 12f32 + 1e-6);
+            assert_eq!(ctr.counter, 16);
+        }
     }
 
     #[ignore]
