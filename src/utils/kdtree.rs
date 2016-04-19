@@ -222,8 +222,51 @@ mod tests {
         }
     }
 
-    #[ignore]
+    struct PointCounter2 {
+        counter: usize
+    }
+
+    impl PointCounter2 {
+        fn new() -> PointCounter2 { PointCounter2 { counter: 0 } }
+    }
+
+    impl<T: HasPoint> KdTreeProc<T> for PointCounter2 {
+        fn run(&mut self, _: &Point, data: &T, _: f32, rsq: &mut f32) {
+            self.counter += 1;
+            *rsq = 0.0;
+        }
+    }
+
     #[test]
     fn it_can_run_procedures() {
+        let mut points = box_at(1.0);
+        points.append(&mut box_at(2.0));
+        let kdtree = KdTree::new(&points);
+
+        {
+            let mut ctr = PointCounter2::new();
+            kdtree.lookup(&Point::new_with(1.5, 1.5, 1.5), &mut ctr, 0.76);
+            assert_eq!(ctr.counter, 1);
+        }
+
+        {
+            let mut ctr = PointCounter2::new();
+            kdtree.lookup(&Point::new_with(1.5, 1.5, 1.5), &mut ctr, 0.74);
+            assert_eq!(ctr.counter, 0);
+        }
+
+        {
+            let mut ctr = PointCounter2::new();
+            kdtree.lookup(&Point::new_with(0.0, 0.0, 0.0), &mut ctr, 3f32 - 1e-6);
+            assert_eq!(ctr.counter, 0);
+            kdtree.lookup(&Point::new_with(0.0, 0.0, 0.0), &mut ctr, 3f32 + 1e-6);
+            assert_eq!(ctr.counter, 1);
+        }
+
+        {
+            let mut ctr = PointCounter2::new();
+            kdtree.lookup(&Point::new_with(0.0, 0.0, 0.0), &mut ctr, 12f32 + 1e-6);
+            assert_eq!(ctr.counter, 1);
+        }
     }
 }
