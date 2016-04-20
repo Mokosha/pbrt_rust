@@ -5,6 +5,7 @@ use geometry::vector::Vector;
 use spectrum::Spectrum;
 use utils::Degrees;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct OrenNayar {
     r: Spectrum,
     a: f32,

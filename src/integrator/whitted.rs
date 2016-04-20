@@ -1,4 +1,5 @@
 use bsdf::BxDF;
+use bsdf::BSDF_ALL;
 use geometry::vector::Dot;
 use integrator::Integrator;
 use integrator::SurfaceIntegrator;
@@ -52,7 +53,7 @@ impl WhittedIntegrator {
                                LightSample::new(rng), ray.time.clone());
             if li.is_black() || pdf == 0f32 { l_acc }
             else {
-                let f = bsdf.f(&wo, &wi);
+                let f = bsdf.f(wo.clone(), wi.clone(), BSDF_ALL);
                 if f.is_black() || !visibility.unoccluded(scene) { l_acc }
                 else {
                     l_acc +

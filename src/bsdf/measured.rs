@@ -53,6 +53,7 @@ impl HasPoint for IrregIsotropicSample {
     fn p<'a>(&'a self) -> &'a Point { &(self.p) }
 }
 
+#[derive(Debug, Clone)]
 pub struct IrregIsotropic {
     iso_data: KdTree<IrregIsotropicSample>
 }
@@ -116,6 +117,7 @@ impl BxDF for IrregIsotropic {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct RegularHalfangle {
     num_theta_h: usize,
     num_theta_d: usize,

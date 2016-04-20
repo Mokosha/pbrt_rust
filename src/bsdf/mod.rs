@@ -9,9 +9,14 @@ pub mod specular;
 
 use bsdf::utils::*;
 use diff_geom::DifferentialGeometry;
-use geometry::vector::Vector;
+use geometry::vector::*;
+use geometry::normal::*;
 use rng::RNG;
 use spectrum::Spectrum;
+
+use std::clone::Clone;
+use std::fmt::Debug;
+use std::marker::Sized;
 
 bitflags! {
     pub flags BxDFType: u32 {
@@ -31,7 +36,7 @@ bitflags! {
     }
 }
 
-pub trait BxDF {
+pub trait BxDF : Debug + 'static {
     fn matches_flags(&self, BxDFType) -> bool;
     fn f(&self, &Vector, &Vector) -> Spectrum;
     fn sample_f(&self, &Vector, f32, f32) -> (Vector, f32, Spectrum);
@@ -50,39 +55,85 @@ impl BSDFSample {
     pub fn new(rng: &mut RNG) -> BSDFSample { BSDFSample }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BSDF {
-    pub dg_shading: DifferentialGeometry
+    pub dg_shading: DifferentialGeometry,
+    pub eta: f32,
+    nn: Normal,
+    ng: Normal,
+    sn: Vector,
+    tn: Vector,
+    bxdfs: Vec<Box<BxDF>>
 }
 
 impl BSDF {
-    pub fn new() -> BSDF {
+    pub fn new(dg: DifferentialGeometry, n_geom: Normal, e: f32) -> BSDF {
+        let shading_normal = dg.nn.clone();
+        let shading_normal_t = dg.dpdu.clone().normalize();
+        let shading_normal_s = Vector::from(shading_normal.clone()).cross(&shading_normal_t);
+
         BSDF {
-            dg_shading: DifferentialGeometry::new()
+            dg_shading: dg,
+            eta: e,
+            nn: shading_normal,
+            ng: n_geom,
+            sn: shading_normal_s,
+            tn: shading_normal_t,
+            bxdfs: Vec::with_capacity(8)
         }
     }
 
-    pub fn sample_bsdf_f(&self, vo: &Vector, sample: BSDFSample,
-                         bxdf_type: BxDFType) -> (Vector, f32, Spectrum) {
+    pub fn add_bxdf<T: BxDF>(&mut self, bxdf: T) {
+        self.bxdfs.push(Box::new(bxdf));
+    }
+
+    pub fn num_components(&self) -> usize { self.bxdfs.len() }
+    pub fn num_components_matching(&self, flags: BxDFType) -> usize {
+        self.bxdfs.iter().fold(0, |acc, bxdf| {
+            if bxdf.matches_flags(flags) {
+                acc + 1
+            } else {
+                acc
+            }
+        })
+    }
+
+    pub fn world_to_local(&self, v: Vector) -> Vector {
+        Vector::new_with(v.dot(&self.sn), v.dot(&self.tn), v.dot(&self.nn))
+    }
+
+    pub fn local_to_world(&self, v: Vector) -> Vector {
+        Vector::new_with(self.sn.x * v.x + self.tn.x * v.y + self.nn.x * v.z,
+                         self.sn.y * v.x + self.tn.y * v.y + self.nn.y * v.z,
+                         self.sn.z * v.x + self.tn.z * v.y + self.nn.z * v.z)
+    }
+
+    pub fn f(&self, wo_w: Vector, wi_w: Vector, in_flags: BxDFType) -> Spectrum {
+        let flags = if wi_w.dot(&self.ng) * wo_w.dot(&self.ng) > 0.0 {
+            in_flags & !BSDF_TRANSMISSION
+        } else {
+            in_flags & !BSDF_REFLECTION
+        };
+
+        let wo = self.world_to_local(wo_w);
+        let wi = self.world_to_local(wi_w);
+
+        self.bxdfs.iter().fold(Spectrum::from(0.0), |f, bxdf| {
+            if bxdf.matches_flags(flags) {
+                f + bxdf.f(&wo, &wi)
+            } else {
+                f
+            }
+        })
+    }
+
+    pub fn sample_f(&self, vo: &Vector, sample: BSDFSample,
+                    bxdf_type: BxDFType) -> (Vector, f32, Spectrum) {
         unimplemented!()
     }
 }
 
-impl BxDF for BSDF {
-    fn matches_flags(&self, ty: BxDFType) -> bool {
-        unimplemented!()
-    }
-
-    fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
-        unimplemented!()
-    }
-
-    fn sample_f(&self, wo: &Vector, u1: f32,
-                u2: f32) -> (Vector, f32, Spectrum) {
-        unimplemented!()
-    }
-}
-
+#[derive(Debug, Clone)]
 pub struct BRDFtoBTDF<T: BxDF> {
     brdf: T
 }
@@ -120,6 +171,7 @@ impl<T: BxDF> BxDF for BRDFtoBTDF<T> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ScaledBxDF<T: BxDF> {
     bxdf: T,
     scale: Spectrum

@@ -21,6 +21,13 @@ impl Normal {
     pub fn face_forward(self, v: &Vector) -> Normal {
         if self.clone().dot(v) < 0f32 { -self } else { self }
     }
+
+    pub fn cross(self, v2: &Normal) -> Normal {
+        Normal::new_with(
+            (self.y * v2.z) - (self.z * v2.y),
+            (self.z * v2.x) - (self.x * v2.z),
+            (self.x * v2.y) - (self.y * v2.x))
+    }
 }
 
 impl<'a> ::std::convert::From<&'a Vector> for Normal {

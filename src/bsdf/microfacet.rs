@@ -8,6 +8,7 @@ use geometry::vector::Dot;
 use spectrum::Spectrum;
 use utils::Degrees;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MicrofacetDistribution {
     Blinn(f32),
     Anisotropic(f32, f32)
@@ -49,6 +50,7 @@ impl MicrofacetDistribution {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Microfacet {
     r: Spectrum,
     distribution: MicrofacetDistribution,
@@ -101,6 +103,7 @@ impl BxDF for Microfacet {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct FresnelBlend {
     r_d: Spectrum,
     r_s: Spectrum,

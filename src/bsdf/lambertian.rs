@@ -3,6 +3,7 @@ use bsdf::BxDF;
 use geometry::vector::Vector;
 use spectrum::Spectrum;
 
+#[derive(Debug, Clone)]
 pub struct Lambertian {
     r: Spectrum
 }
