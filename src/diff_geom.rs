@@ -3,6 +3,7 @@ use geometry::normal::Normalize;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use shape::ShapeBase;
+use ray::RayDifferential;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct DifferentialGeometry {
@@ -53,6 +54,10 @@ impl DifferentialGeometry {
             dndu: _dndu,
             dndv: _dndv
         }
+    }
+
+    pub fn compute_differentials(&mut self, ray: &RayDifferential) {
+        unimplemented!()
     }
 }
 

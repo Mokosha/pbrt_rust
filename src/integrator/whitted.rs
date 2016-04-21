@@ -37,7 +37,9 @@ impl WhittedIntegrator {
         // Compute emitted and reflected light at ray intersection point
         // Evaluate BSDF at hit point
         let ray = &rayd.ray;
-        let bsdf = isect.get_bsdf();
+        let bsdf = if let Some(b) = isect.get_bsdf(rayd) { b } else {
+            return Spectrum::from(0.0)
+        };
 
         // Initialize common variables for Whitted Integrator
         let p = &(bsdf.dg_shading.p);

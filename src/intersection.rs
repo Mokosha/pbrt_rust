@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
 use bsdf::BSDF;
+use bsdf::bssrdf::BSSRDF;
 use diff_geom::DifferentialGeometry;
 use geometry::normal::Normal;
 use geometry::vector::Vector;
 use primitive::Primitive;
 use ray::Ray;
+use ray::RayDifferential;
 use spectrum::Spectrum;
 use transform::transform::Transform;
 
@@ -37,7 +39,24 @@ impl Intersection {
         }
     }
 
-    pub fn get_bsdf(&self) -> &BSDF { &self.bsdf }
+    pub fn get_bsdf(&self, ray: &RayDifferential) -> Option<BSDF> {
+        let mut new_dg = self.dg.clone();
+        new_dg.compute_differentials(ray);
+        match self.primitive {
+            None => None,
+            Some(ref p) => p.get_bsdf(new_dg, &self.object_to_world)
+        }
+    }
+
+    pub fn get_bssrdf(&self, ray: &RayDifferential) -> Option<BSSRDF> {
+        let mut new_dg = self.dg.clone();
+        new_dg.compute_differentials(ray);
+        match self.primitive {
+            None => None,
+            Some(ref p) => p.get_bssrdf(new_dg, &self.object_to_world)
+        }
+    }
+
     pub fn le(&self, dir: &Vector) -> Spectrum { Spectrum::from(0f32) }
 }
 
