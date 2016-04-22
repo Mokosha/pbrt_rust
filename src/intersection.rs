@@ -20,7 +20,6 @@ pub struct Intersection {
     pub shape_id: usize,
     pub primitive_id: usize,
     pub ray_epsilon: f32,
-    bsdf: BSDF
 }
 
 impl Intersection {
@@ -35,7 +34,6 @@ impl Intersection {
             shape_id: sid,
             primitive_id: pid,
             ray_epsilon: ray_eps,
-            bsdf: BSDF::new(_dg, Normal::new(), 1.0)
         }
     }
 
