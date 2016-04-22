@@ -1,6 +1,14 @@
-use diff_geom::DifferentialGeometry;
+mod matte;
+
 use bsdf::BSDF;
 use bsdf::bssrdf::BSSRDF;
+use diff_geom::DifferentialGeometry;
+use texture::Texture;
+
+pub fn bump(_: &Texture<f32>, _: &DifferentialGeometry,
+            _: &DifferentialGeometry) -> DifferentialGeometry {
+    unimplemented!()
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Material;

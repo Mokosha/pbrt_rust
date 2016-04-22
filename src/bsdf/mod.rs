@@ -67,7 +67,7 @@ pub struct BSDF {
 }
 
 impl BSDF {
-    pub fn new(dg: DifferentialGeometry, n_geom: Normal, e: f32) -> BSDF {
+    pub fn new_with_eta(dg: DifferentialGeometry, n_geom: Normal, e: f32) -> BSDF {
         let shading_normal = dg.nn.clone();
         let shading_normal_t = dg.dpdu.clone().normalize();
         let shading_normal_s = Vector::from(shading_normal.clone()).cross(&shading_normal_t);
@@ -81,6 +81,10 @@ impl BSDF {
             tn: shading_normal_t,
             bxdfs: Vec::with_capacity(8)
         }
+    }
+
+    pub fn new(dg: DifferentialGeometry, n_geom: Normal) -> BSDF {
+        BSDF::new_with_eta(dg, n_geom, 1.0)
     }
 
     pub fn add_bxdf<T: BxDF>(&mut self, bxdf: T) {
