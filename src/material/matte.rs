@@ -10,16 +10,18 @@ use utils::Clamp;
 
 use material::bump;
 
-pub struct Matte {
+#[derive(Clone, PartialEq, Debug)]
+pub struct MatteMaterial {
     sigma: Arc<Texture<f32>>,
     bump_map: Option<Arc<Texture<f32>>>,
     k_d: Arc<Texture<Spectrum>>
 }
 
-impl Matte {
+impl MatteMaterial {
     pub fn new(kd: Arc<Texture<Spectrum>>,
-               sig: Arc<Texture<f32>>, bump_map: Option<Arc<Texture<f32>>>) -> Matte {
-        Matte {
+               sig: Arc<Texture<f32>>,
+               bump_map: Option<Arc<Texture<f32>>>) -> MatteMaterial {
+        MatteMaterial {
             sigma: sig,
             bump_map: bump_map,
             k_d: kd
