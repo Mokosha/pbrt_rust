@@ -1,4 +1,5 @@
 mod matte;
+mod plastic;
 
 use std::sync::Arc;
 
