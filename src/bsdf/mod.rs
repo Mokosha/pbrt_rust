@@ -13,7 +13,7 @@ use geometry::vector::*;
 use geometry::normal::*;
 use rng::RNG;
 use spectrum::Spectrum;
-use utils::Lerp;
+use utils::Clamp;
 
 use std::clone::Clone;
 use std::fmt::Debug;
@@ -113,6 +113,21 @@ impl BSDF {
                          self.sn.z * v.x + self.tn.z * v.y + self.nn.z * v.z)
     }
 
+    pub fn mix_with(self, other: BSDF, s: Spectrum) -> BSDF {
+        let s2 = (Spectrum::from(1.0) - s.clone()).clamp(0.0, ::std::f32::MAX);
+
+        let mut ret = BSDF::new_with_eta(self.dg_shading.clone(), self.ng.clone(), self.eta);
+        for b in self.bxdfs.into_iter() {
+            ret.add_bxdf(ScaledBxDF::new(b, s.clone()));
+        }
+
+        for b in other.bxdfs.into_iter() {
+            ret.add_bxdf(ScaledBxDF::new(b, s2.clone()));
+        }
+
+        ret
+    }
+
     pub fn f(&self, wo_w: Vector, wi_w: Vector, in_flags: BxDFType) -> Spectrum {
         let flags = if wi_w.dot(&self.ng) * wo_w.dot(&self.ng) > 0.0 {
             in_flags & !BSDF_TRANSMISSION
@@ -176,14 +191,14 @@ impl<T: BxDF> BxDF for BRDFtoBTDF<T> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ScaledBxDF<T: BxDF> {
-    bxdf: T,
+#[derive(Debug)]
+pub struct ScaledBxDF {
+    bxdf: Box<BxDF>,
     scale: Spectrum
 }
 
-impl<T: BxDF> ScaledBxDF<T> {
-    pub fn new(input: T, sc: Spectrum) -> ScaledBxDF<T> {
+impl ScaledBxDF {
+    pub fn new(input: Box<BxDF>, sc: Spectrum) -> ScaledBxDF {
         ScaledBxDF {
             bxdf: input,
             scale: sc
@@ -191,7 +206,7 @@ impl<T: BxDF> ScaledBxDF<T> {
     }
 }
 
-impl<T: BxDF> BxDF for ScaledBxDF<T> {
+impl BxDF for ScaledBxDF {
     fn matches_flags(&self, ty: BxDFType) -> bool {
         self.bxdf.matches_flags(ty)
     }
@@ -212,23 +227,5 @@ impl<T: BxDF> BxDF for ScaledBxDF<T> {
 
     fn rho_hh(&self, samples1: &[f32], samples2: &[f32]) -> Spectrum {
         self.bxdf.rho_hh(samples1, samples2) * self.scale
-    }
-}
-
-impl Lerp<Spectrum> for BSDF {
-    fn lerp(&self, other: &BSDF, t: Spectrum) -> BSDF {
-        let n1 = self.num_components();
-        let n2 = other.num_components();
-
-        let mut ret = BSDF::new_with_eta(self.dg_shading, self.ng, self.eta);
-        for &b in self.bxdfs.iter() {
-            ret.add_bxdf(ScaledBxDF::new(b.clone(), t.clone()));
-        }
-
-        for &b in other.bxdfs.iter() {
-            ret.add_bxdf(ScaledBxDF::new(b.clone(), Spectrum::from(1.0) - t.clone()));
-        }
-
-        ret
     }
 }
