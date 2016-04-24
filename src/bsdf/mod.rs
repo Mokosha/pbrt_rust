@@ -13,6 +13,7 @@ use geometry::vector::*;
 use geometry::normal::*;
 use rng::RNG;
 use spectrum::Spectrum;
+use utils::Lerp;
 
 use std::clone::Clone;
 use std::fmt::Debug;
@@ -214,3 +215,20 @@ impl<T: BxDF> BxDF for ScaledBxDF<T> {
     }
 }
 
+impl Lerp<Spectrum> for BSDF {
+    fn lerp(&self, other: &BSDF, t: Spectrum) -> BSDF {
+        let n1 = self.num_components();
+        let n2 = other.num_components();
+
+        let mut ret = BSDF::new_with_eta(self.dg_shading, self.ng, self.eta);
+        for &b in self.bxdfs.iter() {
+            ret.add_bxdf(ScaledBxDF::new(b.clone(), t.clone()));
+        }
+
+        for &b in other.bxdfs.iter() {
+            ret.add_bxdf(ScaledBxDF::new(b.clone(), Spectrum::from(1.0) - t.clone()));
+        }
+
+        ret
+    }
+}
