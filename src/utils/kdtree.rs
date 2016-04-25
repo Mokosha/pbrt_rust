@@ -85,7 +85,7 @@ fn recursive_build<NodeData: HasPoint+Clone+::std::fmt::Debug>(build_nodes: &mut
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct KdTree<NodeData: HasPoint+Clone+::std::fmt::Debug> {
     nodes: Vec<KdNode>,
     node_data: Vec<NodeData>

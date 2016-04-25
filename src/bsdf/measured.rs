@@ -35,7 +35,7 @@ fn brdf_remap(wo: &Vector, wi: &Vector) -> Point {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct IrregIsotropicSample {
+pub struct IrregIsotropicSample {
     p: Point,
     v: Spectrum
 }
@@ -59,7 +59,7 @@ pub struct IrregIsotropic {
 }
 
 impl IrregIsotropic {
-    fn new(data: KdTree<IrregIsotropicSample>) -> IrregIsotropic {
+    pub fn new(data: KdTree<IrregIsotropicSample>) -> IrregIsotropic {
         IrregIsotropic { iso_data: data }
     }
 }
