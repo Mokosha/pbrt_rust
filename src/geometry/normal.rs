@@ -18,8 +18,8 @@ impl Normal {
         Normal { x: x_, y: y_, z: z_ }
     }
 
-    pub fn face_forward(self, v: &Vector) -> Normal {
-        if self.clone().dot(v) < 0f32 { -self } else { self }
+    pub fn face_forward(self, v: Vector) -> Normal {
+        if self.clone().dot(&v) < 0f32 { -self } else { self }
     }
 
     pub fn cross(self, v2: &Normal) -> Normal {
@@ -412,16 +412,16 @@ mod tests {
     fn it_can_be_turned_around() {
         let n = Normal::new_with(1f32, 0f32, 0f32);
 
-        assert_eq!(n.clone().face_forward(&Vector::new_with(-1f32, -1f32, -1f32)), -(&n));
-        assert_eq!(n.clone().face_forward(&Vector::new_with(1f32, 1f32, 1f32)), n);
-        assert_eq!(n.clone().face_forward(&Vector::new_with(f32::NAN, 1f32, 1f32)), n);
-        assert_eq!(n.clone().face_forward(&Vector::new_with(1f32, f32::NAN, 1f32)), n);
-        assert_eq!(n.clone().face_forward(&Vector::new_with(1f32, 1f32, f32::NAN)), n);
-        assert_eq!(n.clone().face_forward(&Vector::new_with(f32::INFINITY, 1f32, 1f32)), n);
-        assert_eq!(n.clone().face_forward(&Vector::new_with(1f32, f32::INFINITY, 1f32)), n);
-        assert_eq!(n.clone().face_forward(&Vector::new_with(1f32, 1f32, f32::INFINITY)), n);
-        assert_eq!(n.clone().face_forward(&Vector::new_with(f32::NEG_INFINITY, 1f32, 1f32)), -(&n));
-        assert_eq!(n.clone().face_forward(&Vector::new_with(1f32, f32::NEG_INFINITY, 1f32)), n);
-        assert_eq!(n.clone().face_forward(&Vector::new_with(1f32, 1f32, f32::NEG_INFINITY)), n);
+        assert_eq!(n.clone().face_forward(Vector::new_with(-1f32, -1f32, -1f32)), -(&n));
+        assert_eq!(n.clone().face_forward(Vector::new_with(1f32, 1f32, 1f32)), n);
+        assert_eq!(n.clone().face_forward(Vector::new_with(f32::NAN, 1f32, 1f32)), n);
+        assert_eq!(n.clone().face_forward(Vector::new_with(1f32, f32::NAN, 1f32)), n);
+        assert_eq!(n.clone().face_forward(Vector::new_with(1f32, 1f32, f32::NAN)), n);
+        assert_eq!(n.clone().face_forward(Vector::new_with(f32::INFINITY, 1f32, 1f32)), n);
+        assert_eq!(n.clone().face_forward(Vector::new_with(1f32, f32::INFINITY, 1f32)), n);
+        assert_eq!(n.clone().face_forward(Vector::new_with(1f32, 1f32, f32::INFINITY)), n);
+        assert_eq!(n.clone().face_forward(Vector::new_with(f32::NEG_INFINITY, 1f32, 1f32)), -(&n));
+        assert_eq!(n.clone().face_forward(Vector::new_with(1f32, f32::NEG_INFINITY, 1f32)), n);
+        assert_eq!(n.clone().face_forward(Vector::new_with(1f32, 1f32, f32::NEG_INFINITY)), n);
     }
 }
