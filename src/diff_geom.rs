@@ -15,7 +15,11 @@ pub struct DifferentialGeometry {
     pub dpdu: Vector,
     pub dpdv: Vector,
     pub dndu: Normal,
-    pub dndv: Normal
+    pub dndv: Normal,
+    pub dudx: f32,
+    pub dudy: f32,
+    pub dvdx: f32,
+    pub dvdy: f32,
 }
 
 impl DifferentialGeometry {
@@ -29,7 +33,11 @@ impl DifferentialGeometry {
             dpdu: Vector::new(),
             dpdv: Vector::new(),
             dndu: Normal::new(),
-            dndv: Normal::new()
+            dndv: Normal::new(),
+            dudx: 0.0,
+            dudy: 0.0,
+            dvdx: 0.0,
+            dvdy: 0.0,
         }
     }
 
@@ -52,7 +60,11 @@ impl DifferentialGeometry {
             dpdu: _dpdu,
             dpdv: _dpdv,
             dndu: _dndu,
-            dndv: _dndv
+            dndv: _dndv,
+            dudx: 0.0,
+            dudy: 0.0,
+            dvdx: 0.0,
+            dvdy: 0.0,
         }
     }
 
