@@ -28,7 +28,7 @@ pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
 
     dg_eval.p = &dg_shading.p + du * &dg_shading.dpdu;
     dg_eval.u = dg_shading.u + du;
-    dg_eval.nn = Normal::from(dg_shading.dpdu.clone().cross(&dg_shading.dpdv) + du * &dg_shading.dndu).normalize();
+    dg_eval.nn = Normal::from(dg_shading.dpdu.cross_with(&dg_shading.dpdv) + du * &dg_shading.dndu).normalize();
 
     let u_displace = d.evaluate(&dg_eval);
 
@@ -41,7 +41,7 @@ pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
     dg_eval.p = &dg_shading.p + dv * &dg_shading.dpdv;
     dg_eval.u = dg_shading.u;
     dg_eval.v = dg_shading.v + dv;
-    dg_eval.nn = Normal::from(dg_shading.dpdu.clone().cross(&dg_shading.dpdv) + dv * &dg_shading.dndv).normalize();
+    dg_eval.nn = Normal::from(dg_shading.dpdu.cross_with(&dg_shading.dpdv) + dv * &dg_shading.dndv).normalize();
 
     let v_displace = d.evaluate(&dg_eval);
     let displace = d.evaluate(dg_shading);
@@ -54,7 +54,7 @@ pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
     dg_bump.dpdv = &dg_shading.dpdv
         + (v_displace - displace) / dv * Vector::from(dg_shading.nn.clone())
         + displace * Vector::from(dg_shading.dndv.clone());
-    dg_bump.nn = Normal::from(dg_bump.dpdu.clone().cross(&dg_bump.dpdv).normalize());
+    dg_bump.nn = Normal::from(dg_bump.dpdu.cross_with(&dg_bump.dpdv).normalize());
     if let Some(ref s) = dg_shading.shape {
         if s.reverse_orientation ^ s.transform_swaps_handedness {
             dg_bump.nn = Normal::new_with(-dg_bump.nn.x, -dg_bump.nn.y, -dg_bump.nn.z);

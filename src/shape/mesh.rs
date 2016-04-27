@@ -8,6 +8,7 @@ use diff_geom::DifferentialGeometry;
 use geometry::normal::Normal;
 use geometry::normal::Normalize;
 use geometry::point::Point;
+use geometry::vector::Cross;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
 use intersection::Intersectable;
@@ -43,7 +44,7 @@ impl Triangle {
 
         let e1 = &p2 - &p1;
         let e2 = &p3 - &p1;
-        let s1 = r.d.clone().cross(&e2);
+        let s1 = r.d.cross_with(&e2);
         let divisor = s1.dot(&e1);
         if divisor == 0f32 {
             return None;
@@ -58,7 +59,7 @@ impl Triangle {
         }
 
         // Compute second barycentric coordinate
-        let s2 = s.clone().cross(&e1);
+        let s2 = s.cross_with(&e1);
         let b2 = r.d.dot(&s2) * inv_divisor;
         if b2 < 0.0 || (b1 + b2) > 1.0 {
             return None;
@@ -98,7 +99,7 @@ impl Triangle {
 
     pub fn area(&self) -> f32 {
         let (p1, p2, p3) = self.get_vertices();
-        0.5 * (&p2 - &p1).cross(&(&p3 - &p1)).length()
+        0.5 * (&p2 - &p1).into_cross(&p3 - &p1).length()
     }
 
     pub fn get_shading_geometry(&self, o2w: &Transform,
@@ -148,10 +149,10 @@ impl Triangle {
                 }
             };
 
-            let ts = ss.cross(&Vector::from(ns.clone()));
+            let ts = ss.cross(Vector::from(ns.clone()));
             if ts.length_squared() > 0f32 {
                 (ts.clone().normalize(),
-                 Vector::from(ns).cross(&Vector::from(ts)))
+                 Vector::from(ns).cross(Vector::from(ts)))
             } else {
                 coordinate_system(&Vector::from(ns))
             }
@@ -234,7 +235,7 @@ impl Intersectable<ShapeIntersection> for Triangle {
             if determinant == 0.0 {
                 // Handle zero determinant for triangle partial
                 // derivatives matrix
-                coordinate_system(&((&p3 - &p1).cross(&(&p2 - &p1)).normalize()))
+                coordinate_system(&(&p3 - &p1).into_cross(&p2 - &p1).normalize())
             } else {
                 let inv_det = 1.0 / determinant;
                 (( dv2 * &dp1 - dv1 * &dp2) * inv_det,

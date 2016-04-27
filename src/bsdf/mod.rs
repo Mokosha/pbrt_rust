@@ -71,7 +71,9 @@ impl BSDF {
     pub fn new_with_eta(dg: DifferentialGeometry, n_geom: Normal, e: f32) -> BSDF {
         let shading_normal = dg.nn.clone();
         let shading_normal_t = dg.dpdu.clone().normalize();
-        let shading_normal_s = Vector::from(shading_normal.clone()).cross(&shading_normal_t);
+        let shading_normal_s =
+            Vector::from(shading_normal.clone())
+            .into_cross_with(&shading_normal_t);
 
         BSDF {
             dg_shading: dg,

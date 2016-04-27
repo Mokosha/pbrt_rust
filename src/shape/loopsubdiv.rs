@@ -9,6 +9,7 @@ use bbox::Union;
 use geometry::normal::Normal;
 use geometry::normal::Normalize;
 use geometry::point::Point;
+use geometry::vector::Cross;
 use geometry::vector::Vector;
 use primitive::Refinable;
 use shape::mesh::Mesh;
@@ -612,7 +613,7 @@ impl Refinable<Mesh> for LoopSubdiv {
                 }
             }
 
-            Normal::from(s.cross(&t).normalize())
+            Normal::from(s.into_cross(t).normalize())
         }).collect();
 
         // Create TriangleMesh from subdivision mesh

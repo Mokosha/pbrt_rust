@@ -3,6 +3,7 @@ use bbox::Union;
 use geometry::normal::Normal;
 use geometry::normal::Normalize;
 use geometry::point::Point;
+use geometry::vector::Cross;
 use geometry::vector::Vector;
 use quaternion::Quaternion;
 use ray::Ray;
@@ -151,8 +152,8 @@ impl Transform {
 
         // Initialize first three columns of viewing matrix
         let dir = (look - pos).normalize();
-        let left = up.clone().normalize().cross(&dir).normalize();
-        let new_up = dir.clone().cross(&left);
+        let left = up.clone().normalize().into_cross_with(&dir).normalize();
+        let new_up = dir.cross_with(&left);
 
         m[0][0] = left.x;
         m[1][0] = left.y;

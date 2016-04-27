@@ -6,6 +6,22 @@ pub trait Dot<T = Self> {
     fn abs_dot(&self, b: &T) -> f32 { self.dot(b).abs() }
 }
 
+pub trait Cross : Sized {
+    fn cross_with(&self, v: &Self) -> Self;
+
+    fn into_cross(self, v: Self) -> Self {
+        self.cross_with(&v)
+    }
+
+    fn into_cross_with(self, v: &Self) -> Self {
+        self.cross_with(v)
+    }
+
+    fn cross(&self, v: Self) -> Self {
+        self.cross_with(&v)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Vector {
     pub x: f32,
@@ -29,13 +45,6 @@ impl Vector {
 
     pub fn length(&self) -> f32 {
         self.length_squared().sqrt()
-    }
-
-    pub fn cross(self, v2: &Vector) -> Vector {
-        Vector::new_with(
-            (self.y * v2.z) - (self.z * v2.y),
-            (self.z * v2.x) - (self.x * v2.z),
-            (self.x * v2.y) - (self.y * v2.x))
     }
 }
 
@@ -164,6 +173,15 @@ impl Dot for Vector {
     }
 }
 
+impl Cross for Vector {
+    fn cross_with(&self, v: &Self) -> Self {
+        Vector::new_with(
+            (self.y * v.z) - (self.z * v.y),
+            (self.z * v.x) - (self.x * v.z),
+            (self.x * v.y) - (self.y * v.x))
+    }
+}
+
 impl Lerp<f32> for Vector {
     fn lerp(&self, b: &Vector, t: f32) -> Vector {
         (1f32 - t) * self + t * b
@@ -179,8 +197,8 @@ pub fn coordinate_system(v1: &Vector) -> (Vector, Vector) {
             let inv_len = 1f32 / ((v1.y * v1.y + v1.z * v1.z).sqrt());
             Vector::new_with(0f32, v1.z * inv_len, -v1.y * inv_len)
         };
-    let v3 = v1.clone().cross(&v2);
-    (v3.clone().cross(&v1), v3)
+    let v3 = v1.cross(v2);
+    (v3.cross_with(v1), v3)
 }
 
 pub fn spherical_direction_for_basis(sintheta: f32, costheta: f32, phi: f32,
@@ -265,17 +283,17 @@ mod tests {
         let y = Vector::new_with(0f32, 1f32, 0f32);
         let z = Vector::new_with(0f32, 0f32, 1f32);
 
-        assert_eq!(x.clone().cross(&y), z);
-        assert_eq!(y.clone().cross(&x), -(&z));
+        assert_eq!(x.cross_with(&y), z);
+        assert_eq!(y.cross_with(&x), -(&z));
 
-        assert_eq!(y.clone().cross(&z), x);
-        assert_eq!(z.clone().cross(&y), -(&x));
+        assert_eq!(y.cross_with(&z), x);
+        assert_eq!(z.cross_with(&y), -(&x));
 
-        assert_eq!(z.clone().cross(&x), y);
-        assert_eq!(x.clone().cross(&z), -(&y));
+        assert_eq!(z.cross_with(&x), y);
+        assert_eq!(x.cross_with(&z), -(&y));
 
-        assert_eq!(Vector::new_with(1f32, 1f32, 0f32).cross(&x), -(&z));
-        assert_eq!(x.clone().cross(&Vector::new_with(1f32, 1f32, 0f32)), z);
+        assert_eq!(Vector::new_with(1f32, 1f32, 0f32).into_cross_with(&x), -(&z));
+        assert_eq!(x.clone().into_cross(Vector::new_with(1f32, 1f32, 0f32)), z);
     }
 
     #[test]

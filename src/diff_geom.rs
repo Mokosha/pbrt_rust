@@ -1,6 +1,7 @@
 use geometry::normal::Normal;
 use geometry::normal::Normalize;
 use geometry::point::Point;
+use geometry::vector::Cross;
 use geometry::vector::Vector;
 use shape::ShapeBase;
 use ray::RayDifferential;
@@ -44,7 +45,7 @@ impl DifferentialGeometry {
     pub fn new_with(_p: Point, _dpdu: Vector, _dpdv: Vector,
                     _dndu: Normal, _dndv: Normal, _u: f32, _v: f32,
                     _shape: Option<ShapeBase>) -> DifferentialGeometry {
-        let mut norm = _dpdu.clone().cross(&_dpdv).normalize();
+        let mut norm = _dpdu.cross_with(&_dpdv).normalize();
         if let &Some(ref s) = &_shape {
             if s.reverse_orientation ^ s.transform_swaps_handedness {
                 norm = norm * -1f32;

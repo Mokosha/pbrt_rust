@@ -1,6 +1,7 @@
 use diff_geom::DifferentialGeometry;
 use shape::ShapeBase;
 use geometry::point::Point;
+use geometry::vector::Cross;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
 use geometry::normal::Normal;
@@ -21,7 +22,7 @@ pub fn compute_dg(shape: &ShapeBase, u: f32, v: f32, p_hit: Point,
     let _ee = dpdu.dot(&dpdu);
     let _ff = dpdu.dot(&dpdv);
     let _gg = dpdv.dot(&dpdv);
-    let _nn : Vector = dpdu.clone().cross(&dpdv).normalize();
+    let _nn : Vector = dpdu.cross_with(&dpdv).normalize();
     let _e = _nn.dot(&d2pduu);
     let _f = _nn.dot(&d2pduv);
     let _g = _nn.dot(&d2pdvv);
