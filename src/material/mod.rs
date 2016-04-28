@@ -45,7 +45,7 @@ pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
 
     let v_displace = d.evaluate(&dg_eval);
     let displace = d.evaluate(dg_shading);
-    
+
     // Compute bump mapped differential geometry
     let mut dg_bump = dg_shading.clone();
     dg_bump.dpdu = &dg_shading.dpdu
@@ -93,5 +93,18 @@ impl Material {
     pub fn get_bssrdf(&self, dg: DifferentialGeometry,
                       dgs: DifferentialGeometry) -> Option<BSSRDF> {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[ignore]
+    #[test]
+    fn it_can_generate_normals_from_bump_maps() {
+        // We need to try with some dummy bump maps here
+        // once we get textures implemented
+        unimplemented!()
     }
 }
