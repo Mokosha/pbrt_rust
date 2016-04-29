@@ -17,6 +17,7 @@ pub mod light;
 pub mod material;
 pub mod montecarlo;
 pub mod primitive;
+pub mod params;
 pub mod quaternion;
 pub mod ray;
 pub mod rng;
