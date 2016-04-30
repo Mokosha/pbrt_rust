@@ -33,6 +33,15 @@ impl ParamSet {
         self.add_param(name, ParamTy::Float(data))
     }
 
+    pub fn find_one_float(&self, name: &String, def: f32) -> f32 {
+        let &ParamSet(ref map) = self;
+        if let Some(&ParamTy::Float(ref f)) = map.get(name) {
+            if f.is_empty() { def } else { f[0] }
+        } else {
+            def
+        }
+    }
+
     pub fn add_bool(&mut self, name: &String, data: Vec<bool>) {
         self.add_param(name, ParamTy::Bool(data))
     }
