@@ -42,6 +42,16 @@ impl ParamSet {
         }
     }
 
+    pub fn find_float<'a>(&'a self, name: &String) -> Option<&'a [f32]> {
+        let &ParamSet(ref map) = self;
+        map.get(name).and_then(|res| {
+            match res {
+                &ParamTy::Float(ref f) => Some(f.as_slice()),
+                _ => None
+            }
+        })
+    }
+
     pub fn add_bool(&mut self, name: &String, data: Vec<bool>) {
         self.add_param(name, ParamTy::Bool(data))
     }
