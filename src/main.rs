@@ -1,4 +1,7 @@
+#[macro_use]
+extern crate lazy_static;
 extern crate pbrt_rust;
+
 use pbrt_rust::scene::Scene;
 
 struct Options {
@@ -27,37 +30,43 @@ const STATE_UNINITIALIZED: usize = 0;
 const STATE_OPTIONS_BLOCK: usize = 1;
 const STATE_WORLD_BLOCK: usize = 2;
 
+lazy_static! {
+    pub static ref PBRT_OPTIONS: Options = Options::new();
+    static ref CURRENT_API_STATE: usize = STATE_UNINITIALIZED;
+}
+
 macro_rules! verify_initialized {
     ($x:expr) => {
-        if *api_state == STATE_UNINITIALIZED {
+        if *CURRENT_API_STATE == STATE_UNINITIALIZED {
             panic!("pbrt_init must be called before calling {}", $x);
         }
     };
 }
 
 fn parse_file(_ : &str) -> Option<Scene> { None }
-fn pbrt_init(api_state: &mut usize, _ : &Options) {
-    if *api_state != STATE_UNINITIALIZED {
+fn pbrt_init(opts: &Options) {
+    if *CURRENT_API_STATE != STATE_UNINITIALIZED {
         panic!("pbrt_init has already been called!");
     }
-    *api_state = STATE_OPTIONS_BLOCK;
+    *CURRENT_API_STATE = STATE_OPTIONS_BLOCK;
+
+    *PBRT_OPTIONS = opts;
 }
 
-fn pbrt_cleanup(api_state: &mut usize) {
-    if *api_state == STATE_UNINITIALIZED {
+fn pbrt_cleanup() {
+    if *CURRENT_API_STATE == STATE_UNINITIALIZED {
         panic!("pbrt_cleanup called before pbrt_init!");
-    } else if *api_state == STATE_WORLD_BLOCK {
+    } else if *CURRENT_API_STATE == STATE_WORLD_BLOCK {
         panic!("pbrt_cleanup called inside world block!");
     }
-    *api_state = STATE_UNINITIALIZED;
+    *CURRENT_API_STATE = STATE_UNINITIALIZED;
 }
 
 fn main() {
     let options = Options::new();
     let filenames : Vec<String> = vec![];
     // Process command line arguments
-    let mut g_current_api_state: usize = STATE_UNINITIALIZED;
-    pbrt_init(&mut g_current_api_state, &options);
+    pbrt_init(&options);
     if filenames.len() == 0 {
         parse_file("-");
     } else {
@@ -68,5 +77,5 @@ fn main() {
             }
         }
     }
-    pbrt_cleanup(&mut g_current_api_state);
+    pbrt_cleanup();
 }
