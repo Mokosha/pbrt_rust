@@ -3,8 +3,9 @@ extern crate lazy_static;
 extern crate pbrt_rust;
 
 use pbrt_rust::scene::Scene;
+use std::sync::Mutex;
 
-struct Options {
+pub struct Options {
     num_cores: usize,
     quick_render: bool,
     quiet: bool,
@@ -24,6 +25,15 @@ impl Options {
             image_file: String::new()
         }
     }
+
+    fn copy_from(&mut self, other: &Options) {
+        self.num_cores = other.num_cores;
+        self.quick_render = other.quick_render;
+        self.quiet = other.quiet;
+        self.verbose = other.verbose;
+        self.open_window = other.open_window;
+        self.image_file = other.image_file.clone();
+    }
 }
 
 const STATE_UNINITIALIZED: usize = 0;
@@ -31,13 +41,21 @@ const STATE_OPTIONS_BLOCK: usize = 1;
 const STATE_WORLD_BLOCK: usize = 2;
 
 lazy_static! {
-    pub static ref PBRT_OPTIONS: Options = Options::new();
-    static ref CURRENT_API_STATE: usize = STATE_UNINITIALIZED;
+    pub static ref PBRT_OPTIONS: Mutex<Options> = Mutex::new(Options::new());
+    static ref CURRENT_API_STATE: Mutex<usize> = Mutex::new(STATE_UNINITIALIZED);
+}
+
+fn get_current_api_state() -> usize {
+    *(CURRENT_API_STATE.lock().unwrap())
+}
+
+fn set_current_api_state(x: usize) {
+    *(CURRENT_API_STATE.lock().unwrap()) = x;
 }
 
 macro_rules! verify_initialized {
     ($x:expr) => {
-        if *CURRENT_API_STATE == STATE_UNINITIALIZED {
+        if get_current_api_state() == STATE_UNINITIALIZED {
             panic!("pbrt_init must be called before calling {}", $x);
         }
     };
@@ -45,21 +63,21 @@ macro_rules! verify_initialized {
 
 fn parse_file(_ : &str) -> Option<Scene> { None }
 fn pbrt_init(opts: &Options) {
-    if *CURRENT_API_STATE != STATE_UNINITIALIZED {
+    if get_current_api_state() != STATE_UNINITIALIZED {
         panic!("pbrt_init has already been called!");
     }
-    *CURRENT_API_STATE = STATE_OPTIONS_BLOCK;
+    set_current_api_state(STATE_OPTIONS_BLOCK);
 
-    *PBRT_OPTIONS = opts;
+    PBRT_OPTIONS.lock().unwrap().copy_from(opts);
 }
 
 fn pbrt_cleanup() {
-    if *CURRENT_API_STATE == STATE_UNINITIALIZED {
+    if get_current_api_state() != STATE_UNINITIALIZED {
         panic!("pbrt_cleanup called before pbrt_init!");
-    } else if *CURRENT_API_STATE == STATE_WORLD_BLOCK {
+    } else if get_current_api_state() == STATE_WORLD_BLOCK {
         panic!("pbrt_cleanup called inside world block!");
     }
-    *CURRENT_API_STATE = STATE_UNINITIALIZED;
+    set_current_api_state(STATE_UNINITIALIZED);
 }
 
 fn main() {
