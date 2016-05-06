@@ -49,22 +49,30 @@ const START_TRANSFORM_BITS: usize = (1 << 0);
 const END_TRANSFORM_BITS: usize = (1 << 1);
 const ALL_TRANSFORM_BITS: usize = ((1 << MAX_TRANSFORMS) - 1);
 
+#[derive(Clone, Debug, PartialEq)]
 struct TransformSet {
-    t: (Transform, Option<Transform>)
+    t: Vec<Transform>
 }
 
 impl TransformSet {
     fn new() -> TransformSet {
-        TransformSet { t: (Transform::new(), None) }
+        TransformSet { t: vec![Transform::new(), Transform::new()] }
     }
+}
+
+fn inverse(ts: &TransformSet) -> TransformSet {
+    let mut t2 = ts.clone();
+    for t in t2.t.iter_mut() {
+        *t = t.inverse();
+    }
+    t2
 }
 
 impl Index<usize> for TransformSet {
     type Output = Transform;
     fn index(&self, index: usize) -> &Transform {
-        match (index, &self.t) {
-            (0, &(ref t, _)) => t,
-            (1, &(_, Some(ref t))) => t,
+        match index {
+            0...1 => &self.t[index],
             _ => panic!("Transform not available!")
         }
     }
@@ -72,9 +80,8 @@ impl Index<usize> for TransformSet {
 
 impl IndexMut<usize> for TransformSet {
     fn index_mut(&mut self, index: usize) -> &mut Transform {
-        match (index, &mut self.t) {
-            (0, &mut (ref mut t, _)) => t,
-            (1, &mut (_, Some(ref mut t))) => t,
+        match index {
+            0...1 => &mut self.t[index],
             _ => panic!("Transform not available!")
         }
     }
@@ -86,6 +93,14 @@ lazy_static! {
 
     static ref CUR_TRANSFORMS: Mutex<TransformSet> = Mutex::new(TransformSet::new());
     static ref ACTIVE_TRANSFORM_BITS: Mutex<usize> = Mutex::new(ALL_TRANSFORM_BITS);
+}
+
+fn for_active_transforms<T: Fn(&mut Transform)>(f: T) {
+    for i in 0..MAX_TRANSFORMS {
+        if ((1 << i) & *(ACTIVE_TRANSFORM_BITS.lock().unwrap())) != 0 {
+            f(&mut CUR_TRANSFORMS.lock().unwrap()[i]);
+        }
+    }
 }
 
 fn get_current_api_state() -> usize {
@@ -102,6 +117,13 @@ macro_rules! verify_initialized {
             panic!("pbrt_init must be called before calling {}", $x);
         }
     };
+}
+
+fn pbrt_identity() {
+    verify_initialized!("Identity");
+    for_active_transforms(|t| {
+        *t = Transform::new();
+    });
 }
 
 fn parse_file(_ : &str) -> Option<Scene> { None }
