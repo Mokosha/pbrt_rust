@@ -4,6 +4,10 @@ extern crate pbrt_rust;
 
 use pbrt_rust::scene::Scene;
 use std::sync::Mutex;
+use std::ops::Index;
+use std::ops::IndexMut;
+
+use pbrt_rust::transform::transform::Transform;
 
 pub struct Options {
     num_cores: usize,
@@ -40,9 +44,48 @@ const STATE_UNINITIALIZED: usize = 0;
 const STATE_OPTIONS_BLOCK: usize = 1;
 const STATE_WORLD_BLOCK: usize = 2;
 
+const MAX_TRANSFORMS: usize = 2;
+const START_TRANSFORM_BITS: usize = (1 << 0);
+const END_TRANSFORM_BITS: usize = (1 << 1);
+const ALL_TRANSFORM_BITS: usize = ((1 << MAX_TRANSFORMS) - 1);
+
+struct TransformSet {
+    t: (Transform, Option<Transform>)
+}
+
+impl TransformSet {
+    fn new() -> TransformSet {
+        TransformSet { t: (Transform::new(), None) }
+    }
+}
+
+impl Index<usize> for TransformSet {
+    type Output = Transform;
+    fn index(&self, index: usize) -> &Transform {
+        match (index, &self.t) {
+            (0, &(ref t, _)) => t,
+            (1, &(_, Some(ref t))) => t,
+            _ => panic!("Transform not available!")
+        }
+    }
+}
+
+impl IndexMut<usize> for TransformSet {
+    fn index_mut(&mut self, index: usize) -> &mut Transform {
+        match (index, &mut self.t) {
+            (0, &mut (ref mut t, _)) => t,
+            (1, &mut (_, Some(ref mut t))) => t,
+            _ => panic!("Transform not available!")
+        }
+    }
+}
+
 lazy_static! {
     pub static ref PBRT_OPTIONS: Mutex<Options> = Mutex::new(Options::new());
     static ref CURRENT_API_STATE: Mutex<usize> = Mutex::new(STATE_UNINITIALIZED);
+
+    static ref CUR_TRANSFORMS: Mutex<TransformSet> = Mutex::new(TransformSet::new());
+    static ref ACTIVE_TRANSFORM_BITS: Mutex<usize> = Mutex::new(ALL_TRANSFORM_BITS);
 }
 
 fn get_current_api_state() -> usize {
