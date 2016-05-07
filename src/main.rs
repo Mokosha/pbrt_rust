@@ -2,11 +2,14 @@
 extern crate lazy_static;
 extern crate pbrt_rust;
 
-use pbrt_rust::scene::Scene;
+use std::collections::HashMap;
 use std::sync::Mutex;
 use std::ops::Index;
 use std::ops::IndexMut;
 
+use pbrt_rust::geometry::point::Point;
+use pbrt_rust::geometry::vector::Vector;
+use pbrt_rust::scene::Scene;
 use pbrt_rust::transform::transform::Transform;
 
 pub struct Options {
@@ -93,6 +96,9 @@ lazy_static! {
 
     static ref CUR_TRANSFORMS: Mutex<TransformSet> = Mutex::new(TransformSet::new());
     static ref ACTIVE_TRANSFORM_BITS: Mutex<usize> = Mutex::new(ALL_TRANSFORM_BITS);
+
+    static ref NAMED_COORDINATE_SYSTEMS: Mutex<HashMap<String, TransformSet>> =
+        Mutex::new(HashMap::new());
 }
 
 fn for_active_transforms<T: Fn(&mut Transform)>(f: T) {
@@ -124,6 +130,76 @@ fn pbrt_identity() {
     for_active_transforms(|t| {
         *t = Transform::new();
     });
+}
+
+fn pbrt_translate(dx: f32, dy: f32, dz: f32) {
+    verify_initialized!("Translate");
+    for_active_transforms(|t| {
+        *t = t.clone() * Transform::translate(&Vector::new_with(dx, dy, dz));
+    });
+}
+
+fn pbrt_rotate(angle: f32, ax: f32, ay: f32, az: f32) {
+    verify_initialized!("Rotate");
+    for_active_transforms(|t| {
+        *t = t.clone() * Transform::rotate(angle, &Vector::new_with(ax, ay, az));
+    });
+}
+
+fn pbrt_scale(sx: f32, sy: f32, sz: f32) {
+    verify_initialized!("Scale");
+    for_active_transforms(|t| {
+        *t = t.clone() * Transform::scale(sx, sy, sz);
+    });
+}
+
+fn pbrt_lookat(ex: f32, ey: f32, ez: f32,
+               lx: f32, ly: f32, lz: f32,
+               ux: f32, uy: f32, uz: f32) {
+    verify_initialized!("Look At");
+    for_active_transforms(|t| {
+        *t = t.clone() * Transform::look_at(
+            &Point::new_with(ex, ey, ez),
+            &Point::new_with(lx, ly, lz),
+            &Vector::new_with(ux, uy, uz));
+    });
+}
+
+fn pbrt_concat_transform(xf: [f32; 16]) {
+    verify_initialized!("Concat");
+    for_active_transforms(|t| {
+        *t = t.clone() * Transform::from([
+            [xf[0], xf[1], xf[2], xf[3]],
+            [xf[4], xf[5], xf[6], xf[7]],
+            [xf[8], xf[9], xf[10], xf[11]],
+            [xf[12], xf[13], xf[14], xf[15]]]);
+    });
+}
+
+fn pbrt_transform(xf: [f32; 16]) {
+    verify_initialized!("Transform");
+    for_active_transforms(|t| {
+        *t = Transform::from([
+            [xf[0], xf[1], xf[2], xf[3]],
+            [xf[4], xf[5], xf[6], xf[7]],
+            [xf[8], xf[9], xf[10], xf[11]],
+            [xf[12], xf[13], xf[14], xf[15]]]);
+    });
+}
+
+fn pbrt_coordinate_system(name: String) {
+    verify_initialized!("CoordinateSystem");
+    NAMED_COORDINATE_SYSTEMS.lock().unwrap()
+        .insert(name, CUR_TRANSFORMS.lock().unwrap().clone());
+}
+
+fn pbrt_coord_sys_transform(name: String) {
+    verify_initialized!("CoordSysTransform");
+    if let Some(t) = NAMED_COORDINATE_SYSTEMS.lock().unwrap().get(&name) {
+        *(CUR_TRANSFORMS.lock().unwrap()) = t.clone();
+    } else {
+        println!("WARNING: No coordinate system named {}", name);
+    }
 }
 
 fn parse_file(_ : &str) -> Option<Scene> { None }
