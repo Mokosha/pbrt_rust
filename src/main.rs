@@ -149,7 +149,7 @@ impl RenderOptions {
             renderer_name: String::new(),
             renderer_params: ParamSet::new(),
 
-            camera_name: String::new(),
+            camera_name: String::from("perspective"),
             camera_params: ParamSet::new(),
             camera_to_world: TransformSet::new()
         }
