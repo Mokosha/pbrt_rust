@@ -5,6 +5,7 @@ use geometry::point::Point;
 use geometry::vector::Vector;
 use spectrum::Spectrum;
 
+#[derive(Clone, Debug, PartialEq)]
 enum ParamTy {
     Bool(Vec<bool>),
     Int(Vec<i32>),
@@ -17,6 +18,7 @@ enum ParamTy {
     Tex(Vec<String>)
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct ParamSet(HashMap<String, ParamTy>);
 
 impl ParamSet {

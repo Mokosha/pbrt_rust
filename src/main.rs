@@ -4,11 +4,13 @@ extern crate pbrt_rust;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
 
 use pbrt_rust::geometry::point::Point;
 use pbrt_rust::geometry::vector::Vector;
+use pbrt_rust::params::ParamSet;
 use pbrt_rust::scene::Scene;
 use pbrt_rust::transform::transform::Transform;
 
@@ -90,6 +92,70 @@ impl IndexMut<usize> for TransformSet {
     }
 }
 
+pub struct RenderOptions {
+    transform_start_time: f32,
+    transform_end_time: f32,
+
+    filter_name: String,
+    filter_params: ParamSet,
+
+    film_name: String,
+    film_params: ParamSet,
+
+    sampler_name: String,
+    sampler_params: ParamSet,
+
+    accelerator_name: String,
+    accelerator_params: ParamSet,
+
+    surf_integrator_name: String,
+    surf_integrator_params: ParamSet,
+
+    vol_integrator_name: String,
+    vol_integrator_params: ParamSet,
+
+    renderer_name: String,
+    renderer_params: ParamSet,
+
+    camera_name: String,
+    camera_params: ParamSet,
+    camera_to_world: TransformSet
+}
+
+impl RenderOptions {
+    fn new() -> RenderOptions {
+        RenderOptions {
+            transform_start_time: 0.0,
+            transform_end_time: 0.0,
+
+            filter_name: String::from("box"),
+            filter_params: ParamSet::new(),
+
+            film_name: String::new(),
+            film_params: ParamSet::new(),
+
+            sampler_name: String::new(),
+            sampler_params: ParamSet::new(),
+
+            accelerator_name: String::new(),
+            accelerator_params: ParamSet::new(),
+
+            surf_integrator_name: String::new(),
+            surf_integrator_params: ParamSet::new(),
+
+            vol_integrator_name: String::new(),
+            vol_integrator_params: ParamSet::new(),
+
+            renderer_name: String::new(),
+            renderer_params: ParamSet::new(),
+
+            camera_name: String::new(),
+            camera_params: ParamSet::new(),
+            camera_to_world: TransformSet::new()
+        }
+    }
+}
+
 lazy_static! {
     pub static ref PBRT_OPTIONS: Mutex<Options> = Mutex::new(Options::new());
     static ref CURRENT_API_STATE: Mutex<usize> = Mutex::new(STATE_UNINITIALIZED);
@@ -99,6 +165,8 @@ lazy_static! {
 
     static ref NAMED_COORDINATE_SYSTEMS: Mutex<HashMap<String, TransformSet>> =
         Mutex::new(HashMap::new());
+
+    static ref RENDER_OPTIONS: Mutex<RenderOptions> = Mutex::new(RenderOptions::new());
 }
 
 fn for_active_transforms<T: Fn(&mut Transform)>(f: T) {
@@ -121,6 +189,22 @@ macro_rules! verify_initialized {
     ($x:expr) => {
         if get_current_api_state() == STATE_UNINITIALIZED {
             panic!("pbrt_init must be called before calling {}", $x);
+        }
+    };
+}
+
+macro_rules! verify_options {
+    ($x:expr) => {
+        if get_current_api_state() != STATE_OPTIONS_BLOCK {
+            panic!("{} must be called from an options block!", $x);
+        }
+    };
+}
+
+macro_rules! verify_world {
+    ($x:expr) => {
+        if get_current_api_state() != STATE_WORLD_BLOCK {
+            panic!("{} must be called from a world block!", $x);
         }
     };
 }
@@ -200,6 +284,70 @@ fn pbrt_coord_sys_transform(name: String) {
     } else {
         println!("WARNING: No coordinate system named {}", name);
     }
+}
+
+fn pbrt_active_transform_all() {
+    *(ACTIVE_TRANSFORM_BITS.lock().unwrap()) = ALL_TRANSFORM_BITS;
+}
+
+fn pbrt_active_transform_end_time() {
+    *(ACTIVE_TRANSFORM_BITS.lock().unwrap()) = END_TRANSFORM_BITS;
+}
+
+fn pbrt_active_transform_start_time() {
+    *(ACTIVE_TRANSFORM_BITS.lock().unwrap()) = START_TRANSFORM_BITS;
+}
+
+fn pbrt_transform_times(start: f32, end: f32) {
+    verify_options!("TransformTimes");
+    RENDER_OPTIONS.lock().unwrap().transform_start_time = start;
+    RENDER_OPTIONS.lock().unwrap().transform_end_time = end;
+}
+
+fn pbrt_pixel_filter(name: &String, params: &ParamSet) {
+    verify_options!("PixelFilter");
+    RENDER_OPTIONS.lock().unwrap().filter_name = name.clone();
+    RENDER_OPTIONS.lock().unwrap().filter_params = params.clone();
+}
+
+fn pbrt_sampler(name: &String, params: &ParamSet) {
+    verify_options!("Sampler");
+    RENDER_OPTIONS.lock().unwrap().sampler_name = name.clone();
+    RENDER_OPTIONS.lock().unwrap().sampler_params = params.clone();
+}
+
+fn pbrt_accelerator(name: &String, params: &ParamSet) {
+    verify_options!("Accelerator");
+    RENDER_OPTIONS.lock().unwrap().accelerator_name = name.clone();
+    RENDER_OPTIONS.lock().unwrap().accelerator_params = params.clone();
+}
+
+fn pbrt_surf_integrator(name: &String, params: &ParamSet) {
+    verify_options!("SurfaceIntegrator");
+    RENDER_OPTIONS.lock().unwrap().surf_integrator_name = name.clone();
+    RENDER_OPTIONS.lock().unwrap().surf_integrator_params = params.clone();
+}
+
+fn pbrt_vol_integrator(name: &String, params: &ParamSet) {
+    verify_options!("VolumeIntegrator");
+    RENDER_OPTIONS.lock().unwrap().vol_integrator_name = name.clone();
+    RENDER_OPTIONS.lock().unwrap().vol_integrator_params = params.clone();
+}
+
+fn pbrt_renderer(name: &String, params: &ParamSet) {
+    verify_options!("Renderer");
+    RENDER_OPTIONS.lock().unwrap().renderer_name = name.clone();
+    RENDER_OPTIONS.lock().unwrap().renderer_params = params.clone();
+}
+
+fn pbrt_camera(name: &String, params: &ParamSet) {
+    verify_options!("Camera");
+    RENDER_OPTIONS.lock().unwrap().camera_name = name.clone();
+    RENDER_OPTIONS.lock().unwrap().camera_params = params.clone();
+    RENDER_OPTIONS.lock().unwrap().camera_to_world =
+        inverse(CUR_TRANSFORMS.lock().unwrap().deref());
+    NAMED_COORDINATE_SYSTEMS.lock().unwrap().insert(
+        String::from("camera"), RENDER_OPTIONS.lock().unwrap().camera_to_world.clone());
 }
 
 fn parse_file(_ : &str) -> Option<Scene> { None }
