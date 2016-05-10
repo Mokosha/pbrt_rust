@@ -350,6 +350,15 @@ fn pbrt_camera(name: &String, params: &ParamSet) {
         String::from("camera"), RENDER_OPTIONS.lock().unwrap().camera_to_world.clone());
 }
 
+fn pbrt_world_begin() {
+    verify_options!("WorldBegin");
+    set_current_api_state(STATE_WORLD_BLOCK);
+    pbrt_active_transform_all();
+    for_active_transforms(|t| { *t = Transform::new(); });
+    NAMED_COORDINATE_SYSTEMS.lock().unwrap().insert(
+        String::from("world"), CUR_TRANSFORMS.lock().unwrap().clone());
+}
+
 fn parse_file(_ : &str) -> Option<Scene> { None }
 fn pbrt_init(opts: &Options) {
     if get_current_api_state() != STATE_UNINITIALIZED {
