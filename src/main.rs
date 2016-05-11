@@ -156,6 +156,18 @@ impl RenderOptions {
     }
 }
 
+struct GraphicsState {
+    material: String
+}
+
+impl GraphicsState {
+    fn new() -> GraphicsState {
+        GraphicsState {
+            material: String::from("lambertian")
+        }
+    }
+}
+
 lazy_static! {
     pub static ref PBRT_OPTIONS: Mutex<Options> = Mutex::new(Options::new());
     static ref CURRENT_API_STATE: Mutex<usize> = Mutex::new(STATE_UNINITIALIZED);
@@ -167,6 +179,7 @@ lazy_static! {
         Mutex::new(HashMap::new());
 
     static ref RENDER_OPTIONS: Mutex<RenderOptions> = Mutex::new(RenderOptions::new());
+    static ref GRAPHICS_STATE: Mutex<GraphicsState> = Mutex::new(GraphicsState::new());
 }
 
 fn for_active_transforms<T: Fn(&mut Transform)>(f: T) {
