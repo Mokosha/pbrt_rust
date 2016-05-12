@@ -237,3 +237,33 @@ impl ParamSet {
         unimplemented!()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[ignore]
+    #[test]
+    fn it_can_be_created() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_add_params() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_lookup_single_params() {
+        // Make sure defaults work, too.
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_lookup_multiple_params() {
+        unimplemented!()
+    }
+}
