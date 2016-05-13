@@ -274,4 +274,32 @@ impl Camera {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[ignore]
+    #[test]
+    fn it_can_create_orthographic() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_create_perspective() {
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_generate_orthographic_rays() {
+        // Check pinhole camera
+        // Check DOF properties
+        unimplemented!()
+    }
+
+    #[ignore]
+    #[test]
+    fn it_can_generate_perspective_rays() {
+        // Check pinhole camera
+        // Check DOF properties
+        unimplemented!()
+    }
 }
