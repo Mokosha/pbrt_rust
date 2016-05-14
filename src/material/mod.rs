@@ -15,6 +15,8 @@ use texture::Texture;
 
 use material::matte::MatteMaterial;
 use material::plastic::PlasticMaterial;
+use material::measured::MeasuredMaterial;
+use material::mix::MixMaterial;
 
 pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
             dg_shading: &DifferentialGeometry) -> DifferentialGeometry {
@@ -71,6 +73,8 @@ pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
 pub enum Material {
     Matte(MatteMaterial),
     Plastic(PlasticMaterial),
+    Measured(MeasuredMaterial),
+    Mixed(MixMaterial),
     Broken
 }
 
@@ -88,6 +92,14 @@ impl Material {
         Material::Plastic(PlasticMaterial::new(kd, ks, rough, bm))
     }
 
+    pub fn measured(filename: String, b: Option<Arc<Texture<f32>>>) -> Material {
+        Material::Measured(MeasuredMaterial::new(filename, b))
+    }
+
+    pub fn mixed(m1: Arc<Material>, m2: Arc<Material>,
+                 sc: Arc<Texture<Spectrum>>) -> Material {
+        Material::Mixed(MixMaterial::new(m1, m2, sc))
+    }
 
     // !FIXME!
     pub fn broken() -> Material { Material::Broken }
@@ -97,6 +109,8 @@ impl Material {
         match self {
             &Material::Matte(ref mat) => mat.get_bsdf(dg, dgs),
             &Material::Plastic(ref mat) => mat.get_bsdf(dg, dgs),
+            &Material::Measured(ref mat) => mat.get_bsdf(dg, dgs),
+            &Material::Mixed(ref mat) => mat.get_bsdf(dg, dgs),
             _ => unimplemented!()
         }
     }
