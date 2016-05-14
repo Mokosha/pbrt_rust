@@ -14,6 +14,7 @@ use spectrum::Spectrum;
 use texture::Texture;
 
 use material::matte::MatteMaterial;
+use material::plastic::PlasticMaterial;
 
 pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
             dg_shading: &DifferentialGeometry) -> DifferentialGeometry {
@@ -69,6 +70,7 @@ pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
 #[derive(Clone, PartialEq, Debug)]
 pub enum Material {
     Matte(MatteMaterial),
+    Plastic(PlasticMaterial),
     Broken
 }
 
@@ -79,6 +81,14 @@ impl Material {
         Material::Matte(MatteMaterial::new(kd, sig, bump_map))
     }
 
+    pub fn plastic(kd: Arc<Texture<Spectrum>>,
+                   ks: Arc<Texture<Spectrum>>,
+                   rough: Arc<Texture<f32>>,
+                   bm: Option<Arc<Texture<f32>>>) -> Material {
+        Material::Plastic(PlasticMaterial::new(kd, ks, rough, bm))
+    }
+
+
     // !FIXME!
     pub fn broken() -> Material { Material::Broken }
 
@@ -86,6 +96,7 @@ impl Material {
                     dgs: DifferentialGeometry) -> Option<BSDF> {
         match self {
             &Material::Matte(ref mat) => mat.get_bsdf(dg, dgs),
+            &Material::Plastic(ref mat) => mat.get_bsdf(dg, dgs),
             _ => unimplemented!()
         }
     }
