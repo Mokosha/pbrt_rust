@@ -156,6 +156,7 @@ impl RenderOptions {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 struct GraphicsState {
     material: String
 }
@@ -180,6 +181,10 @@ lazy_static! {
 
     static ref RENDER_OPTIONS: Mutex<RenderOptions> = Mutex::new(RenderOptions::new());
     static ref GRAPHICS_STATE: Mutex<GraphicsState> = Mutex::new(GraphicsState::new());
+
+    static ref PUSHED_GRAPHICS_STATES: Mutex<Vec<GraphicsState>> = Mutex::new(Vec::new());
+    static ref PUSHED_TRANSFORMS: Mutex<Vec<TransformSet>> = Mutex::new(Vec::new());
+    static ref PUSHED_ACTIVE_TRANSFORM_BITS: Mutex<Vec<usize>> = Mutex::new(Vec::new());
 }
 
 fn for_active_transforms<T: Fn(&mut Transform)>(f: T) {
@@ -220,6 +225,44 @@ macro_rules! verify_world {
             panic!("{} must be called from a world block!", $x);
         }
     };
+}
+
+fn pbrt_attribute_begin() {
+    verify_world!("AttributeBegin");
+    PUSHED_GRAPHICS_STATES.lock().unwrap().push(
+        GRAPHICS_STATE.lock().unwrap().clone());
+    PUSHED_TRANSFORMS.lock().unwrap().push(
+        CUR_TRANSFORMS.lock().unwrap().clone());
+    PUSHED_ACTIVE_TRANSFORM_BITS.lock().unwrap().push(
+        ACTIVE_TRANSFORM_BITS.lock().unwrap().clone());
+}
+
+fn pbrt_attribute_end() {
+    verify_world!("AttributeEnd");
+    if let Some(bits) = PUSHED_ACTIVE_TRANSFORM_BITS.lock().unwrap().pop() {
+        *(ACTIVE_TRANSFORM_BITS.lock().unwrap()) = bits;
+        *(CUR_TRANSFORMS.lock().unwrap()) =
+            PUSHED_TRANSFORMS.lock().unwrap().pop().unwrap();
+        *(GRAPHICS_STATE.lock().unwrap()) =
+            PUSHED_GRAPHICS_STATES.lock().unwrap().pop().unwrap();
+    } else {
+        println!("WARNING: Unmatched pbrt_attribute_end encountered. Ignoring.")
+    }
+}
+
+fn pbrt_transform_begin() {
+    verify_world!("TransformBegin");
+    PUSHED_TRANSFORMS.lock().unwrap().push(
+        CUR_TRANSFORMS.lock().unwrap().clone());
+}
+
+fn pbrt_transform_end() {
+    verify_world!("TransformEnd");
+    if let Some(xf) = PUSHED_TRANSFORMS.lock().unwrap().pop() {
+        *(CUR_TRANSFORMS.lock().unwrap()) = xf;
+    } else {
+        println!("WARNING: Unmatched pbrt_transform_end encountered. Ignoring.")
+    }
 }
 
 fn pbrt_identity() {
