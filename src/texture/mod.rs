@@ -1,3 +1,5 @@
+pub mod mapping;
+
 use diff_geom::DifferentialGeometry;
 
 #[derive(Clone, Debug, PartialEq)]

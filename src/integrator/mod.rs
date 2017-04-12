@@ -161,8 +161,9 @@ impl SurfaceIntegrator {
         }
     }
 
-    pub fn li<R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
-                          _: &mut Intersection, _: &Sample, _: &mut RNG) -> Spectrum {
+    pub fn li<R:Renderer>(
+        &self, _: &Scene, _: &R, _: &RayDifferential,
+        _: &mut Intersection, _: &Sample, _: &mut RNG) -> Spectrum {
         unimplemented!()
     }
 
@@ -184,8 +185,9 @@ pub struct VolumeIntegrator {
 }
 
 impl VolumeIntegrator {
-    pub fn li<R:Renderer>(&self, _: &Scene, _: &R, _: &RayDifferential,
-                          _: &Sample, _: &mut RNG, _: &mut Spectrum) -> Spectrum {
+    pub fn li<R:Renderer>(
+        &self, _: &Scene, _: &R, _: &RayDifferential,
+        _: &Sample, _: &mut RNG, _: &mut Spectrum) -> Spectrum {
         unimplemented!()
     }
 
