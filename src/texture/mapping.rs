@@ -38,6 +38,38 @@ mod tests {
     use super::*;
     use diff_geom::DifferentialGeometry;
 
+    fn test_mapping_deriv<Mapping : TextureMapping2D>(mapping: Mapping) {
+        let mut dg = DifferentialGeometry::new();
+        dg.u = 0.5;
+        dg.v = 0.1;
+        dg.dudx = 10.0;
+        dg.dudy = 12.0;
+        dg.dvdx = -1.0;
+        dg.dvdy = 0.0;
+
+        let (s1, t1, dsdx1, dtdx1, dsdy1, dtdy1) = mapping.map(&dg);
+
+        let dx : f32 = 1.0;
+        let dy : f32 = -0.4;
+        dg.u = dg.u + dx * dg.dudx + dy * dg.dudy;
+        dg.v = dg.v + dx * dg.dvdx + dy * dg.dvdy;
+
+        let (s2, t2, dsdx2, dtdx2, dsdy2, dtdy2) = mapping.map(&dg);
+
+        // The derivatives didn't change between invocations, so neither should
+        // the mapping derivatives
+        assert_eq!(dsdx1, dsdx2);
+        assert_eq!(dsdy1, dsdy2);
+        assert_eq!(dtdx1, dtdx2);
+        assert_eq!(dtdy1, dtdy2);
+
+        let es : f32 = s1 + dx * dsdx1 + dy * dsdy1;
+        let et : f32 = t1 + dx * dtdx1 + dy * dtdy1;
+
+        assert!((es - s2).abs() < 0.001);
+        assert!((et - t2).abs() < 0.001);
+    }
+
     #[test]
     fn it_can_create_uv_mapping() {
         let mapping = UVMapping2D::new(1.0, 1.0, 0.0, 0.0);
@@ -59,6 +91,8 @@ mod tests {
         dg.dvdx = -1.0;
         dg.dvdy = 0.0;
         assert_eq!(identity.map(&dg), (0.5, 0.2, 10.0, -1.0, 12.0, 0.0));
+
+        test_mapping_deriv(identity);
     }
 
     #[test]
@@ -77,5 +111,7 @@ mod tests {
         dg.dvdx = -1.0;
         dg.dvdy = 0.0;
         assert_eq!(mapping.map(&dg), (2.0, expected_t, 20.0, -0.5, 24.0, 0.0));
+
+        test_mapping_deriv(mapping);
     }
 }
