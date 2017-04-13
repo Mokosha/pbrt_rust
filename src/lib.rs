@@ -1,7 +1,6 @@
 #![allow(unused)]
 #[macro_use]
 extern crate bitflags;
-
 extern crate scoped_threadpool;
 
 pub mod area_light;
