@@ -599,25 +599,10 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn it_cant_be_indexed_too_much2() {
-        let m = Matrix4x4::new();
-        println!("This should never appear: {:?}", m[3][4]);
-    }
-
-    #[test]
-    #[should_panic]
     fn it_cant_be_mutably_indexed_too_much_either() {
         let mut m = Matrix4x4::new();
         m[0][0] = 0.0;
         println!("This should never appear: {:?}", m[14]);
-    }
-
-    #[test]
-    #[should_panic]
-    fn it_cant_be_mutably_indexed_too_much_either2() {
-        let mut m = Matrix4x4::new();
-        m[0][0] = 0.0;
-        println!("This should never appear: {:?}", m[3][14]);
     }
 
     #[test]

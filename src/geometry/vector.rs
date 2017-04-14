@@ -201,8 +201,9 @@ pub fn coordinate_system(v1: &Vector) -> (Vector, Vector) {
     (v3.cross_with(v1), v3)
 }
 
-pub fn spherical_direction_for_basis(sintheta: f32, costheta: f32, phi: f32,
-                                     x: Vector, y: Vector, z: Vector) -> Vector {
+pub fn spherical_direction_for_basis(
+    sintheta: f32, costheta: f32, phi: f32,
+    x: Vector, y: Vector, z: Vector) -> Vector {
     sintheta * phi.cos() * x + sintheta * phi.sin() * y + costheta * z
 }
 
