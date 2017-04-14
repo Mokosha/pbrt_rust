@@ -1,4 +1,14 @@
+use std::f32::consts;
+
 use diff_geom::DifferentialGeometry;
+use geometry::normal::Normalize;
+use geometry::point::Point;
+use geometry::vector::Vector;
+use transform::transform::ApplyTransform;
+use transform::transform::Transform;
+
+use geometry::vector::spherical_theta;
+use geometry::vector::spherical_phi;
 
 pub trait TextureMapping2D {
     // Returns the s and t coordinates for the point on the given surface,
@@ -16,8 +26,12 @@ pub struct UVMapping2D {
 }
 
 impl UVMapping2D {
-    pub fn new(_su: f32, _sv: f32, _du: f32, _dv: f32) -> UVMapping2D {
+    pub fn new_with(_su: f32, _sv: f32, _du: f32, _dv: f32) -> UVMapping2D {
         UVMapping2D { su: _su, sv: _sv, du: _du, dv: _dv }
+    }
+
+    pub fn new() -> UVMapping2D {
+        UVMapping2D::new_with(1.0, 1.0, 0.0, 0.0)
     }
 }
 
@@ -33,12 +47,70 @@ impl TextureMapping2D for UVMapping2D {
     }
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
+pub struct SphericalMapping2D {
+    world_to_texture: Transform
+}
+
+impl SphericalMapping2D {
+    pub fn new_with(xf: Transform) -> SphericalMapping2D {
+        SphericalMapping2D { world_to_texture: xf }
+    }
+
+    pub fn new() -> SphericalMapping2D {
+        SphericalMapping2D::new_with(Transform::new())
+    }
+
+    fn sphere(&self, p: &Point) -> (f32, f32) {
+        let vec = {
+            let v = Vector::from(self.world_to_texture.xf(p.clone()));
+            if v == Vector::new() {
+                Vector::new_with(1.0, 0.0, 0.0)
+            } else {
+                v.normalize()
+            }
+        };
+        let theta = spherical_theta(&vec);
+        let phi = spherical_phi(&vec);
+        (theta * consts::FRAC_1_PI, phi * consts::FRAC_1_PI * 0.5)
+    }
+}
+
+impl TextureMapping2D for SphericalMapping2D {
+    fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
+        let (s, t) = self.sphere(&dg.p);
+
+        let delta : f32 = 0.1;
+        let deal_with_singularity = |res: f32| {
+            if res > 0.5 {
+                1.0 - res
+            } else if res < -0.5 {
+                -(res + 1.0)
+            } else {
+                res
+            }
+        };
+
+        let px = &dg.p + delta * &dg.dpdx;
+        let (sx, tx) = self.sphere(&px);
+        let dsdx = (sx - s) / delta;
+        let dtdx = deal_with_singularity((tx - t) / delta);
+
+        let py = &dg.p + delta * &dg.dpdy;
+        let (sy, ty) = self.sphere(&py);
+        let dsdy = (sy - s) / delta;
+        let dtdy = deal_with_singularity((ty - t) / delta);
+
+        (s, t, dsdx, dtdx, dsdy, dtdy)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use diff_geom::DifferentialGeometry;
 
-    fn test_mapping_deriv<Mapping : TextureMapping2D>(mapping: Mapping) {
+    fn test_uv_mapping_deriv(mapping: UVMapping2D) {
         let mut dg = DifferentialGeometry::new();
         dg.u = 0.5;
         dg.v = 0.1;
@@ -70,35 +142,77 @@ mod tests {
         assert!((et - t2).abs() < 0.001);
     }
 
+    fn test_positional_differentials<Mapping : TextureMapping2D>(m: Mapping) {
+        let mut dg = DifferentialGeometry::new();
+        let (s, t, dsdx, dtdx, dsdy, dtdy) = m.map(&dg);
+        dg.u = 0.5;
+        dg.v = 0.1;
+        dg.dudx = 10.0;
+        dg.dudy = 12.0;
+        dg.dvdx = -1.0;
+        dg.dvdy = 0.0;
+        assert_eq!(m.map(&dg), (s, t, dsdx, dtdx, dsdy, dtdy));
+
+        dg.p = Point::new_with(0.3, 1.2, -4.0);
+        dg.dpdx = Vector::new_with(0.2, 0.0, -0.3);
+        dg.dpdy = Vector::new_with(-0.5, 0.1, 1.3);
+
+        let (s1, t1, dsdx1, dtdx1, dsdy1, dtdy1) = m.map(&dg);
+
+        let dx : f32 = 0.1;
+        let dy : f32 = -0.1;
+        dg.p = &dg.p + dx * &dg.dpdx + dy * &dg.dpdy;
+
+        let (ns, nt, dsdx2, dtdx2, dsdy2, dtdy2) = m.map(&dg);
+
+        // The derivatives might change based on the position of the point,
+        // but they should never change significantly if we're only moving
+        // based on the differential.
+        assert!((dsdx1 - dsdx2).abs() < 0.01);
+        assert!((dsdy1 - dsdy2).abs() < 0.01);
+        assert!((dtdx1 - dtdx2).abs() < 0.01);
+        assert!((dtdy1 - dtdy2).abs() < 0.01);
+
+        let es : f32 = s1 + dx * dsdx1 + dy * dsdy1;
+        let et : f32 = t1 + dx * dtdx1 + dy * dtdy1;
+
+        assert!((es - ns).abs() < 0.001);
+        assert!((et - nt).abs() < 0.001);
+    }
+
     #[test]
     fn it_can_create_uv_mapping() {
-        let mapping = UVMapping2D::new(1.0, 1.0, 0.0, 0.0);
-        assert_eq!(mapping, UVMapping2D::new(1.0, 1.0, 0.0, 0.0));
+        assert_eq!(UVMapping2D::new(), UVMapping2D::new_with(1., 1., 0., 0.));
+        assert_eq!(SphericalMapping2D::new(),
+                   SphericalMapping2D::new_with(Transform::new()));
     }
 
     #[test]
     fn uv_mapping_can_map_coords() {
-        let identity = UVMapping2D::new(1.0, 1.0, 0.0, 0.0);
+        let mapping = UVMapping2D::new();
         let mut dg = DifferentialGeometry::new();
-        assert_eq!(identity.map(&dg), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+        assert_eq!(mapping.map(&dg), (0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
 
         dg.u = 0.5;
         dg.v = 0.2;
-        assert_eq!(identity.map(&dg), (0.5, 0.2, 0.0, 0.0, 0.0, 0.0));
+        assert_eq!(mapping.map(&dg), (0.5, 0.2, 0.0, 0.0, 0.0, 0.0));
 
         dg.dudx = 10.0;
         dg.dudy = 12.0;
         dg.dvdx = -1.0;
         dg.dvdy = 0.0;
-        assert_eq!(identity.map(&dg), (0.5, 0.2, 10.0, -1.0, 12.0, 0.0));
+        assert_eq!(mapping.map(&dg), (0.5, 0.2, 10.0, -1.0, 12.0, 0.0));
 
-        test_mapping_deriv(identity);
+        test_uv_mapping_deriv(mapping);
     }
 
     #[test]
     fn uv_mapping_can_scale_coords() {
-        let mapping = UVMapping2D::new(2.0, 0.5, 1.0, -0.3);
+        let mapping = UVMapping2D::new_with(2.0, 0.5, 1.0, -0.3);
         let mut dg = DifferentialGeometry::new();
+        assert_eq!(mapping.map(&dg), (1.0, -0.3, 0.0, 0.0, 0.0, 0.0));        
+
+        dg.p = Point::new_with(0.1, 10.0, -13.0);
         assert_eq!(mapping.map(&dg), (1.0, -0.3, 0.0, 0.0, 0.0, 0.0));
 
         dg.u = 0.5;
@@ -112,6 +226,63 @@ mod tests {
         dg.dvdy = 0.0;
         assert_eq!(mapping.map(&dg), (2.0, expected_t, 20.0, -0.5, 24.0, 0.0));
 
-        test_mapping_deriv(mapping);
+        test_uv_mapping_deriv(mapping);
+    }
+
+    #[test]
+    fn spherical_mapping_can_map_coords() {
+        let mapping = SphericalMapping2D::new();
+        let mut dg = DifferentialGeometry::new();
+        assert_eq!(mapping.map(&dg), (0.5, 0.0, 0.0, 0.0, 0.0, 0.0));
+
+        // Changing u and v should do nothing
+        dg.u = 0.5;
+        dg.v = 0.2;
+        assert_eq!(mapping.map(&dg), (0.5, 0.0, 0.0, 0.0, 0.0, 0.0));
+
+        // Changing the position should do something
+        dg.p = Point::new_with(0.1, 0.2, 0.6);
+        let (s, t, _, _, _, _) = mapping.map(&dg);
+        assert_ne!(s, 0.0);
+        assert_ne!(t, 0.0);
+
+        for i in 1..9 {
+            let di = (i as f32) / 10.0;
+            dg.p = Point::new_with(0.1 * di, 0.2 * di, 0.6 * di);
+            let (ns, nt, _, _, _, _) = mapping.map(&dg);
+            assert!((s - ns).abs() < 0.00001);
+            assert!((t - nt).abs() < 0.00001);
+        }
+    }
+
+    #[test]
+    fn transformed_spherical_mapping_can_map_coords() {
+        let translated_mapping = SphericalMapping2D::new_with(
+            Transform::translate(&Vector::new_with(1.0, 2.0, 3.0)));
+
+        let identity_mapping = SphericalMapping2D::new();
+
+        let mut dg_one = DifferentialGeometry::new();
+        dg_one.p = Point::new_with(1.0, 2.0, 3.0);
+
+        let mut dg_two = DifferentialGeometry::new();
+
+        assert_eq!(translated_mapping.map(&dg_two),
+                   identity_mapping.map(&dg_one));
+    }
+
+    #[test]
+    fn identity_spherical_mapping_can_produce_differentials() {
+        let identity_mapping = SphericalMapping2D::new();
+        test_positional_differentials(identity_mapping);
+    }
+
+    #[test]
+    fn transformed_spherical_mapping_can_produce_differentials() {
+        let transformed_mapping = SphericalMapping2D::new_with(
+            Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
+                * Transform::rotate_x(45.0));
+
+        test_positional_differentials(transformed_mapping);
     }
 }
