@@ -47,6 +47,34 @@ impl TextureMapping2D for UVMapping2D {
     }
 }
 
+fn get_circular_differentials<F>(dg: &DifferentialGeometry, mapping: F) ->
+    (f32, f32, f32, f32, f32, f32) where F: Fn(&Point) -> (f32, f32) {
+        let (s, t) = mapping(&dg.p);
+
+        let delta : f32 = 0.1;
+        let deal_with_singularity = |res: f32| {
+            if res > 0.5 {
+                1.0 - res
+            } else if res < -0.5 {
+                -(res + 1.0)
+            } else {
+                res
+            }
+        };
+
+        let px = &dg.p + delta * &dg.dpdx;
+        let (sx, tx) = mapping(&px);
+        let dsdx = (sx - s) / delta;
+        let dtdx = deal_with_singularity((tx - t) / delta);
+
+        let py = &dg.p + delta * &dg.dpdy;
+        let (sy, ty) = mapping(&py);
+        let dsdy = (sy - s) / delta;
+        let dtdy = deal_with_singularity((ty - t) / delta);
+
+        (s, t, dsdx, dtdx, dsdy, dtdy)
+    }
+
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct SphericalMapping2D {
     world_to_texture: Transform
@@ -78,30 +106,7 @@ impl SphericalMapping2D {
 
 impl TextureMapping2D for SphericalMapping2D {
     fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
-        let (s, t) = self.sphere(&dg.p);
-
-        let delta : f32 = 0.1;
-        let deal_with_singularity = |res: f32| {
-            if res > 0.5 {
-                1.0 - res
-            } else if res < -0.5 {
-                -(res + 1.0)
-            } else {
-                res
-            }
-        };
-
-        let px = &dg.p + delta * &dg.dpdx;
-        let (sx, tx) = self.sphere(&px);
-        let dsdx = (sx - s) / delta;
-        let dtdx = deal_with_singularity((tx - t) / delta);
-
-        let py = &dg.p + delta * &dg.dpdy;
-        let (sy, ty) = self.sphere(&py);
-        let dsdy = (sy - s) / delta;
-        let dtdy = deal_with_singularity((ty - t) / delta);
-
-        (s, t, dsdx, dtdx, dsdy, dtdy)
+        get_circular_differentials(dg, |p| { self.sphere(p) })
     }
 }
 
