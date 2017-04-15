@@ -110,6 +110,39 @@ impl TextureMapping2D for SphericalMapping2D {
     }
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
+pub struct CylindricalMapping2D {
+    world_to_texture: Transform
+}
+
+impl CylindricalMapping2D {
+    pub fn new_with(xf: Transform) -> CylindricalMapping2D {
+        CylindricalMapping2D { world_to_texture: xf }
+    }
+
+    pub fn new() -> CylindricalMapping2D {
+        CylindricalMapping2D::new_with(Transform::new())
+    }
+
+    fn cylinder(&self, p: &Point) -> (f32, f32) {
+        let vec = {
+            let v = Vector::from(self.world_to_texture.xf(p.clone()));
+            if v == Vector::new() {
+                Vector::new_with(1.0, 0.0, 0.0)
+            } else {
+                v.normalize()
+            }
+        };
+        ((consts::PI + vec.y.atan2(vec.x)) / (2.0 * consts::PI), vec.z)
+    }
+}
+
+impl TextureMapping2D for CylindricalMapping2D {
+    fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
+        get_circular_differentials(dg, |p| { self.cylinder(p) })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -285,6 +318,63 @@ mod tests {
     #[test]
     fn transformed_spherical_mapping_can_produce_differentials() {
         let transformed_mapping = SphericalMapping2D::new_with(
+            Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
+                * Transform::rotate_x(45.0));
+
+        test_positional_differentials(transformed_mapping);
+    }
+
+    #[test]
+    fn cylindrical_mapping_can_map_coords() {
+        let mapping = CylindricalMapping2D::new();
+        let mut dg = DifferentialGeometry::new();
+        assert_eq!(mapping.map(&dg), (0.5, 0.0, 0.0, 0.0, 0.0, 0.0));
+
+        // Changing u and v should do nothing
+        dg.u = 0.5;
+        dg.v = 0.2;
+        assert_eq!(mapping.map(&dg), (0.5, 0.0, 0.0, 0.0, 0.0, 0.0));
+
+        // Changing the position should do something
+        dg.p = Point::new_with(0.1, 0.2, 0.6);
+        let (s, t, _, _, _, _) = mapping.map(&dg);
+        assert_ne!(s, 0.0);
+        assert_ne!(t, 0.0);
+
+        for i in 1..9 {
+            let di = (i as f32) / 10.0;
+            dg.p = Point::new_with(0.1 * di, 0.2 * di, 0.6 * di);
+            let (ns, nt, _, _, _, _) = mapping.map(&dg);
+            assert!((s - ns).abs() < 0.00001);
+            assert!((t - nt).abs() < 0.00001);
+        }
+    }
+
+    #[test]
+    fn transformed_cylindrical_mapping_can_map_coords() {
+        let translated_mapping = CylindricalMapping2D::new_with(
+            Transform::translate(&Vector::new_with(1.0, 2.0, 3.0)));
+
+        let identity_mapping = CylindricalMapping2D::new();
+
+        let mut dg_one = DifferentialGeometry::new();
+        dg_one.p = Point::new_with(1.0, 2.0, 3.0);
+
+        let mut dg_two = DifferentialGeometry::new();
+
+        assert_eq!(translated_mapping.map(&dg_two),
+                   identity_mapping.map(&dg_one));
+    }
+
+    #[test]
+    fn identity_cylindrical_mapping_can_produce_differentials() {
+        let identity_mapping = CylindricalMapping2D::new();
+        test_positional_differentials(identity_mapping);
+    }
+
+    #[test]
+    fn transformed_cylindrical_mapping_can_produce_differentials() {
+        let transformed_mapping = CylindricalMapping2D::new_with(
             Transform::translate(&Vector::new_with(1.0, 2.0, 3.0))
                 * Transform::rotate_x(45.0));
 
