@@ -1,4 +1,5 @@
-pub mod mapping;
+pub mod mapping2d;
+pub mod mapping3d;
 
 use diff_geom::DifferentialGeometry;
 
