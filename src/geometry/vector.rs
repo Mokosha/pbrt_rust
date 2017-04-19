@@ -22,7 +22,7 @@ pub trait Cross : Sized {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Vector {
     pub x: f32,
     pub y: f32,
