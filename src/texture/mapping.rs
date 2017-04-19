@@ -4,6 +4,7 @@ use diff_geom::DifferentialGeometry;
 use geometry::normal::Normalize;
 use geometry::point::Point;
 use geometry::vector::Vector;
+use geometry::vector::Dot;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 
@@ -140,6 +141,43 @@ impl CylindricalMapping2D {
 impl TextureMapping2D for CylindricalMapping2D {
     fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
         get_circular_differentials(dg, |p| { self.cylinder(p) })
+    }
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
+pub struct PlanarMapping2D {
+    vs: Vector,
+    vt: Vector,
+    ds: f32,
+    dt: f32
+}
+
+impl PlanarMapping2D {
+    pub fn new() -> PlanarMapping2D {
+        PlanarMapping2D {
+            vs: Vector::new_with(1.0, 0.0, 0.0),
+            vt: Vector::new_with(0.0, 1.0, 0.0),
+            ds: 0.0,
+            dt: 0.0
+        }
+    }
+
+    pub fn new_with(v1: Vector, v2: Vector, d1: f32, d2: f32)
+                    -> PlanarMapping2D {
+        PlanarMapping2D { vs: v1, vt: v2, ds: d1, dt: d2 }
+    }
+}
+
+impl TextureMapping2D for PlanarMapping2D {
+    fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
+        let vec = Vector::from(dg.p.clone());
+        let s = self.ds + vec.dot(&self.vs);
+        let t = self.dt + vec.dot(&self.vt);
+        let dsdx = self.vs.dot(&dg.dpdx);
+        let dtdx = self.vt.dot(&dg.dpdx);
+        let dsdy = self.vs.dot(&dg.dpdy);
+        let dtdy = self.vt.dot(&dg.dpdy);
+        (s, t, dsdx, dtdx, dsdy, dtdy)
     }
 }
 
@@ -379,5 +417,21 @@ mod tests {
                 * Transform::rotate_x(45.0));
 
         test_positional_differentials(transformed_mapping);
+    }
+
+    #[test]
+    fn identity_planar_mapping_can_produce_differentials() {
+        let planar_mapping = PlanarMapping2D::new();
+        test_positional_differentials(planar_mapping);
+    }
+
+    #[test]
+    fn transformed_planar_mapping_can_produce_differentials() {
+        let planar_mapping = PlanarMapping2D::new_with(
+            Vector::new_with(1.0, 2.0, 3.0),
+            Vector::new_with(-3.0, 0.0, -1.2),
+            3.2, -1000.0);
+
+        test_positional_differentials(planar_mapping);
     }
 }
