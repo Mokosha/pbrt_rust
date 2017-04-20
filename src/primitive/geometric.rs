@@ -15,7 +15,7 @@ use ray::Ray;
 use shape::Shape;
 use transform::transform::Transform;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct GeometricPrimitive {
     s: Shape,
     m: Arc<Material>,

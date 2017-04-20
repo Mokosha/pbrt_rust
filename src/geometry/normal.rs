@@ -6,7 +6,7 @@ pub trait Normalize {
     fn normalize(self) -> Self;
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Normal {
     pub x: f32,
     pub y: f32,

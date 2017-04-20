@@ -29,7 +29,7 @@ use shape::mesh::Triangle;
 use shape::mesh::Mesh;
 use shape::loopsubdiv::LoopSubdiv;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialOrd)]
 pub struct ShapeBase {
     pub object2world: Transform,
     pub world2object: Transform,
@@ -183,8 +183,9 @@ impl Shape {
     }
 
     pub fn triangle_mesh(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
-                         _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
-                         uv: Option<&[f32]>, _atex: Option<Arc<Texture<f32>>>) -> Shape {
+                         _p: &[Point], _n: Option<&[Normal]>,
+                         _s: Option<&[Vector]>, uv: Option<&[f32]>,
+                         _atex: Option<Arc<Box<Texture<f32>>>>) -> Shape {
         Shape::TriangleMesh( Mesh::new(o2w, w2o, ro, vi, _p, _n, _s, uv, _atex) )
     }
 

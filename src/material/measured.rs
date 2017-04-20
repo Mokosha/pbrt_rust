@@ -11,7 +11,7 @@ use utils::kdtree::KdTree;
 
 use material::bump;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct MeasuredMaterial {
     theta_phi_data: KdTree<IrregIsotropicSample>,
     regular_halfangle_data: Vec<f32>,

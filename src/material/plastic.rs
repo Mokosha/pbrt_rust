@@ -12,7 +12,7 @@ use utils::Clamp;
 
 use material::bump;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct PlasticMaterial {
     k_d: Arc<Texture<Spectrum>>,
     k_s: Arc<Texture<Spectrum>>,

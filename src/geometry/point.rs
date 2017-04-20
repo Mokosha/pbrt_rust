@@ -1,7 +1,7 @@
 use geometry::vector::Vector;
 use utils::Lerp;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Point {
     pub x: f32,
     pub y: f32,

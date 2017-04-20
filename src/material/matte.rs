@@ -6,11 +6,12 @@ use bsdf::orennayar::OrenNayar;
 use diff_geom::DifferentialGeometry;
 use spectrum::Spectrum;
 use texture::Texture;
+use texture::TextureBase;
 use utils::Clamp;
 
 use material::bump;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct MatteMaterial {
     sigma: Arc<Texture<f32>>,
     bump_map: Option<Arc<Texture<f32>>>,

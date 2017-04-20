@@ -10,7 +10,7 @@ use utils::Clamp;
 
 use material::Material;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub struct MixMaterial {
     m1: Arc<Material>,
     m2: Arc<Material>,

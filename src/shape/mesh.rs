@@ -273,7 +273,7 @@ impl ::std::ops::Index<usize> for Triangle {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Mesh {
     base: ShapeBase,
     vertex_index: Vec<usize>,
@@ -284,10 +284,22 @@ pub struct Mesh {
     atex: Option<Arc<Texture<f32>>>
 }
 
+impl PartialEq for Mesh {
+    fn eq(&self, rhs: &Mesh) -> bool {
+        self.base == rhs.base &&
+            self.vertex_index == rhs.vertex_index &&
+            self.p == rhs.p &&
+            self.n == rhs.n &&
+            self.s == rhs.s &&
+            self.uvs == rhs.uvs
+    }
+}
+
 impl Mesh {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
                _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
-               uv: Option<&[f32]>, _atex: Option<Arc<Texture<f32>>>) -> Mesh {
+               uv: Option<&[f32]>, _atex: Option<Arc<Box<Texture<f32>>>>)
+               -> Mesh {
         assert!(vi.len() % 3 == 0);
         let xf = o2w.clone();
         Mesh {
@@ -297,7 +309,7 @@ impl Mesh {
             n: _n.map(|v| v.to_vec()),
             s: _s.map(|v| v.to_vec()),
             uvs: uv.map(|v| v.to_vec()),
-            atex: _atex.map(|t| t.clone())
+            atex: _atex.map(|t| t.clone() as Arc<Texture<f32>>)
         }
     }
 

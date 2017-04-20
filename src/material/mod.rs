@@ -18,8 +18,9 @@ use material::plastic::PlasticMaterial;
 use material::measured::MeasuredMaterial;
 use material::mix::MixMaterial;
 
-pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
-            dg_shading: &DifferentialGeometry) -> DifferentialGeometry {
+pub fn bump<Tex: Texture<f32>>(
+    d: &Tex, dg_geom: &DifferentialGeometry,
+    dg_shading: &DifferentialGeometry) -> DifferentialGeometry {
     // Compute offset positions and evaluate displacement texture
     let mut dg_eval = dg_shading.clone();
 
@@ -69,7 +70,7 @@ pub fn bump(d: &Texture<f32>, dg_geom: &DifferentialGeometry,
     dg_bump
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug)]
 pub enum Material {
     Matte(MatteMaterial),
     Plastic(PlasticMaterial),

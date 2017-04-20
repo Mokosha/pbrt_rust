@@ -9,7 +9,7 @@ use ray::RayDifferential;
 
 use utils::solve_linear_system_2x2;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct DifferentialGeometry {
     pub p: Point,
     pub nn: Normal,
