@@ -1,4 +1,6 @@
 use std::f32::consts;
+use std::fmt::Debug;
+use std::ops::Deref;
 
 use diff_geom::DifferentialGeometry;
 use geometry::normal::Normalize;
@@ -11,11 +13,36 @@ use transform::transform::Transform;
 use geometry::vector::spherical_theta;
 use geometry::vector::spherical_phi;
 
-pub trait TextureMapping2D {
-    // Returns the s and t coordinates for the point on the given surface,
-    // and also returns their differentials:
-    //   (s, t, ds/dx, dt/dx, ds/dy, dt/dy)
-    fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32);
+mod internal {
+    use super::*;
+
+    pub trait TextureMapping2DBase {
+        // Returns the s and t coordinates for the point on the given surface,
+        // and also returns their differentials:
+        //   (s, t, ds/dx, dt/dx, ds/dy, dt/dy)
+        fn map_dg(&self, dg: &DifferentialGeometry) ->
+            (f32, f32, f32, f32, f32, f32);
+    }
+
+    impl<U> TextureMapping2DBase for U where U: Deref<Target = TextureMapping2D> {
+        fn map_dg(&self, dg: &DifferentialGeometry)
+                  -> (f32, f32, f32, f32, f32, f32) {
+            self.deref().map(&dg)
+        }
+    }
+}
+
+pub trait TextureMapping2D:
+Debug + Send + Sync + internal::TextureMapping2DBase {
+    fn map(&self, &DifferentialGeometry) ->
+        (f32, f32, f32, f32, f32, f32);
+}
+
+impl<U> TextureMapping2D for U where U:
+Debug + Send + Sync + internal::TextureMapping2DBase {
+    fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
+        self.map_dg(&dg)
+    }
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
@@ -36,8 +63,8 @@ impl UVMapping2D {
     }
 }
 
-impl TextureMapping2D for UVMapping2D {
-    fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
+impl internal::TextureMapping2DBase for UVMapping2D {
+    fn map_dg(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
         let s = self.su * dg.u + self.du;
         let t = self.sv * dg.v + self.dv;
         let dsdx = self.su * dg.dudx;
@@ -105,8 +132,8 @@ impl SphericalMapping2D {
     }
 }
 
-impl TextureMapping2D for SphericalMapping2D {
-    fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
+impl internal::TextureMapping2DBase for SphericalMapping2D {
+    fn map_dg(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
         get_circular_differentials(dg, |p| { self.sphere(p) })
     }
 }
@@ -138,8 +165,8 @@ impl CylindricalMapping2D {
     }
 }
 
-impl TextureMapping2D for CylindricalMapping2D {
-    fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
+impl internal::TextureMapping2DBase for CylindricalMapping2D {
+    fn map_dg(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
         get_circular_differentials(dg, |p| { self.cylinder(p) })
     }
 }
@@ -168,8 +195,8 @@ impl PlanarMapping2D {
     }
 }
 
-impl TextureMapping2D for PlanarMapping2D {
-    fn map(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
+impl internal::TextureMapping2DBase for PlanarMapping2D {
+    fn map_dg(&self, dg: &DifferentialGeometry) -> (f32, f32, f32, f32, f32, f32) {
         let vec = Vector::from(dg.p.clone());
         let s = self.ds + vec.dot(&self.vs);
         let t = self.dt + vec.dot(&self.vt);
