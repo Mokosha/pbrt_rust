@@ -34,10 +34,10 @@ mod tests {
 
     #[test]
     fn mix_texture_works() {
-        let tex1 = Arc::new(ConstantTexture::new(Vector::new_with(1.0, -2.0, 15.0)))
-            as Arc<Texture<Vector>>;
-        let tex2 = Arc::new(ConstantTexture::new(Vector::new_with(1.0, 2.0, 3.0)))
-            as Arc<Texture<Vector>>;
+        let tex1 = Arc::new(ConstantTexture::new(
+            Vector::new_with(1.0, -2.0, 15.0))) as Arc<Texture<Vector>>;
+        let tex2 = Arc::new(ConstantTexture::new(
+            Vector::new_with(1.0, 2.0, 3.0))) as Arc<Texture<Vector>>;
         let amt = Arc::new(ConstantTexture::new(0.75f32)) as Arc<Texture<f32>>;
         let mix_tex = MixTexture::new(tex1, tex2, amt);
         assert_eq!(mix_tex.evaluate(&DifferentialGeometry::new()),
