@@ -41,7 +41,7 @@ pub struct ConstantTexture<T: Clone> {
 }
 
 impl<T: Clone> ConstantTexture<T> {
-    fn new(t: T) -> ConstantTexture<T> {
+    pub fn new(t: T) -> ConstantTexture<T> {
         ConstantTexture { value: t }
     }
 }
@@ -59,7 +59,7 @@ pub struct ScaleTexture<T, U> {
 }
 
 impl<T, U> ScaleTexture<T, U> {
-    fn new(t1: Arc<Texture<T>>, t2: Arc<Texture<U>>) -> ScaleTexture<T, U> {
+    pub fn new(t1: Arc<Texture<T>>, t2: Arc<Texture<U>>) -> ScaleTexture<T, U> {
         ScaleTexture { tex1: t1, tex2: t2 }
     }
 }

@@ -16,7 +16,7 @@ pub struct BilerpTexture<T> where T: Lerp<f32> {
 }
 
 impl<T> BilerpTexture<T> where T: Lerp<f32> {
-    fn new<Map: TextureMapping2D + 'static>
+    pub fn new<Map: TextureMapping2D + 'static>
         (map: Map, t00: T, t01: T, t10: T, t11: T) -> BilerpTexture<T> {
         BilerpTexture {
             mapping: Arc::new(map),
