@@ -170,21 +170,30 @@ impl GraphicsState {
 }
 
 lazy_static! {
-    pub static ref PBRT_OPTIONS: Mutex<Options> = Mutex::new(Options::new());
-    static ref CURRENT_API_STATE: Mutex<usize> = Mutex::new(STATE_UNINITIALIZED);
+    pub static ref PBRT_OPTIONS: Mutex<Options> =
+        Mutex::new(Options::new());
+    static ref CURRENT_API_STATE: Mutex<usize> =
+        Mutex::new(STATE_UNINITIALIZED);
 
-    static ref CUR_TRANSFORMS: Mutex<TransformSet> = Mutex::new(TransformSet::new());
-    static ref ACTIVE_TRANSFORM_BITS: Mutex<usize> = Mutex::new(ALL_TRANSFORM_BITS);
+    static ref CUR_TRANSFORMS: Mutex<TransformSet> =
+        Mutex::new(TransformSet::new());
+    static ref ACTIVE_TRANSFORM_BITS: Mutex<usize> =
+        Mutex::new(ALL_TRANSFORM_BITS);
 
     static ref NAMED_COORDINATE_SYSTEMS: Mutex<HashMap<String, TransformSet>> =
         Mutex::new(HashMap::new());
 
-    static ref RENDER_OPTIONS: Mutex<RenderOptions> = Mutex::new(RenderOptions::new());
-    static ref GRAPHICS_STATE: Mutex<GraphicsState> = Mutex::new(GraphicsState::new());
+    static ref RENDER_OPTIONS: Mutex<RenderOptions> =
+        Mutex::new(RenderOptions::new());
+    static ref GRAPHICS_STATE: Mutex<GraphicsState> =
+        Mutex::new(GraphicsState::new());
 
-    static ref PUSHED_GRAPHICS_STATES: Mutex<Vec<GraphicsState>> = Mutex::new(Vec::new());
-    static ref PUSHED_TRANSFORMS: Mutex<Vec<TransformSet>> = Mutex::new(Vec::new());
-    static ref PUSHED_ACTIVE_TRANSFORM_BITS: Mutex<Vec<usize>> = Mutex::new(Vec::new());
+    static ref PUSHED_GRAPHICS_STATES: Mutex<Vec<GraphicsState>> =
+        Mutex::new(Vec::new());
+    static ref PUSHED_TRANSFORMS: Mutex<Vec<TransformSet>> =
+        Mutex::new(Vec::new());
+    static ref PUSHED_ACTIVE_TRANSFORM_BITS: Mutex<Vec<usize>> =
+        Mutex::new(Vec::new());
 }
 
 fn for_active_transforms<T: Fn(&mut Transform)>(f: T) {
