@@ -1,9 +1,12 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use geometry::normal::Normal;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use spectrum::Spectrum;
+use texture::ConstantTexture;
+use texture::Texture;
 
 #[derive(Clone, Debug, PartialEq)]
 enum ParamTy {
@@ -229,12 +232,126 @@ impl ParamSet {
         unimplemented!()
     }
 
-    pub fn add_sampled_spectrum_files(&mut self, name: &String, data: Vec<String>) {
+    pub fn find_one_spectrum(&self, name: &String, def: Spectrum) -> Spectrum {
+        let &ParamSet(ref map) = self;
+        if let Some(&ParamTy::Spec(ref s)) = map.get(name) {
+            if s.is_empty() { def } else { s[0].clone() }
+        } else { def }
+    }
+
+    pub fn find_spectrum<'a>(&'a self, name: &String)
+                             -> Option<&'a [Spectrum]> {
+        let &ParamSet(ref map) = self;
+        map.get(name).and_then(|res| {
+            match res {
+                &ParamTy::Spec(ref s) => Some(s.as_slice()),
+                _ => None
+            }
+        })
+    }
+
+    pub fn add_sampled_spectrum_files(&mut self, name: &String,
+                                      data: Vec<String>) {
         unimplemented!()
     }
 
     pub fn add_sampled_spectrum(&mut self, name: &String, data: Vec<f32>) {
         unimplemented!()
+    }
+}
+
+pub struct TextureParams<'a> {
+    float_textures: &'static HashMap<String, Arc<Texture<f32>>>,
+    spectrum_textures: &'static HashMap<String, Arc<Texture<Spectrum>>>,
+    geom_params: &'a ParamSet,
+    material_params: &'a ParamSet
+}
+
+fn find_texture<T>(textures: &'static HashMap<String, Arc<Texture<T>>>,
+                   name: &String) -> Arc<Texture<T>> {
+    match textures.get(name) {
+        Some(tex) => tex.clone() as Arc<Texture<T>>,
+        None => panic!("Couldn't find texture named \"{}\"", name)
+    }
+}
+
+impl<'a> TextureParams<'a> {
+    fn new(geomp: &'a ParamSet, matp: &'a ParamSet,
+           ft: &'static HashMap<String, Arc<Texture<f32>>>,
+           st: &'static HashMap<String, Arc<Texture<Spectrum>>>)
+           -> TextureParams<'a> {
+        TextureParams {
+            float_textures: ft,
+            spectrum_textures: st,
+            geom_params: geomp,
+            material_params: matp
+        }
+    }
+
+    pub fn get_spectrum_texture(&self, n: &String, def: &Spectrum)
+                                -> Arc<Texture<Spectrum>> {
+        if let Some(names) = self.geom_params.find_tex(n) {
+            find_texture(&self.spectrum_textures, &names[0])
+        } else if let Some(names) = self.material_params.find_tex(n) {
+            find_texture(&self.spectrum_textures, &names[0])
+        } else {
+            let val = self.geom_params.find_one_spectrum(
+                n, self.material_params.find_one_spectrum(n, def.clone()));
+            Arc::new(ConstantTexture::new(val)) as Arc<Texture<Spectrum>>
+        }
+    }
+
+    pub fn get_float_texture(&self, n: &String, def: f32)
+                                -> Arc<Texture<f32>> {
+        if let Some(names) = self.geom_params.find_tex(n) {
+            find_texture(&self.float_textures, &names[0])
+        } else if let Some(names) = self.material_params.find_tex(n) {
+            find_texture(&self.float_textures, &names[0])
+        } else {
+            let val = self.geom_params.find_one_float(
+                n, self.material_params.find_one_float(n, def));
+            Arc::new(ConstantTexture::new(val)) as Arc<Texture<f32>>
+        }
+    }
+
+    pub fn find_float(&self, n: &String, def: f32) -> f32 {
+        self.geom_params.find_one_float(
+            n, self.material_params.find_one_float(n, def))
+    }
+
+    pub fn find_bool(&self, n: &String, def: bool) -> bool {
+        self.geom_params.find_one_bool(
+            n, self.material_params.find_one_bool(n, def))
+    }
+
+    pub fn find_int(&self, n: &String, def: i32) -> i32 {
+        self.geom_params.find_one_int(
+            n, self.material_params.find_one_int(n, def))
+    }
+
+    pub fn find_point(&self, n: &String, def: Point) -> Point {
+        self.geom_params.find_one_point(
+            n, self.material_params.find_one_point(n, def))
+    }
+
+    pub fn find_vec(&self, n: &String, def: Vector) -> Vector {
+        self.geom_params.find_one_vec(
+            n, self.material_params.find_one_vec(n, def))
+    }
+
+    pub fn find_normal(&self, n: &String, def: Normal) -> Normal {
+        self.geom_params.find_one_normal(
+            n, self.material_params.find_one_normal(n, def))
+    }
+
+    pub fn find_str(&self, n: &String, def: String) -> String {
+        self.geom_params.find_one_str(
+            n, self.material_params.find_one_str(n, def))
+    }
+
+    pub fn find_spectrum(&self, n: &String, def: Spectrum) -> Spectrum {
+        self.geom_params.find_one_spectrum(
+            n, self.material_params.find_one_spectrum(n, def))
     }
 }
 
