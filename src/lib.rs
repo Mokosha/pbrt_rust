@@ -2,6 +2,8 @@
 #[macro_use]
 extern crate bitflags;
 extern crate scoped_threadpool;
+#[macro_use]
+extern crate lazy_static;
 
 pub mod area_light;
 pub mod bbox;
