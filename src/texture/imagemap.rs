@@ -10,8 +10,10 @@ use std::sync::Arc;
 use self::image::open;
 use self::image::ImageResult;
 
+use diff_geom::DifferentialGeometry;
 use spectrum::Spectrum;
 use texture::mapping2d::TextureMapping2D;
+use texture::internal::TextureBase;
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
 enum ImageWrap { }
@@ -26,6 +28,12 @@ struct MIPMap<T> {
 impl<T> MIPMap<T> {
     pub fn new(w: u32, h: u32, pixels: Vec<T>) -> MIPMap<T> {
         MIPMap { width: w, height: h, pixels: pixels }
+    }
+
+    pub fn lookup(&self, s: f32, t: f32,
+                  dsdx: f32, dtdx: f32,
+                  dsdy: f32, dtdy: f32) -> T where T : Clone {
+        self.pixels[0].clone()
     }
 }
 
@@ -181,5 +189,25 @@ impl<T> ImageTexture<T> {
                 filename, do_trilinear, max_aniso, wrap_mode, scale, gamma),
             mapping: m
         }
+    }
+
+    pub fn clear_cache() {
+        FLOAT_TEXTURES.lock().unwrap().clear();
+        SPECTRUM_TEXTURES.lock().unwrap().clear();
+    }
+}
+
+impl super::internal::TextureBase<f32> for ImageTexture<f32> {
+    fn eval(&self, dg: &DifferentialGeometry) -> f32 {
+        let (s, t, dsdx, dtdx, dsdy, dtdy) = self.mapping.map(dg);
+        self.mipmap.lookup(s, t, dsdx, dtdx, dsdy, dtdy)
+    }
+}
+
+impl super::internal::TextureBase<Spectrum> for ImageTexture<Spectrum> {
+    fn eval(&self, dg: &DifferentialGeometry) -> Spectrum {
+        let (s, t, dsdx, dtdx, dsdy, dtdy) = self.mapping.map(dg);
+        let ret = self.mipmap.lookup(s, t, dsdx, dtdx, dsdy, dtdy);
+        Spectrum::from_rgb(ret.to_rgb())
     }
 }
