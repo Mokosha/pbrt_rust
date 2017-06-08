@@ -213,6 +213,18 @@ pub fn get_crop_window(num: usize, count: usize,
     (tx0, tx1, ty0, ty1)
 }
 
+pub fn sinc_1d(x: f32, tau: f32) -> f32 {
+    let mut v = x.abs();
+    if v < 1e-5 { 1.0 }
+    else if v >= 1.0 { 0.0 }
+    else {
+        v *= ::std::f32::consts::PI;
+        let vtau = v * tau;
+        let s = vtau.sin() / vtau;
+        s * v.sin() / v
+    }
+}
+
 pub fn modulo(a: i32, b: i32) -> i32 {
     let n = a / b;
     let x = a - n * b;

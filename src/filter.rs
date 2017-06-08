@@ -1,3 +1,5 @@
+use utils::sinc_1d;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct FilterBase {
     x_width: f32,
@@ -115,19 +117,8 @@ impl Filter {
                 mx * my
             },
             &FilterType::Lanczos(tau) => {
-                let sinc = |mut v: f32| {
-                    v = v.abs();
-                    if v < 1e-5 { 1.0 }
-                    else if v >= 1.0 { 0.0 }
-                    else {
-                        v *= ::std::f32::consts::PI;
-                        let vtau = v * tau;
-                        let s = vtau.sin() / vtau;
-                        s * v.sin() / v
-                    }
-                };
-
-                sinc(x * self.inv_x_width()) * sinc(y * self.inv_y_width())
+                sinc_1d(x * self.inv_x_width(), tau) *
+                    sinc_1d(y * self.inv_y_width(), tau)
             }
         }
     }
