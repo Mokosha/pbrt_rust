@@ -213,6 +213,12 @@ pub fn get_crop_window(num: usize, count: usize,
     (tx0, tx1, ty0, ty1)
 }
 
+pub fn modulo(a: i32, b: i32) -> i32 {
+    let n = a / b;
+    let x = a - n * b;
+    if x < 0 { x + b } else { x }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -512,5 +518,17 @@ mod tests {
         assert_eq!(get_crop_window(1, 4, 1.0), (0.5, 1.0, 0.0, 0.5));
         assert_eq!(get_crop_window(2, 4, 1.0), (0.0, 0.5, 0.5, 1.0));
         assert_eq!(get_crop_window(3, 4, 1.0), (0.5, 1.0, 0.5, 1.0));
+    }
+
+    #[test]
+    fn it_can_do_modulo() {
+        assert_eq!(modulo(1, 2), 1);
+        assert_eq!(modulo(0, 2), 0);
+        assert_eq!(modulo(2, 2), 0);
+        assert_eq!(modulo(4, 3), 1);
+        assert_eq!(modulo(-1, 2), 1);
+        assert_eq!(modulo(-1, 3), 2);
+        assert_eq!(modulo(-4, 3), 2);
+        assert_eq!(modulo(-5, 3), 1);
     }
 }
