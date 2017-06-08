@@ -669,6 +669,12 @@ impl ::std::ops::IndexMut<usize> for Spectrum {
     }
 }
 
+impl ::std::iter::Sum<Spectrum> for Spectrum {
+    fn sum<I>(iter: I) -> Spectrum where I: Iterator<Item=Spectrum> {
+        iter.fold(Spectrum::rgb([0.0, 0.0, 0.0]), |acc, s| { s + acc })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
