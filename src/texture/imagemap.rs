@@ -3,6 +3,8 @@ extern crate image;
 
 use std::collections::BTreeMap;
 use std::cmp::Ordering;
+use std::ops::Mul;
+use std::iter::Sum;
 use std::marker::PhantomData;
 use std::sync::Mutex;
 use std::sync::Arc;
@@ -14,20 +16,139 @@ use diff_geom::DifferentialGeometry;
 use spectrum::Spectrum;
 use texture::mapping2d::TextureMapping2D;
 use texture::internal::TextureBase;
+use utils::Clamp;
 
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
-enum ImageWrap { }
+use utils::sinc_1d;
+use utils::modulo;
+
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
+enum ImageWrap {
+    Repeat,
+    Black,
+    Clamp
+}
+
+struct ResampleWeight {
+    first_texel: i32,
+    weights: [f32; 4]
+}
+
+fn resample_weights(oldres: usize, newres: usize) -> Vec<ResampleWeight> {
+    assert!(newres >= oldres);
+
+    let filter_width = 2.0;
+    (0..newres).map(|i| {
+        let center = ((i as f32) + 0.5) * (oldres as f32) / (newres as f32);
+        let first_texel = ((center - filter_width) + 0.5).floor() as i32;
+        let mut weights: [f32; 4] = [0.0; 4];
+
+        for j in 0..4 {
+            let pos = ((first_texel + j) as f32) + 0.5;
+            weights[j as usize] = sinc_1d((pos - center) / filter_width, 2.0);
+        }
+
+        let inv_sum_wts = 1.0 / weights.iter().sum::<f32>();
+        for w in weights.iter_mut() {
+            *w *= inv_sum_wts;
+        }
+
+        ResampleWeight { first_texel: first_texel, weights: weights }
+    }).collect()
+}
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 struct MIPMap<T> {
-    width: u32,
-    height: u32,
-    pixels: Vec<T>
+    width: usize,
+    height: usize,
+    pixels: Vec<T>,
+    do_trilinear: bool,
+    max_anisotropy: f32,
+    wrap_mode: ImageWrap
 }
 
-impl<T> MIPMap<T> {
-    pub fn new(w: u32, h: u32, pixels: Vec<T>) -> MIPMap<T> {
-        MIPMap { width: w, height: h, pixels: pixels }
+impl<T: Clone + Mul<f32> + Sum<<T as Mul<f32>>::Output>> MIPMap<T> {
+    pub fn new(w: usize, h: usize, pixels: Vec<T>, do_tri: bool, max_aniso: f32,
+               wm: ImageWrap) -> MIPMap<T> {
+        let (width, height, pot_pixels) =
+            if !w.is_power_of_two() || !h.is_power_of_two() {
+                // Resample image to power-of-two resolution
+                let wpot = w.next_power_of_two() as usize;
+                let hpot = h.next_power_of_two() as usize;
+
+                let mut new_pixels : Vec<T> =
+                    Vec::with_capacity((wpot * hpot) as usize);
+
+                let get_orig = |rswt: &ResampleWeight, j: usize, dim: usize| {
+                    let ft = rswt.first_texel + (j as i32);
+                    match wm {
+                        ImageWrap::Repeat => modulo(ft, dim as i32),
+                        ImageWrap::Clamp => ft.clamp(0, (dim-1) as i32),
+                        _ => ft
+                    }
+                };
+
+                // Resample image in s direction
+                let s_weights = resample_weights(w as usize, wpot);
+                assert_eq!(s_weights.len(), wpot);
+
+                for t in 0..h {
+                    for s in 0..wpot {
+                        new_pixels.push(
+                            s_weights[s].weights.iter()
+                                .enumerate()
+                                .filter_map(|(j, weight)| {
+                                    let orig_s = get_orig(&(s_weights[s]), j, w);
+                                    if orig_s >= 0 && orig_s < (w as i32) {
+                                        let idx = t*h + (orig_s as usize);
+                                        Some(pixels[idx].clone() * *weight)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .sum());
+                    }
+                }
+
+                // Resample image in t direction
+                let t_weights = resample_weights(h as usize, hpot);
+                for s in 0..wpot {
+                    for t in 0..hpot {
+                        let pixel =
+                            t_weights[t].weights.iter()
+                            .enumerate()
+                            .filter_map(|(j, weight)| {
+                                let orig_t = get_orig(&(t_weights[t]), j, h);
+                                if orig_t >= 0 && orig_t < (h as i32) {
+                                    let idx = (orig_t as usize)*h + s;
+                                    Some(new_pixels[idx].clone() * *weight)
+                                } else {
+                                    None
+                                }
+                            })
+                            .sum();
+
+                        if t >= new_pixels.len() {
+                            assert_eq!(new_pixels.len(), t);
+                            new_pixels.push(pixel);
+                        } else {
+                            new_pixels[t * wpot + s] = pixel;
+                        }
+                    }
+                }
+
+                (wpot, hpot, new_pixels)
+            } else {
+                (w, h, pixels)
+            };
+
+        MIPMap {
+            width: w,
+            height: h,
+            pixels: pot_pixels,
+            do_trilinear: do_tri,
+            max_anisotropy: max_aniso,
+            wrap_mode: wm
+        }
     }
 
     pub fn lookup(&self, s: f32, t: f32,
@@ -127,10 +248,12 @@ fn get_f32_texture(filename: &String, do_trilinear: bool,
         let pixels = texels.into_iter()
             .map(|s| (s.y() * scale).powf(gamma))
             .collect();
-        Arc::new(MIPMap::new(width, height, pixels))
+        Arc::new(MIPMap::new(width as usize, height as usize, pixels,
+                             do_trilinear, max_aniso, wrap_mode))
     } else {
         // Create one-values mipmap
-        Arc::new(MIPMap::new(1, 1, vec![scale.powf(gamma); 1]))
+        Arc::new(MIPMap::new(1, 1, vec![scale.powf(gamma); 1],
+                             do_trilinear, max_aniso, wrap_mode))
     };
 
     FLOAT_TEXTURES.lock().unwrap().insert(tex_info.clone(), ret);
@@ -158,10 +281,12 @@ fn get_spectrum_texture(filename: &String, do_trilinear: bool,
         let pixels = texels.into_iter()
             .map(|s| (s * scale).powf(gamma))
             .collect();
-        Arc::new(MIPMap::new(width, height, pixels))
+        Arc::new(MIPMap::new(width as usize, height as usize, pixels,
+                             do_trilinear, max_aniso, wrap_mode))
     } else {
         // Create one-values mipmap
-        Arc::new(MIPMap::new(1, 1, vec![Spectrum::from(scale.powf(gamma)); 1]))
+        Arc::new(MIPMap::new(1, 1, vec![Spectrum::from(scale.powf(gamma)); 1],
+                             do_trilinear, max_aniso, wrap_mode))
     };
 
     SPECTRUM_TEXTURES.lock().unwrap().insert(tex_info.clone(), ret);
