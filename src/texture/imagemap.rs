@@ -56,6 +56,70 @@ fn resample_weights(oldres: usize, newres: usize) -> Vec<ResampleWeight> {
     }).collect()
 }
 
+fn resize_to_power_of_two_dims<T>
+    (w: usize, h: usize, pixels: Vec<T>, wm: ImageWrap) -> (usize, usize, Vec<T>)
+    where T : Clone + Mul<f32> + Sum<<T as Mul<f32>>::Output>
+{
+    // Resample image to power-of-two resolution
+    let wpot = w.next_power_of_two();
+    let hpot = h.next_power_of_two();
+
+    let mut new_pixels : Vec<T> = Vec::with_capacity(wpot * hpot);
+
+    let get_orig = |rswt: &ResampleWeight, j: usize, dim: usize| {
+        let ft = rswt.first_texel + (j as i32);
+        let orig = match wm {
+            ImageWrap::Repeat => modulo(ft, dim as i32),
+            ImageWrap::Clamp => ft.clamp(0, (dim-1) as i32),
+            _ => ft
+        };
+
+        if orig >= 0 && orig < (dim as i32) { Some(orig) } else { None }
+    };
+
+    // Resample image in s direction
+    let s_weights = resample_weights(w as usize, wpot);
+    assert_eq!(s_weights.len(), wpot);
+
+    for t in 0..h {
+        for s in 0..wpot {
+            new_pixels.push(
+                s_weights[s].weights.iter()
+                    .enumerate()
+                    .filter_map(
+                        |(j, weight)|
+                        get_orig(&(s_weights[s]), j, w).map(|orig_s| {
+                            pixels[t*h + (orig_s as usize)].clone() * *weight
+                        }))
+                    .sum());
+        }
+    }
+
+    // Add the remaining rows
+    for t in h..hpot {
+        for s in 0..wpot {
+            new_pixels.push(pixels[0].clone());
+        }
+    }
+
+    // Resample image in t direction
+    let t_weights = resample_weights(h as usize, hpot);
+    for s in 0..wpot {
+        for t in 0..hpot {
+            new_pixels[t * wpot + s] = t_weights[t].weights.iter()
+                .enumerate()
+                .filter_map(
+                    |(j, weight)|
+                    get_orig(&(t_weights[t]), j, h).map(|orig_t| {
+                        new_pixels[(orig_t as usize)*h + s].clone() * *weight
+                    }))
+                .sum();
+        }
+    }
+
+    (wpot, hpot, new_pixels)
+}
+
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 struct MIPMap<T> {
     width: usize,
@@ -71,79 +135,14 @@ impl<T: Clone + Mul<f32> + Sum<<T as Mul<f32>>::Output>> MIPMap<T> {
                wm: ImageWrap) -> MIPMap<T> {
         let (width, height, pot_pixels) =
             if !w.is_power_of_two() || !h.is_power_of_two() {
-                // Resample image to power-of-two resolution
-                let wpot = w.next_power_of_two() as usize;
-                let hpot = h.next_power_of_two() as usize;
-
-                let mut new_pixels : Vec<T> =
-                    Vec::with_capacity((wpot * hpot) as usize);
-
-                let get_orig = |rswt: &ResampleWeight, j: usize, dim: usize| {
-                    let ft = rswt.first_texel + (j as i32);
-                    match wm {
-                        ImageWrap::Repeat => modulo(ft, dim as i32),
-                        ImageWrap::Clamp => ft.clamp(0, (dim-1) as i32),
-                        _ => ft
-                    }
-                };
-
-                // Resample image in s direction
-                let s_weights = resample_weights(w as usize, wpot);
-                assert_eq!(s_weights.len(), wpot);
-
-                for t in 0..h {
-                    for s in 0..wpot {
-                        new_pixels.push(
-                            s_weights[s].weights.iter()
-                                .enumerate()
-                                .filter_map(|(j, weight)| {
-                                    let orig_s = get_orig(&(s_weights[s]), j, w);
-                                    if orig_s >= 0 && orig_s < (w as i32) {
-                                        let idx = t*h + (orig_s as usize);
-                                        Some(pixels[idx].clone() * *weight)
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .sum());
-                    }
-                }
-
-                // Resample image in t direction
-                let t_weights = resample_weights(h as usize, hpot);
-                for s in 0..wpot {
-                    for t in 0..hpot {
-                        let pixel =
-                            t_weights[t].weights.iter()
-                            .enumerate()
-                            .filter_map(|(j, weight)| {
-                                let orig_t = get_orig(&(t_weights[t]), j, h);
-                                if orig_t >= 0 && orig_t < (h as i32) {
-                                    let idx = (orig_t as usize)*h + s;
-                                    Some(new_pixels[idx].clone() * *weight)
-                                } else {
-                                    None
-                                }
-                            })
-                            .sum();
-
-                        if t >= new_pixels.len() {
-                            assert_eq!(new_pixels.len(), t);
-                            new_pixels.push(pixel);
-                        } else {
-                            new_pixels[t * wpot + s] = pixel;
-                        }
-                    }
-                }
-
-                (wpot, hpot, new_pixels)
+                resize_to_power_of_two_dims(w, h, pixels, wm)
             } else {
                 (w, h, pixels)
             };
 
         MIPMap {
-            width: w,
-            height: h,
+            width: width,
+            height: height,
             pixels: pot_pixels,
             do_trilinear: do_tri,
             max_anisotropy: max_aniso,
