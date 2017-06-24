@@ -1,4 +1,5 @@
 pub mod kdtree;
+pub mod blocked_vec;
 
 pub trait Lerp<F = Self> {
     fn lerp(&self, b: &Self, t: F) -> Self;
@@ -404,30 +405,40 @@ mod tests {
     #[test]
     fn it_can_solve_2x2_linear_systems() {
         // Let's try the obvious case
-        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [0.0, 1.0]], [3.5, -4.2]),
+        let mut lin_sys = [[1.0, 0.0], [0.0, 1.0]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [3.5, -4.2]),
                    Some((3.5, -4.2)));
 
         // Let's try the degenerate case...
-        assert_eq!(solve_linear_system_2x2([[::std::f32::NAN, 0.0], [0.0, 1.0]], [3.5, -4.2]),
+        lin_sys = [[::std::f32::NAN, 0.0], [0.0, 1.0]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [3.5, -4.2]), None);
+
+        lin_sys = [[1.0, ::std::f32::NAN], [0.0, 1.0]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [3.5, -4.2]), None);
+
+        lin_sys = [[1.0, 0.0], [::std::f32::NAN, 1.0]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [3.5, -4.2]), None);
+
+        lin_sys = [[1.0, 0.0], [0.0, ::std::f32::NAN]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [3.5, -4.2]), None);
+
+        lin_sys = [[1.0, 0.0], [0.0, 1.0]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [::std::f32::NAN, -4.2]),
                    None);
-        assert_eq!(solve_linear_system_2x2([[1.0, ::std::f32::NAN], [0.0, 1.0]], [3.5, -4.2]),
-                   None);
-        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [::std::f32::NAN, 1.0]], [3.5, -4.2]),
-                   None);
-        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [0.0, ::std::f32::NAN]], [3.5, -4.2]),
-                   None);
-        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [0.0, 1.0]], [::std::f32::NAN, -4.2]),
-                   None);
-        assert_eq!(solve_linear_system_2x2([[1.0, 0.0], [0.0, 1.0]], [3.5, ::std::f32::NAN]),
+
+        lin_sys = [[1.0, 0.0], [0.0, 1.0]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [3.5, ::std::f32::NAN]),
                    None);
 
         // Let's try another degenerate case...
-        assert_eq!(solve_linear_system_2x2([[0.0, 0.0], [0.0, 0.0]], [3.5, -4.2]),
-                   None);
-        assert_eq!(solve_linear_system_2x2([[1.0, 2.0], [1.0, 2.0]], [3.5, -4.2]),
-                   None);
-        assert_eq!(solve_linear_system_2x2([[3.0, 2.0], [6.0, 4.0]], [3.5, -4.2]),
-                   None);
+        lin_sys = [[0.0, 0.0], [0.0, 0.0]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [3.5, -4.2]), None);
+
+        lin_sys = [[1.0, 2.0], [1.0, 2.0]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [3.5, -4.2]), None);
+
+        lin_sys = [[3.0, 2.0], [6.0, 4.0]];
+        assert_eq!(solve_linear_system_2x2(lin_sys, [3.5, -4.2]), None);
 
         // Let's try a rotation
         let sqrt2_2 = 0.5 * 2f32.sqrt();
