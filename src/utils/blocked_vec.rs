@@ -67,7 +67,7 @@ impl<T: Default + Clone> BlockedVec<T> {
             self.block_size() * ov + ou
     }
 
-    fn get(&self, u: usize, v: usize) -> Option<&T> {
+    pub fn get(&self, u: usize, v: usize) -> Option<&T> {
         if u >= self.width || v >= self.height {
             return None;
         }
@@ -76,7 +76,7 @@ impl<T: Default + Clone> BlockedVec<T> {
         Some(&self.blocks_memory[offset])
     }
 
-    fn get_mut(&mut self, u: usize, v: usize) -> Option<&mut T> {
+    pub fn get_mut(&mut self, u: usize, v: usize) -> Option<&mut T> {
         if u >= self.width || v >= self.height {
             return None;
         }
