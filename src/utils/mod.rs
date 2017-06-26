@@ -1,19 +1,25 @@
 pub mod kdtree;
 pub mod blocked_vec;
 
+use std::ops::Add;
+use std::ops::Mul;
+
 pub trait Lerp<F = Self> {
     fn lerp(&self, b: &Self, t: F) -> Self;
 }
 
-impl Lerp for f32 {
-    fn lerp(&self, b: &f32, t: f32) -> f32 {
-        self * (1f32 - t) + b * t
+// !SPEED! We're cloning self and its argument here. This might create a
+// performance bottleneck in the future. Ideally we'd like to check that
+// &T satisfies trait Mul<f32>, but I'm not totally sure we can do that
+impl<T: Mul<f32, Output = T> + Add<T, Output = T> + Clone> Lerp<f32> for T {
+    fn lerp(&self, b: &T, t: f32) -> T {
+        self.clone() * (1.0 - t) + b.clone() * t
     }
 }
 
-impl Lerp for f64 {
-    fn lerp(&self, b: &f64, t: f64) -> f64 {
-        self * (1f64 - t) + b * t
+impl<T: Mul<f64, Output = T> + Add<T, Output = T> + Clone> Lerp<f64> for T {
+    fn lerp(&self, b: &T, t: f64) -> T {
+        self.clone() * (1.0 - t) + b.clone() * t
     }
 }
 

@@ -616,12 +616,6 @@ impl Neg for Spectrum {
     }
 }
 
-impl Lerp<f32> for Spectrum {
-    fn lerp(&self, b: &Self, t: f32) -> Self {
-        self.clone().elementwise(b.clone(), |(x, y)| (&x).lerp(&y, t))
-    }
-}
-
 impl Clamp<f32> for Spectrum {
     fn clamp(self, a: f32, b: f32) -> Spectrum {
         self.transform(|x| x.clamp(a, b))

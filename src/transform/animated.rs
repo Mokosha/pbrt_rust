@@ -161,7 +161,7 @@ impl AnimatedTransform {
 
         // Interpolate rotation at dt
         let rotate = if self.r_animated {
-            self.r1.lerp(&self.r2, dt)
+            self.r1.slerp(&self.r2, dt)
         } else {
             self.r1.clone()
         };

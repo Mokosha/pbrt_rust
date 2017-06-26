@@ -273,12 +273,6 @@ impl ::std::ops::IndexMut<usize> for Matrix4x4 {
     }
 }
 
-impl Lerp<f32> for Matrix4x4 {
-    fn lerp(&self, b: &Matrix4x4, t: f32) -> Matrix4x4 {
-        (1f32 - t) * self + t * b
-    }
-}
-
 impl ::std::convert::From<[[f32; 4]; 4]> for Matrix4x4 {
     fn from(mat: [[f32; 4]; 4]) -> Matrix4x4 {
         Matrix4x4 { m: mat }

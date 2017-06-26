@@ -157,15 +157,6 @@ impl ::std::ops::IndexMut<usize> for Point {
     }
 }
 
-impl Lerp<f32> for Point {
-    fn lerp(&self, p: &Point, t: f32) -> Point {
-        Point::new_with(
-            self.x.lerp(&p.x, t),
-            self.y.lerp(&p.y, t),
-            self.z.lerp(&p.z, t))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

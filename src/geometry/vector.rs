@@ -182,12 +182,6 @@ impl Cross for Vector {
     }
 }
 
-impl Lerp<f32> for Vector {
-    fn lerp(&self, b: &Vector, t: f32) -> Vector {
-        (1f32 - t) * self + t * b
-    }
-}
-
 pub fn coordinate_system(v1: &Vector) -> (Vector, Vector) {
     let v2 =
         if v1.x.abs() > v1.y.abs() {

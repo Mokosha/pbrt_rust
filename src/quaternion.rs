@@ -19,6 +19,25 @@ impl Quaternion {
     pub fn new_with(x: f32, y: f32, z: f32, w: f32) -> Quaternion {
         Quaternion { v: Vector::new_with(x, y, z), w: w }
     }
+
+    pub fn slerp(&self, q: &Quaternion, t: f32) -> Quaternion {
+        let cos_theta = self.dot(q);
+        if cos_theta < 0f32 {
+            self.slerp(&(-q), t)
+        } else if cos_theta > 0.9995 {
+            ((1f32 - t) * self + t * q).normalize()
+        } else if cos_theta < 1e-6 {
+            // In this case the quaternions are perpendicular
+            // in rotational space, so we don't need to do an expensive
+            // acos...
+            let thetap = (f32::consts::PI / 2.0) * t;
+            self * thetap.cos() + q * thetap.sin()
+        } else {
+            let thetap = cos_theta.clamp(-1f32, 1f32).acos() * t;
+            let qperp = (q - self * cos_theta).normalize();
+            self * thetap.cos() + qperp * thetap.sin()
+        }
+    }
 }
 
 impl<'a, 'b> ::std::ops::Add<&'b Quaternion> for &'a Quaternion {
@@ -111,27 +130,6 @@ impl Normalize for Quaternion {
         let len = self.dot(&self).sqrt();
         Quaternion::new_with(
             self.v.x / len, self.v.y / len, self.v.z / len, self.w / len)
-    }
-}
-
-impl Lerp<f32> for Quaternion {
-    fn lerp(&self, q: &Quaternion, t: f32) -> Quaternion {
-        let cos_theta = self.dot(q);
-        if cos_theta < 0f32 {
-            self.lerp(&(-q), t)
-        } else if cos_theta > 0.9995 {
-            ((1f32 - t) * self + t * q).normalize()
-        } else if cos_theta < 1e-6 {
-            // In this case the quaternions are perpendicular
-            // in rotational space, so we don't need to do an expensive
-            // acos...
-            let thetap = (f32::consts::PI / 2.0) * t;
-            self * thetap.cos() + q * thetap.sin()
-        } else {
-            let thetap = cos_theta.clamp(-1f32, 1f32).acos() * t;
-            let qperp = (q - self * cos_theta).normalize();
-            self * thetap.cos() + qperp * thetap.sin()
-        }
     }
 }
 
@@ -362,51 +360,51 @@ mod tests {
         // Testing a == 0
         // Must be id
         {
-            let id2 = id.lerp(&y90rot, 0.0f32);
+            let id2 = id.slerp(&y90rot, 0.0f32);
             check_quat!(&id2, &id);
         }
 
         // Testing a == 1
         // Must be 90° rotation on Y : 0 0.7 0 0.7
         {
-            let y90rot2 = id.lerp(&y90rot, 1f32);
+            let y90rot2 = id.slerp(&y90rot, 1f32);
             check_quat!(&y90rot2, &y90rot);
         }
 
         // Testing standard, easy case
         // Must be 45° rotation on Y : 0 0.38 0 0.92
-        let y45rot1 = id.lerp(&y90rot, 0.5f32);
+        let y45rot1 = id.slerp(&y90rot, 0.5f32);
 
         {
             // Testing reverse case
             // Must be 45° rotation on Y : 0 0.38 0 0.92
-            let ym45rot2 = y90rot.lerp(&id, 0.5f32);
+            let ym45rot2 = y90rot.slerp(&id, 0.5f32);
             check_quat!(&y45rot1, &ym45rot2);
 
             // Testing against full circle around the sphere instead of shortest path
             // Must be 45° rotation on Y
             // certainly not a 135° rotation
-            let y45rot3 = id.lerp(&(-(&y90rot)), 0.5f32);
+            let y45rot3 = id.slerp(&(-(&y90rot)), 0.5f32);
             check_quat!(&ym45rot2, &y45rot3);
 
             // Same, but inverted
             // Must also be 45° rotation on Y :  0 0.38 0 0.92
             // -0 -0.38 -0 -0.92 is ok too
-            let y45rot4 = (-(&y90rot)).lerp(&id, 0.5f32);
+            let y45rot4 = (-(&y90rot)).slerp(&id, 0.5f32);
             check_quat!(&ym45rot2, &-(&y45rot4));
         }
 
         {
             // Testing q1 = q2
             // Must be 90° rotation on Y : 0 0.7 0 0.7
-            let y90rot3 = y90rot.lerp(&y90rot, 0.5f32);
+            let y90rot3 = y90rot.slerp(&y90rot, 0.5f32);
             check_quat!(&y90rot, &y90rot3);
         }
 
         // Testing quaternions with opposite sign
         {
             let a = Quaternion::new_with(0f32, 0f32, 0f32, -1f32);
-            let result = a.lerp(&id, 0.5f32);
+            let result = a.slerp(&id, 0.5f32);
             assert_eq!(id.dot(&result).powi(2), 1f32);
         }
 
@@ -425,8 +423,8 @@ mod tests {
             {
                 let result = Quaternion::new_with(0.0, 1.0 * pi_8.sin(), 0.0,
                                                   pi_8.cos());
-                check_quat!(q2.lerp(&q1, 0.25), result);
-                check_quat!(-(&q2).lerp(&q1, 0.25), result);
+                check_quat!(q2.slerp(&q1, 0.25), result);
+                check_quat!(-(&q2).slerp(&q1, 0.25), result);
             }
 
             // If we rotate around -q1, then we're rotating in the other
@@ -436,8 +434,8 @@ mod tests {
                 let result = Quaternion::new_with(0.0, -1.0 * pi_8.sin(), 0.0,
                                                   pi_8.cos());
 
-                check_quat!(q2.lerp(&(-(&q1)), 0.25), result);
-                check_quat!(-(&q2).lerp(&(-(&q1)), 0.25), result);
+                check_quat!(q2.slerp(&(-(&q1)), 0.25), result);
+                check_quat!(-(&q2).slerp(&(-(&q1)), 0.25), result);
             }
         }
     }
