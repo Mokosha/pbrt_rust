@@ -675,6 +675,10 @@ impl ::std::iter::Sum<Spectrum> for Spectrum {
     }
 }
 
+impl ::std::default::Default for Spectrum {
+    fn default() -> Spectrum { Spectrum::rgb([0.0, 0.0, 0.0]) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
