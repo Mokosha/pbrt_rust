@@ -26,7 +26,7 @@ use utils::sinc_1d;
 use utils::modulo;
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
-enum ImageWrap {
+pub enum ImageWrap {
     Repeat,
     Black,
     Clamp
@@ -168,8 +168,8 @@ impl<T: Default + Clone +
         Mul<f32, Output = T> +
         Sum<<T as Mul<f32>>::Output> +
         Add<Output = T>> MIPMap<T> {
-    pub fn new(w: usize, h: usize, pixels: Vec<T>, do_tri: bool, max_aniso: f32,
-               wm: ImageWrap) -> MIPMap<T> {
+    fn new(w: usize, h: usize, pixels: Vec<T>, do_tri: bool, max_aniso: f32,
+           wm: ImageWrap) -> MIPMap<T> {
         let (width, height, pot_pixels) =
             if !w.is_power_of_two() || !h.is_power_of_two() {
                 resize_to_power_of_two_dims(w, h, pixels, wm)
@@ -218,14 +218,13 @@ impl<T: Default + Clone +
         }
     }
 
-    pub fn width(&self) -> usize { self.width }
-    pub fn height(&self) -> usize { self.height }
+    fn width(&self) -> usize { self.width }
+    fn height(&self) -> usize { self.height }
 
-    pub fn levels(&self) -> usize { self.pyramid.len() }
+    fn levels(&self) -> usize { self.pyramid.len() }
 
-    pub fn lookup(&self, s: f32, t: f32,
-                  dsdx: f32, dtdx: f32,
-                  dsdy: f32, dtdy: f32) -> T {
+    fn lookup(&self, s: f32, t: f32,
+              dsdx: f32, dtdx: f32, dsdy: f32, dtdy: f32) -> T {
         self.pyramid[0].get(0, 0).unwrap().clone()
     }
 }
@@ -394,17 +393,13 @@ impl<T: Default + Clone> ImageTexture<T> {
     }
 }
 
-impl super::internal::TextureBase<f32> for ImageTexture<f32> {
-    fn eval(&self, dg: &DifferentialGeometry) -> f32 {
+impl<T: Default + Clone +
+     Mul<f32, Output = T> +
+     Sum<<T as Mul<f32>>::Output> +
+     Add<Output = T>>
+super::internal::TextureBase<T> for ImageTexture<T> {
+    fn eval(&self, dg: &DifferentialGeometry) -> T {
         let (s, t, dsdx, dtdx, dsdy, dtdy) = self.mapping.map(dg);
         self.mipmap.lookup(s, t, dsdx, dtdx, dsdy, dtdy)
-    }
-}
-
-impl super::internal::TextureBase<Spectrum> for ImageTexture<Spectrum> {
-    fn eval(&self, dg: &DifferentialGeometry) -> Spectrum {
-        let (s, t, dsdx, dtdx, dsdy, dtdy) = self.mapping.map(dg);
-        let ret = self.mipmap.lookup(s, t, dsdx, dtdx, dsdy, dtdy);
-        Spectrum::from_rgb(ret.to_rgb())
     }
 }
