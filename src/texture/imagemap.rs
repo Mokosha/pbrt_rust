@@ -3,11 +3,14 @@ extern crate image;
 
 use std::collections::BTreeMap;
 use std::cmp::Ordering;
+use std::ops::Add;
 use std::ops::Mul;
 use std::iter::Sum;
 use std::marker::PhantomData;
 use std::sync::Mutex;
 use std::sync::Arc;
+
+use std::cmp;
 
 use self::image::open;
 use self::image::ImageResult;
@@ -17,6 +20,7 @@ use spectrum::Spectrum;
 use texture::mapping2d::TextureMapping2D;
 use texture::internal::TextureBase;
 use utils::Clamp;
+use utils::blocked_vec::BlockedVec;
 
 use utils::sinc_1d;
 use utils::modulo;
@@ -120,17 +124,50 @@ fn resize_to_power_of_two_dims<T>
     (wpot, hpot, new_pixels)
 }
 
+fn ulog2(x: usize) -> usize {
+    ((0usize).leading_zeros() - x.leading_zeros()) as usize
+}
+
+fn texel_at<T>(level: &BlockedVec<T>, _s: i32, _t: i32, wm: ImageWrap)
+               -> T where T: Clone + Default {
+    // Compute texel (s, t) accounting for boundary conditions
+    let (s, t) = match wm {
+        ImageWrap::Repeat => (modulo(_s, level.width() as i32),
+                              modulo(_t, level.height() as i32)),
+        ImageWrap::Clamp => (_s.clamp(0, (level.width() - 1) as i32),
+                             _t.clamp(0, (level.height() - 1) as i32)),
+        ImageWrap::Black => {
+            let out_of_bounds =
+                _s < 0 || _s >= (level.width() as i32) ||
+                _t < 0 || _t >= (level.height() as i32);
+            if out_of_bounds {
+                return Default::default();
+            } else {
+                (_s, _t)
+            }
+        }
+    };
+
+    assert!(s >= 0);  assert!(s < (level.width() as i32));
+    assert!(t >= 0);  assert!(t < (level.height() as i32));
+
+    level.get(s as usize, t as usize).unwrap().clone()
+}
+
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
-struct MIPMap<T> {
+struct MIPMap<T: Default + Clone> {
     width: usize,
     height: usize,
-    pixels: Vec<T>,
+    pyramid: Vec<BlockedVec<T>>,
     do_trilinear: bool,
     max_anisotropy: f32,
     wrap_mode: ImageWrap
 }
 
-impl<T: Clone + Mul<f32> + Sum<<T as Mul<f32>>::Output>> MIPMap<T> {
+impl<T: Default + Clone +
+        Mul<f32, Output = T> +
+        Sum<<T as Mul<f32>>::Output> +
+        Add<Output = T>> MIPMap<T> {
     pub fn new(w: usize, h: usize, pixels: Vec<T>, do_tri: bool, max_aniso: f32,
                wm: ImageWrap) -> MIPMap<T> {
         let (width, height, pot_pixels) =
@@ -140,20 +177,56 @@ impl<T: Clone + Mul<f32> + Sum<<T as Mul<f32>>::Output>> MIPMap<T> {
                 (w, h, pixels)
             };
 
+        let mut pyramid = Vec::new();
+        // Initialize most detailed level of mip-map
+        pyramid.push(BlockedVec::new_with(width, height, pot_pixels));
+
+        let num_levels = ulog2(cmp::max(width, height));
+        for i in 1..num_levels {
+            // Initialize (i-1)st level of the pyramid
+            let new_level = {
+                let last_level = pyramid.last().unwrap();
+                let level_width = cmp::max(last_level.width() / 2, 1);
+                let level_height = cmp::max(last_level.height() / 2, 1);
+
+                let mut new_level = BlockedVec::new(level_width, level_height);
+                for t in 0..(level_height as i32) {
+                    for s in 0..(level_width as i32) {
+                        // Filter four pixels from inner level of pyramid
+                        let t0 = texel_at(last_level, 2 * s, 2 * t, wm);
+                        let t1 = texel_at(last_level, 2 * s + 1, 2 * t, wm);
+                        let t2 = texel_at(last_level, 2 * s, 2 * t + 1, wm);
+                        let t3 = texel_at(last_level, 2 * s + 1, 2 * t + 1, wm);
+
+                        *(new_level.get_mut(s as usize, t as usize).unwrap()) =
+                            (t0 + t1 + t2 + t3) * 0.25;
+                    }
+                }
+
+                new_level
+            };
+            pyramid.push(new_level);
+        }
+
         MIPMap {
             width: width,
             height: height,
-            pixels: pot_pixels,
+            pyramid: pyramid,
             do_trilinear: do_tri,
             max_anisotropy: max_aniso,
             wrap_mode: wm
         }
     }
 
+    pub fn width(&self) -> usize { self.width }
+    pub fn height(&self) -> usize { self.height }
+
+    pub fn levels(&self) -> usize { self.pyramid.len() }
+
     pub fn lookup(&self, s: f32, t: f32,
                   dsdx: f32, dtdx: f32,
-                  dsdy: f32, dtdy: f32) -> T where T : Clone {
-        self.pixels[0].clone()
+                  dsdy: f32, dtdy: f32) -> T {
+        self.pyramid[0].get(0, 0).unwrap().clone()
     }
 }
 
@@ -204,7 +277,7 @@ lazy_static! {
         Mutex::new(TextureCache::new());
 }
 
-struct ImageTexture<Tmemory> {
+struct ImageTexture<Tmemory: Default + Clone> {
     mipmap: Arc<MIPMap<Tmemory>>,
     mapping: Box<TextureMapping2D>
 }
@@ -292,7 +365,7 @@ fn get_spectrum_texture(filename: &String, do_trilinear: bool,
     SPECTRUM_TEXTURES.lock().unwrap().get(&tex_info).unwrap().clone()
 }
 
-impl<T> ImageTexture<T> {
+impl<T: Default + Clone> ImageTexture<T> {
     pub fn new_float_texture(m: Box<TextureMapping2D>, filename: &String,
                              do_trilinear: bool, max_aniso: f32,
                              wrap_mode: ImageWrap, scale: f32, gamma: f32)
