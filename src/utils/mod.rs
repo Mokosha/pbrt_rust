@@ -5,6 +5,7 @@ use std::ops::Add;
 use std::ops::Mul;
 
 pub trait Lerp<F = Self> {
+    fn lerp_with(self, b: Self, t: F) -> Self;
     fn lerp(&self, b: &Self, t: F) -> Self;
 }
 
@@ -15,12 +16,16 @@ impl<T: Mul<f32, Output = T> + Add<T, Output = T> + Clone> Lerp<f32> for T {
     fn lerp(&self, b: &T, t: f32) -> T {
         self.clone() * (1.0 - t) + b.clone() * t
     }
+
+    fn lerp_with(self, b: Self, t: f32) -> Self { self * (1.0 - t) + b * t }
 }
 
 impl<T: Mul<f64, Output = T> + Add<T, Output = T> + Clone> Lerp<f64> for T {
     fn lerp(&self, b: &T, t: f64) -> T {
         self.clone() * (1.0 - t) + b.clone() * t
     }
+
+    fn lerp_with(self, b: Self, t: f64) -> Self { self * (1.0 - t) + b * t }
 }
 
 pub trait Clamp<T = Self> {
