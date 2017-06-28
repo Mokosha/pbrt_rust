@@ -20,6 +20,7 @@ use spectrum::Spectrum;
 use texture::mapping2d::TextureMapping2D;
 use texture::internal::TextureBase;
 use utils::Clamp;
+use utils::Lerp;
 use utils::blocked_vec::BlockedVec;
 
 use utils::sinc_1d;
@@ -165,9 +166,10 @@ struct MIPMap<T: Default + Clone> {
 }
 
 impl<T: Default + Clone +
-        Mul<f32, Output = T> +
-        Sum<<T as Mul<f32>>::Output> +
-        Add<Output = T>> MIPMap<T> {
+     Mul<f32, Output = T> +
+     Sum<<T as Mul<f32>>::Output> +
+     Add<Output = T> +
+     Lerp<f32>> MIPMap<T> {
     fn new(w: usize, h: usize, pixels: Vec<T>, do_tri: bool, max_aniso: f32,
            wm: ImageWrap) -> MIPMap<T> {
         let (width, height, pot_pixels) =
@@ -222,6 +224,35 @@ impl<T: Default + Clone +
     fn height(&self) -> usize { self.height }
 
     fn levels(&self) -> usize { self.pyramid.len() }
+
+    fn triangle(&self, _level: usize, _s: f32, _t: f32) -> T {
+        let level = _level.clamp(0, self.levels() - 1);
+        let s = _s * (self.pyramid[level].width() as f32) - 0.5;
+        let t = _t * (self.pyramid[level].height() as f32) - 0.5;
+        let s0 = s.floor() as i32;
+        let t0 = t.floor() as i32;
+        let ds = s - (s0 as f32);
+        let dt = t - (t0 as f32);
+        let wm = self.wrap_mode;
+        texel_at(&self.pyramid[level], s0, t0, wm) * (1.0 - ds) * (1.0 - dt) +
+        texel_at(&self.pyramid[level], s0, t0 + 1, wm) * (1.0 - ds) * dt +
+        texel_at(&self.pyramid[level], s0 + 1, t0, wm) * ds * (1.0 - dt) +
+        texel_at(&self.pyramid[level], s0 + 1, t0 + 1, wm) * ds * dt
+    }
+
+    fn pyramid_lookup(&self, s: f32, t: f32, width: f32) -> T {
+        let level = (self.levels() as f32) - 1.0 + width.max(1e-8).log2();
+        if level < 0.0 { self.triangle(0, s, t) }
+        else if level >= ((self.levels() - 1) as f32) {
+            texel_at(self.pyramid.last().unwrap(), 0, 0, self.wrap_mode)
+        } else {
+            let ilevel = level as usize;
+            let delta = level - (ilevel as f32);
+            let t0 = self.triangle(ilevel + 1, s, t);
+            let t1 = self.triangle(ilevel, s, t);
+            t0.lerp_with(t1, delta)
+        }
+    }
 
     fn lookup(&self, s: f32, t: f32,
               dsdx: f32, dtdx: f32, dsdy: f32, dtdy: f32) -> T {
@@ -396,7 +427,8 @@ impl<T: Default + Clone> ImageTexture<T> {
 impl<T: Default + Clone +
      Mul<f32, Output = T> +
      Sum<<T as Mul<f32>>::Output> +
-     Add<Output = T>>
+     Add<Output = T> +
+     Lerp<f32>>
 super::internal::TextureBase<T> for ImageTexture<T> {
     fn eval(&self, dg: &DifferentialGeometry) -> T {
         let (s, t, dsdx, dtdx, dsdy, dtdy) = self.mapping.map(dg);
