@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::cmp::Ordering;
 use std::ops::Add;
 use std::ops::Mul;
+use std::ops::Div;
 use std::iter::Sum;
 use std::marker::PhantomData;
 use std::sync::Mutex;
@@ -37,6 +38,8 @@ struct ResampleWeight {
     first_texel: i32,
     weights: [f32; 4]
 }
+
+const INV_EXP_2: f32 = 0.13533528323;
 
 fn resample_weights(oldres: usize, newres: usize) -> Vec<ResampleWeight> {
     assert!(newres >= oldres);
@@ -167,6 +170,7 @@ struct MIPMap<T: Default + Clone> {
 
 impl<T: Default + Clone +
      Mul<f32, Output = T> +
+     Div<f32, Output = T> +
      Sum<<T as Mul<f32>>::Output> +
      Add<Output = T> +
      Lerp<f32>> MIPMap<T> {
@@ -242,8 +246,9 @@ impl<T: Default + Clone +
 
     fn pyramid_lookup(&self, s: f32, t: f32, width: f32) -> T {
         let level = (self.levels() as f32) - 1.0 + width.max(1e-8).log2();
-        if level < 0.0 { self.triangle(0, s, t) }
-        else if level >= ((self.levels() - 1) as f32) {
+        if level < 0.0 {
+            self.triangle(0, s, t)
+        } else if level >= ((self.levels() - 1) as f32) {
             texel_at(self.pyramid.last().unwrap(), 0, 0, self.wrap_mode)
         } else {
             let ilevel = level as usize;
@@ -254,9 +259,104 @@ impl<T: Default + Clone +
         }
     }
 
+    fn ewa(&self, level: usize, _s: f32, _t: f32,
+           _ds0: f32, _dt0: f32, _ds1: f32, _dt1: f32) -> T {
+        if level >= self.levels() {
+            return texel_at(&self.pyramid.last().unwrap(), 0, 0, self.wrap_mode);
+        }
+
+        // Convert EWA coordinates to appropriate scale for level
+        let s = _s * (self.pyramid[level].width() as f32) - 0.5;
+        let t = _t * (self.pyramid[level].height() as f32) - 0.5;
+        let ds0 = _ds0 * (self.pyramid[level].width() as f32);
+        let dt0 = _dt0 * (self.pyramid[level].height() as f32);
+        let ds1 = _ds1 * (self.pyramid[level].width() as f32);
+        let dt1 = _dt1 * (self.pyramid[level].height() as f32);
+
+        // Compute ellipse coefficients to bound EWA filter region
+        let (a, b, c) = {
+            let sq = dt0*dt0 + dt1*dt1;
+            let a = sq + 1.0;
+            let b = -2.0 * sq;
+            let c = sq + 1.0;
+            let inv_f = 1.0 / (a * c - b * b * 0.25);
+            (a * inv_f, b * inv_f, c * inv_f)
+        };
+
+        // Compute the ellipse's (s, t) bounding box in texture space
+        let det = -b * b + 4.0 * a * c;
+        let inv_det = 1.0 / det;
+        let u_sqrt = (det * c).sqrt();
+        let v_sqrt = (det * a).sqrt();
+
+        let s0 = (s - 2.0 * inv_det * u_sqrt).ceil() as i32;
+        let s1 = (s + 2.0 * inv_det * u_sqrt).floor() as i32;
+        let t0 = (t - 2.0 * inv_det * v_sqrt).ceil() as i32;
+        let t1 = (t + 2.0 * inv_det * v_sqrt).floor() as i32;
+
+        // Scan over ellipse bound and compute quadratic equation
+        let (sum, sum_wts): (T, f32) =
+            (t0..(t1 + 1)).fold((Default::default(), 0.0), |acc, it| {
+                let tt = (it as f32) - t;
+                (s0..(s0 + 1)).fold(acc, |(sum, wts), is| {
+                    let ss = (is as f32) - s;
+                    // Compute squared radius and filter texel if inside ellipse
+                    let r2 = a * ss * ss + b * ss * tt + c * tt * tt;
+                    if r2 < 1.0 {
+                        // !SPEED! This is a LUT in the book, but for now we
+                        // can just leave it as-is here.
+                        let weight = (-2.0 * r2).exp() - INV_EXP_2;
+                        let wm = self.wrap_mode;
+                        (sum + texel_at(&self.pyramid[level], is, it, wm) * weight,
+                         wts + weight)
+                    } else {
+                        (sum, wts)
+                    }
+                })
+            });
+
+        sum / sum_wts
+    }
+
     fn lookup(&self, s: f32, t: f32,
               dsdx: f32, dtdx: f32, dsdy: f32, dtdy: f32) -> T {
-        self.pyramid[0].get(0, 0).unwrap().clone()
+        if self.do_trilinear {
+            let width =
+                dsdx.abs().max(dtdx.abs()).max(dsdy.abs()).max(dtdy.abs());
+            return self.pyramid_lookup(s, t, 2.0 * width);
+        }
+
+        // Compute ellipse minor and major axes
+        let (ds0, dt0, ds1, dt1) =
+            if dsdx * dsdx + dtdx * dtdx > dsdy * dsdy + dtdy * dtdy {
+                (dsdx, dtdx, dsdy, dtdy)
+            } else {
+                (dsdy, dtdy, dsdx, dtdx)
+            };
+        let major_length = (ds0*ds0 + dt0*dt0).sqrt();
+        let minor_length = (ds1*ds1 + dt1*dt1).sqrt();
+
+        // Clamp ellipse eccentricity if too large
+        let max_major_length = minor_length * self.max_anisotropy;
+        let (scaled_ds1, scaled_dt1, scaled_minor_length) =
+            if max_major_length < major_length && minor_length > 0.0 {
+                let scale = major_length / (minor_length * self.max_anisotropy);
+                (ds1 * scale, dt1 * scale, minor_length * scale)
+            } else {
+                (ds1, dt1, minor_length)
+            };
+
+        if scaled_minor_length == 0.0 {
+            return self.triangle(0, s, t);
+        }
+
+        // Choose level of detail for EWA lookup and perform EWA filtering.
+        let lod = ((self.levels() as f32) - 1.0 + minor_length.log2()).max(0.0);
+        let ilod = lod.floor() as usize;
+        let d = lod - (ilod as f32);
+        let t0 = self.ewa(ilod + 0, s, t, ds0, dt0, scaled_ds1, scaled_dt1);
+        let t1 = self.ewa(ilod + 1, s, t, ds0, dt0, scaled_ds1, scaled_dt1);
+        t0.lerp_with(t1, d)
     }
 }
 
@@ -426,6 +526,7 @@ impl<T: Default + Clone> ImageTexture<T> {
 
 impl<T: Default + Clone +
      Mul<f32, Output = T> +
+     Div<f32, Output = T> +
      Sum<<T as Mul<f32>>::Output> +
      Add<Output = T> +
      Lerp<f32>>
