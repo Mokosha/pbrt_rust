@@ -3,9 +3,12 @@ extern crate image;
 
 use std::collections::BTreeMap;
 use std::cmp::Ordering;
+use std::ffi::OsStr;
 use std::ops::Add;
 use std::ops::Mul;
 use std::ops::Div;
+use std::path::Path;
+use std::path::PathBuf;
 use std::iter::Sum;
 use std::marker::PhantomData;
 use std::sync::Mutex;
@@ -34,6 +37,7 @@ pub enum ImageWrap {
     Clamp
 }
 
+#[derive(Debug)]
 struct ResampleWeight {
     first_texel: i32,
     weights: [f32; 4]
@@ -66,7 +70,7 @@ fn resample_weights(oldres: usize, newres: usize) -> Vec<ResampleWeight> {
 
 fn resize_to_power_of_two_dims<T>
     (w: usize, h: usize, pixels: Vec<T>, wm: ImageWrap) -> (usize, usize, Vec<T>)
-    where T : Clone + Mul<f32> + Sum<<T as Mul<f32>>::Output>
+    where T : Clone + ::std::fmt::Debug + Mul<f32> + Sum<<T as Mul<f32>>::Output>
 {
     // Resample image to power-of-two resolution
     let wpot = w.next_power_of_two();
@@ -91,15 +95,16 @@ fn resize_to_power_of_two_dims<T>
 
     for t in 0..h {
         for s in 0..wpot {
-            new_pixels.push(
+            let new_pixel =
                 s_weights[s].weights.iter()
-                    .enumerate()
-                    .filter_map(
-                        |(j, weight)|
-                        get_orig(&(s_weights[s]), j, w).map(|orig_s| {
-                            pixels[t*h + (orig_s as usize)].clone() * *weight
-                        }))
-                    .sum());
+                .enumerate()
+                .filter_map(
+                    |(j, &weight)|
+                    get_orig(&(s_weights[s]), j, w).map(|orig_s| {
+                        pixels[t*w + (orig_s as usize)].clone() * weight
+                    }))
+                .sum();
+            new_pixels.push(new_pixel);
         }
     }
 
@@ -114,14 +119,16 @@ fn resize_to_power_of_two_dims<T>
     let t_weights = resample_weights(h as usize, hpot);
     for s in 0..wpot {
         for t in 0..hpot {
-            new_pixels[t * wpot + s] = t_weights[t].weights.iter()
+            let new_pixel =
+                t_weights[t].weights.iter()
                 .enumerate()
                 .filter_map(
-                    |(j, weight)|
+                    |(j, &weight)|
                     get_orig(&(t_weights[t]), j, h).map(|orig_t| {
-                        new_pixels[(orig_t as usize)*h + s].clone() * *weight
+                        new_pixels[(orig_t as usize)*wpot + s].clone() * weight
                     }))
                 .sum();
+            new_pixels[t * wpot + s] = new_pixel;
         }
     }
 
@@ -168,7 +175,7 @@ struct MIPMap<T: Default + Clone> {
     wrap_mode: ImageWrap
 }
 
-impl<T: Default + Clone +
+impl<T: Default + Clone + ::std::fmt::Debug +
      Mul<f32, Output = T> +
      Div<f32, Output = T> +
      Sum<<T as Mul<f32>>::Output> +
@@ -362,7 +369,7 @@ impl<T: Default + Clone +
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 struct TexInfo {
-    filename: String,
+    filename: PathBuf,
     do_trilinear: bool,
     max_aniso: f32,
     wrap: ImageWrap,
@@ -407,12 +414,13 @@ lazy_static! {
         Mutex::new(TextureCache::new());
 }
 
-struct ImageTexture<Tmemory: Default + Clone> {
+pub struct ImageTexture<Tmemory: Default + Clone> {
     mipmap: Arc<MIPMap<Tmemory>>,
     mapping: Box<TextureMapping2D>
 }
 
-fn read_image(filename: &String) -> ImageResult<(u32, u32, Vec<Spectrum>)> {
+fn read_image<P>(filename: &P)
+                 -> ImageResult<(u32, u32, Vec<Spectrum>)> where P: AsRef<Path> {
     open(filename)
         .and_then(|raw_img| Ok(raw_img.to_rgb()))
         .and_then(|rgb_img| {
@@ -429,11 +437,12 @@ fn read_image(filename: &String) -> ImageResult<(u32, u32, Vec<Spectrum>)> {
 
 // !TODO! Use function specialization here once it becomes stable
 // https://github.com/rust-lang/rust/issues/31844
-fn get_f32_texture(filename: &String, do_trilinear: bool,
-                   max_aniso: f32, wrap_mode: ImageWrap, scale: f32,
-                   gamma: f32) -> Arc<MIPMap<f32>> {
+fn get_f32_texture<P>(
+    filename: &P, do_trilinear: bool, max_aniso: f32, wrap_mode: ImageWrap,
+    scale: f32, gamma: f32)
+    -> Arc<MIPMap<f32>> where P: AsRef<Path> + AsRef<OsStr> {
     let tex_info = TexInfo {
-        filename: filename.clone(),
+        filename: PathBuf::from(filename),
         do_trilinear: do_trilinear,
         max_aniso: max_aniso,
         wrap: wrap_mode,
@@ -449,7 +458,7 @@ fn get_f32_texture(filename: &String, do_trilinear: bool,
         // Convert texels to f32 and create MIPMap
         let pixels = texels.into_iter()
             .map(|s| (s.y() * scale).powf(gamma))
-            .collect();
+            .collect::<Vec<_>>();
         Arc::new(MIPMap::new(width as usize, height as usize, pixels,
                              do_trilinear, max_aniso, wrap_mode))
     } else {
@@ -462,11 +471,12 @@ fn get_f32_texture(filename: &String, do_trilinear: bool,
     FLOAT_TEXTURES.lock().unwrap().get(&tex_info).unwrap().clone()
 }
 
-fn get_spectrum_texture(filename: &String, do_trilinear: bool,
-                        max_aniso: f32, wrap_mode: ImageWrap, scale: f32,
-                        gamma: f32) -> Arc<MIPMap<Spectrum>> {
+fn get_spectrum_texture<P>(
+    filename: &P, do_trilinear: bool, max_aniso: f32, wrap_mode: ImageWrap,
+    scale: f32, gamma: f32)
+    -> Arc<MIPMap<Spectrum>> where P: AsRef<Path> + AsRef<OsStr> {
     let tex_info = TexInfo {
-        filename: filename.clone(),
+        filename: PathBuf::from(filename),
         do_trilinear: do_trilinear,
         max_aniso: max_aniso,
         wrap: wrap_mode,
@@ -495,36 +505,34 @@ fn get_spectrum_texture(filename: &String, do_trilinear: bool,
     SPECTRUM_TEXTURES.lock().unwrap().get(&tex_info).unwrap().clone()
 }
 
-impl<T: Default + Clone> ImageTexture<T> {
-    pub fn new_float_texture(m: Box<TextureMapping2D>, filename: &String,
-                             do_trilinear: bool, max_aniso: f32,
-                             wrap_mode: ImageWrap, scale: f32, gamma: f32)
-                             -> ImageTexture<f32> {
-        ImageTexture {
-            mipmap: get_f32_texture(
-                filename, do_trilinear, max_aniso, wrap_mode, scale, gamma),
-            mapping: m
-        }
-    }
-
-    pub fn new_rgb_texture(m: Box<TextureMapping2D>, filename: &String,
-                           do_trilinear: bool, max_aniso: f32,
-                           wrap_mode: ImageWrap, scale: f32, gamma: f32)
-                           -> ImageTexture<Spectrum> {
-        ImageTexture {
-            mipmap: get_spectrum_texture(
-                filename, do_trilinear, max_aniso, wrap_mode, scale, gamma),
-            mapping: m
-        }
-    }
-
-    pub fn clear_cache() {
-        FLOAT_TEXTURES.lock().unwrap().clear();
-        SPECTRUM_TEXTURES.lock().unwrap().clear();
+pub fn new_float_texture<P>(
+    m: Box<TextureMapping2D>, filename: &P, do_trilinear: bool, max_aniso: f32,
+    wrap_mode: ImageWrap, scale: f32, gamma: f32)
+    -> ImageTexture<f32> where P: AsRef<Path> + AsRef<OsStr> {
+    ImageTexture {
+        mipmap: get_f32_texture(
+            filename, do_trilinear, max_aniso, wrap_mode, scale, gamma),
+        mapping: m
     }
 }
 
-impl<T: Default + Clone +
+pub fn new_rgb_texture<P>(
+    m: Box<TextureMapping2D>, filename: &P, do_trilinear: bool, max_aniso: f32,
+    wrap_mode: ImageWrap, scale: f32, gamma: f32)
+    -> ImageTexture<Spectrum> where P: AsRef<Path> + AsRef<OsStr> {
+    ImageTexture {
+        mipmap: get_spectrum_texture(
+            filename, do_trilinear, max_aniso, wrap_mode, scale, gamma),
+        mapping: m
+    }
+}
+
+pub fn clear_texture_cache() {
+    FLOAT_TEXTURES.lock().unwrap().clear();
+    SPECTRUM_TEXTURES.lock().unwrap().clear();
+}
+
+impl<T: Default + Clone + ::std::fmt::Debug +
      Mul<f32, Output = T> +
      Div<f32, Output = T> +
      Sum<<T as Mul<f32>>::Output> +
@@ -534,5 +542,62 @@ super::internal::TextureBase<T> for ImageTexture<T> {
     fn eval(&self, dg: &DifferentialGeometry) -> T {
         let (s, t, dsdx, dtdx, dsdy, dtdy) = self.mapping.map(dg);
         self.mipmap.lookup(s, t, dsdx, dtdx, dsdy, dtdy)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::path::Path;
+
+    use texture::mapping2d::PlanarMapping2D;
+    use texture::mapping2d::TextureMapping2D;
+    use geometry::point::Point;
+
+    #[test]
+    fn it_can_create_rgb_textures() {
+        let mapping = Box::new(PlanarMapping2D::new());
+        let this_file = Path::new(file!());
+        let test_file = Path::join(this_file.parent().unwrap(),
+                                   "testdata/checkerboard_square.png");
+        let tex = new_rgb_texture(
+            mapping, &test_file, false, 1.0, ImageWrap::Repeat, 1.0, 2.2);
+
+        let mut dg = DifferentialGeometry::new();
+        dg.p = Point::new_with(0.25, 0.25, 0.0);
+        assert_eq!(tex.eval(&dg), Spectrum::from_rgb([0.0, 0.0, 0.0]));
+
+        dg.p = Point::new_with(0.75, 0.25, 0.0);
+        assert_eq!(tex.eval(&dg), Spectrum::from_rgb([1.0, 1.0, 1.0]));
+
+        dg.p = Point::new_with(0.25, 0.75, 0.0);
+        assert_eq!(tex.eval(&dg), Spectrum::from_rgb([1.0, 1.0, 1.0]));
+
+        dg.p = Point::new_with(0.75, 0.75, 0.0);
+        assert_eq!(tex.eval(&dg), Spectrum::from_rgb([0.0, 0.0, 0.0]));
+    }
+
+    #[test]
+    fn it_can_create_float_textures() {
+        let mapping = Box::new(PlanarMapping2D::new());
+        let this_file = Path::new(file!());
+        let test_file = Path::join(this_file.parent().unwrap(),
+                                   "testdata/checkerboard_stretched.png");
+        let tex = new_float_texture(
+            mapping, &test_file, false, 1.0, ImageWrap::Repeat, 1.0, 2.2);
+
+        let mut dg = DifferentialGeometry::new();
+        dg.p = Point::new_with(0.25, 0.25, 0.0);
+        assert_eq!(tex.eval(&dg), 0.0);
+
+        dg.p = Point::new_with(0.75, 0.25, 0.0);
+        assert_eq!(tex.eval(&dg), 1.0);
+
+        dg.p = Point::new_with(0.25, 0.75, 0.0);
+        assert_eq!(tex.eval(&dg), 1.0);
+
+        dg.p = Point::new_with(0.75, 0.75, 0.0);
+        assert_eq!(tex.eval(&dg), 0.0);
     }
 }
