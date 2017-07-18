@@ -600,4 +600,78 @@ mod tests {
         dg.p = Point::new_with(0.75, 0.75, 0.0);
         assert_eq!(tex.eval(&dg), 0.0);
     }
+
+    #[test]
+    fn it_can_adhere_to_the_repeat_wrap_mode() {
+        let mapping = Box::new(PlanarMapping2D::new());
+        let this_file = Path::new(file!());
+        let test_file = Path::join(this_file.parent().unwrap(),
+                                   "testdata/checkerboard_square.png");
+        let tex = new_rgb_texture(
+            mapping, &test_file, false, 1.0, ImageWrap::Repeat, 1.0, 2.2);
+
+        let mut dg = DifferentialGeometry::new();
+        dg.p = Point::new_with(0.25, 0.25, 0.0);
+        let x0 = tex.eval(&dg);
+        for i in 0..3 {
+            for j in 0..3 {
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x += i as f32;
+                dg.p.y += j as f32;
+                assert_eq!(x0, tex.eval(&dg));
+
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x -= i as f32;
+                dg.p.y += j as f32;
+                assert_eq!(x0, tex.eval(&dg));
+
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x += i as f32;
+                dg.p.y -= j as f32;
+                assert_eq!(x0, tex.eval(&dg));
+
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x -= i as f32;
+                dg.p.y -= j as f32;
+                assert_eq!(x0, tex.eval(&dg));
+            }
+        }
+    }
+
+    #[test]
+    fn it_can_adhere_to_the_black_wrap_mode() {
+        let mapping = Box::new(PlanarMapping2D::new());
+        let this_file = Path::new(file!());
+        let test_file = Path::join(this_file.parent().unwrap(),
+                                   "testdata/checkerboard_square.png");
+        let tex = new_rgb_texture(
+            mapping, &test_file, false, 1.0, ImageWrap::Black, 1.0, 2.2);
+
+        let mut dg = DifferentialGeometry::new();
+        let black = Spectrum::from_rgb([0.0, 0.0, 0.0]);
+
+        for i in 0..10 {
+            for j in 0..10 {
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x += 1.0 + (i as f32) * 0.1;
+                dg.p.y += 1.0 + (j as f32) * 0.1;
+                assert_eq!(black, tex.eval(&dg));
+
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x -= 1.0 + (i as f32) * 0.1;
+                dg.p.y += 1.0 + (j as f32) * 0.1;
+                assert_eq!(black, tex.eval(&dg));
+
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x += 1.0 + (i as f32) * 0.1;
+                dg.p.y -= 1.0 + (j as f32) * 0.1;
+                assert_eq!(black, tex.eval(&dg));
+
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x -= 1.0 + (i as f32) * 0.1;
+                dg.p.y -= 1.0 + (j as f32) * 0.1;
+                assert_eq!(black, tex.eval(&dg));
+            }
+        }
+    }
 }
