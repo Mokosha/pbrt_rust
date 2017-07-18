@@ -674,4 +674,37 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn it_can_adhere_to_the_clamp_wrap_mode() {
+        let mapping = Box::new(PlanarMapping2D::new());
+        let this_file = Path::new(file!());
+        let test_file = Path::join(this_file.parent().unwrap(),
+                                   "testdata/checkerboard_square.png");
+        let tex = new_float_texture(
+            mapping, &test_file, false, 1.0, ImageWrap::Clamp, 1.0, 2.2);
+
+        let mut dg = DifferentialGeometry::new();
+        for i in 0..10 {
+            for j in 0..10 {
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x += 1.0 + (i as f32) * 0.1;
+                assert!((1.0 - tex.eval(&dg)).abs() < 0.0001);
+
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x -= 1.0 + (i as f32) * 0.1;
+                assert_eq!(0.0, tex.eval(&dg));
+
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x += 1.0 + (i as f32) * 0.1;
+                dg.p.y -= 1.0 + (j as f32) * 0.1;
+                assert!((1.0 - tex.eval(&dg)).abs() < 0.0001);
+
+                dg.p = Point::new_with(0.25, 0.25, 0.0);
+                dg.p.x -= 1.0 + (i as f32) * 0.1;
+                dg.p.y -= 1.0 + (j as f32) * 0.1;
+                assert_eq!(0.0, tex.eval(&dg));
+            }
+        }
+    }
 }
