@@ -282,10 +282,9 @@ impl<T: Default + Clone + ::std::fmt::Debug +
 
         // Compute ellipse coefficients to bound EWA filter region
         let (a, b, c) = {
-            let sq = dt0*dt0 + dt1*dt1;
-            let a = sq + 1.0;
-            let b = -2.0 * sq;
-            let c = sq + 1.0;
+            let a = dt0*dt0 + dt1*dt1 + 1.0;
+            let b = -2.0 * (ds0 * dt0 + ds1 * dt1);
+            let c = ds0 * ds0 + ds1 * ds1 + 1.0;
             let inv_f = 1.0 / (a * c - b * b * 0.25);
             (a * inv_f, b * inv_f, c * inv_f)
         };
@@ -305,10 +304,11 @@ impl<T: Default + Clone + ::std::fmt::Debug +
         let (sum, sum_wts): (T, f32) =
             (t0..(t1 + 1)).fold((Default::default(), 0.0), |acc, it| {
                 let tt = (it as f32) - t;
-                (s0..(s0 + 1)).fold(acc, |(sum, wts), is| {
+                (s0..(s1 + 1)).fold(acc, |(sum, wts), is| {
                     let ss = (is as f32) - s;
                     // Compute squared radius and filter texel if inside ellipse
                     let r2 = a * ss * ss + b * ss * tt + c * tt * tt;
+                    
                     if r2 < 1.0 {
                         // !SPEED! This is a LUT in the book, but for now we
                         // can just leave it as-is here.
@@ -554,6 +554,7 @@ mod tests {
     use texture::mapping2d::PlanarMapping2D;
     use texture::mapping2d::TextureMapping2D;
     use geometry::point::Point;
+    use geometry::vector::Vector;
 
     #[test]
     fn it_can_create_rgb_textures() {
@@ -706,5 +707,43 @@ mod tests {
                 assert_eq!(0.0, tex.eval(&dg));
             }
         }
+    }
+
+    #[test]
+    fn it_can_do_isotropic_sampling() {
+        let mapping = Box::new(PlanarMapping2D::new());
+        let this_file = Path::new(file!());
+        let test_file = Path::join(this_file.parent().unwrap(),
+                                   "testdata/checkerboard_stretched.png");
+        let tex = new_float_texture(
+            mapping, &test_file, true, 1.0, ImageWrap::Clamp, 1.0, 2.2);
+
+        let mut dg = DifferentialGeometry::new();
+        dg.p = Point::new_with(0.51, 0.25, 0.0);
+        dg.dpdx = Vector::new_with(0.02, 0.0, 0.0);
+        dg.dpdy = Vector::new_with(0.0, 0.02, 0.0);
+
+        assert!((tex.eval(&dg) - 0.7).abs() < 0.01);
+    }
+
+    #[test]
+    fn it_can_do_anisotropic_sampling() {
+        let mapping = Box::new(PlanarMapping2D::new());
+        let this_file = Path::new(file!());
+        let test_file = Path::join(this_file.parent().unwrap(),
+                                   "testdata/checkerboard_stretched.png");
+        let tex = new_float_texture(
+            mapping, &test_file, false, 100.0, ImageWrap::Clamp, 1.0, 2.2);
+
+        let mut dg = DifferentialGeometry::new();
+        dg.p = Point::new_with(0.51, 0.48, 0.0);
+        dg.dpdx = Vector::new_with(0.02, 0.0, 0.0);
+        dg.dpdy = Vector::new_with(0.0, 0.02, 0.0);
+
+        assert!((tex.eval(&dg) - 0.76).abs() < 0.01);
+
+        // Make it anisotropic -- we should get much less black
+        dg.dpdy.y = 0.002;
+        assert!((tex.eval(&dg) - 0.88).abs() < 0.01);
     }
 }
