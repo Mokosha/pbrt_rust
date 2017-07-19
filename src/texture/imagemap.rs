@@ -308,7 +308,6 @@ impl<T: Default + Clone + ::std::fmt::Debug +
                     let ss = (is as f32) - s;
                     // Compute squared radius and filter texel if inside ellipse
                     let r2 = a * ss * ss + b * ss * tt + c * tt * tt;
-                    
                     if r2 < 1.0 {
                         // !SPEED! This is a LUT in the book, but for now we
                         // can just leave it as-is here.
