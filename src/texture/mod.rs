@@ -3,6 +3,7 @@ pub mod mapping3d;
 pub mod mix;
 pub mod bilerp;
 pub mod imagemap;
+pub mod uv;
 
 use std::sync::Arc;
 use std::ops::Deref;
