@@ -23,6 +23,7 @@ use diff_geom::DifferentialGeometry;
 use spectrum::Spectrum;
 use texture::mapping2d::TextureMapping2D;
 use texture::internal::TextureBase;
+use texture::Texture;
 use utils::Clamp;
 use utils::Lerp;
 use utils::blocked_vec::BlockedVec;
@@ -413,6 +414,7 @@ lazy_static! {
         Mutex::new(TextureCache::new());
 }
 
+#[derive(Debug)]
 pub struct ImageTexture<Tmemory: Default + Clone> {
     mipmap: Arc<MIPMap<Tmemory>>,
     mapping: Box<TextureMapping2D>
@@ -566,16 +568,16 @@ mod tests {
 
         let mut dg = DifferentialGeometry::new();
         dg.p = Point::new_with(0.25, 0.25, 0.0);
-        assert_eq!(tex.eval(&dg), Spectrum::from_rgb([0.0, 0.0, 0.0]));
+        assert_eq!(tex.evaluate(&dg), Spectrum::from_rgb([0.0, 0.0, 0.0]));
 
         dg.p = Point::new_with(0.75, 0.25, 0.0);
-        assert_eq!(tex.eval(&dg), Spectrum::from_rgb([1.0, 1.0, 1.0]));
+        assert_eq!(tex.evaluate(&dg), Spectrum::from_rgb([1.0, 1.0, 1.0]));
 
         dg.p = Point::new_with(0.25, 0.75, 0.0);
-        assert_eq!(tex.eval(&dg), Spectrum::from_rgb([1.0, 1.0, 1.0]));
+        assert_eq!(tex.evaluate(&dg), Spectrum::from_rgb([1.0, 1.0, 1.0]));
 
         dg.p = Point::new_with(0.75, 0.75, 0.0);
-        assert_eq!(tex.eval(&dg), Spectrum::from_rgb([0.0, 0.0, 0.0]));
+        assert_eq!(tex.evaluate(&dg), Spectrum::from_rgb([0.0, 0.0, 0.0]));
     }
 
     #[test]
@@ -589,16 +591,16 @@ mod tests {
 
         let mut dg = DifferentialGeometry::new();
         dg.p = Point::new_with(0.25, 0.25, 0.0);
-        assert_eq!(tex.eval(&dg), 0.0);
+        assert_eq!(tex.evaluate(&dg), 0.0);
 
         dg.p = Point::new_with(0.75, 0.25, 0.0);
-        assert_eq!(tex.eval(&dg), 1.0);
+        assert_eq!(tex.evaluate(&dg), 1.0);
 
         dg.p = Point::new_with(0.25, 0.75, 0.0);
-        assert_eq!(tex.eval(&dg), 1.0);
+        assert_eq!(tex.evaluate(&dg), 1.0);
 
         dg.p = Point::new_with(0.75, 0.75, 0.0);
-        assert_eq!(tex.eval(&dg), 0.0);
+        assert_eq!(tex.evaluate(&dg), 0.0);
     }
 
     #[test]
@@ -612,28 +614,28 @@ mod tests {
 
         let mut dg = DifferentialGeometry::new();
         dg.p = Point::new_with(0.25, 0.25, 0.0);
-        let x0 = tex.eval(&dg);
+        let x0 = tex.evaluate(&dg);
         for i in 0..3 {
             for j in 0..3 {
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x += i as f32;
                 dg.p.y += j as f32;
-                assert_eq!(x0, tex.eval(&dg));
+                assert_eq!(x0, tex.evaluate(&dg));
 
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x -= i as f32;
                 dg.p.y += j as f32;
-                assert_eq!(x0, tex.eval(&dg));
+                assert_eq!(x0, tex.evaluate(&dg));
 
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x += i as f32;
                 dg.p.y -= j as f32;
-                assert_eq!(x0, tex.eval(&dg));
+                assert_eq!(x0, tex.evaluate(&dg));
 
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x -= i as f32;
                 dg.p.y -= j as f32;
-                assert_eq!(x0, tex.eval(&dg));
+                assert_eq!(x0, tex.evaluate(&dg));
             }
         }
     }
@@ -655,22 +657,22 @@ mod tests {
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x += 1.0 + (i as f32) * 0.1;
                 dg.p.y += 1.0 + (j as f32) * 0.1;
-                assert_eq!(black, tex.eval(&dg));
+                assert_eq!(black, tex.evaluate(&dg));
 
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x -= 1.0 + (i as f32) * 0.1;
                 dg.p.y += 1.0 + (j as f32) * 0.1;
-                assert_eq!(black, tex.eval(&dg));
+                assert_eq!(black, tex.evaluate(&dg));
 
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x += 1.0 + (i as f32) * 0.1;
                 dg.p.y -= 1.0 + (j as f32) * 0.1;
-                assert_eq!(black, tex.eval(&dg));
+                assert_eq!(black, tex.evaluate(&dg));
 
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x -= 1.0 + (i as f32) * 0.1;
                 dg.p.y -= 1.0 + (j as f32) * 0.1;
-                assert_eq!(black, tex.eval(&dg));
+                assert_eq!(black, tex.evaluate(&dg));
             }
         }
     }
@@ -689,21 +691,21 @@ mod tests {
             for j in 0..10 {
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x += 1.0 + (i as f32) * 0.1;
-                assert!((1.0 - tex.eval(&dg)).abs() < 0.0001);
+                assert!((1.0 - tex.evaluate(&dg)).abs() < 0.0001);
 
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x -= 1.0 + (i as f32) * 0.1;
-                assert_eq!(0.0, tex.eval(&dg));
+                assert_eq!(0.0, tex.evaluate(&dg));
 
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x += 1.0 + (i as f32) * 0.1;
                 dg.p.y -= 1.0 + (j as f32) * 0.1;
-                assert!((1.0 - tex.eval(&dg)).abs() < 0.0001);
+                assert!((1.0 - tex.evaluate(&dg)).abs() < 0.0001);
 
                 dg.p = Point::new_with(0.25, 0.25, 0.0);
                 dg.p.x -= 1.0 + (i as f32) * 0.1;
                 dg.p.y -= 1.0 + (j as f32) * 0.1;
-                assert_eq!(0.0, tex.eval(&dg));
+                assert_eq!(0.0, tex.evaluate(&dg));
             }
         }
     }
@@ -722,7 +724,7 @@ mod tests {
         dg.dpdx = Vector::new_with(0.02, 0.0, 0.0);
         dg.dpdy = Vector::new_with(0.0, 0.02, 0.0);
 
-        assert!((tex.eval(&dg) - 0.7).abs() < 0.01);
+        assert!((tex.evaluate(&dg) - 0.7).abs() < 0.01);
     }
 
     #[test]
@@ -739,10 +741,10 @@ mod tests {
         dg.dpdx = Vector::new_with(0.02, 0.0, 0.0);
         dg.dpdy = Vector::new_with(0.0, 0.02, 0.0);
 
-        assert!((tex.eval(&dg) - 0.76).abs() < 0.01);
+        assert!((tex.evaluate(&dg) - 0.76).abs() < 0.01);
 
         // Make it anisotropic -- we should get much less black
         dg.dpdy.y = 0.002;
-        assert!((tex.eval(&dg) - 0.88).abs() < 0.01);
+        assert!((tex.evaluate(&dg) - 0.88).abs() < 0.01);
     }
 }
