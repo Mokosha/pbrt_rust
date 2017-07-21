@@ -1,14 +1,42 @@
+use std::ops::Deref;
+use std::fmt::Debug;
+
 use diff_geom::DifferentialGeometry;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 
-pub trait TextureMapping3D {
+mod internal {
+    use super::*;
+
+    pub trait TextureMapping3DBase {
+        // Returns the s and t coordinates for the point on the given surface,
+        // and also returns their differentials:
+        //   (s, t, ds/dx, dt/dx, ds/dy, dt/dy)
+        fn map_dg(&self, dg: &DifferentialGeometry) -> (Point, Vector, Vector);
+    }
+
+    impl<U> TextureMapping3DBase for U where U: Deref<Target = TextureMapping3D> {
+        fn map_dg(&self, dg: &DifferentialGeometry) -> (Point, Vector, Vector) {
+            self.deref().map(&dg)
+        }
+    }
+}
+
+pub trait TextureMapping3D:
+Debug + Send + Sync + internal::TextureMapping3DBase {
     // Returns the 3d coordinates for the point providing the r, s, t,
     // coordinates of the texture mapping. Also returns their partial
     // derivatives in the x and y direction.
     fn map(&self, dg: &DifferentialGeometry) -> (Point, Vector, Vector);
+}
+
+impl<U> TextureMapping3D for U where U:
+Debug + Send + Sync + internal::TextureMapping3DBase {
+    fn map(&self, dg: &DifferentialGeometry) -> (Point, Vector, Vector) {
+        self.map_dg(&dg)
+    }
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
@@ -26,8 +54,8 @@ impl IdentityMapping3D {
     }
 }
 
-impl TextureMapping3D for IdentityMapping3D {
-    fn map(&self, dg: &DifferentialGeometry) -> (Point, Vector, Vector) {
+impl internal::TextureMapping3DBase for IdentityMapping3D {
+    fn map_dg(&self, dg: &DifferentialGeometry) -> (Point, Vector, Vector) {
         let dpdx = self.world_to_texture.t(&dg.dpdx);
         let dpdy = self.world_to_texture.t(&dg.dpdy);
         (self.world_to_texture.t(&dg.p), dpdx, dpdy)
