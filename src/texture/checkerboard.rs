@@ -4,6 +4,7 @@ use diff_geom::DifferentialGeometry;
 use texture::Texture;
 use texture::internal::TextureBase;
 use texture::mapping2d::TextureMapping2D;
+use texture::mapping3d::TextureMapping3D;
 use utils::Lerp;
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
@@ -91,11 +92,37 @@ impl<T> TextureBase<T> for CheckerboardTexture<T> where T: Lerp<f32> {
     }
 }
 
+#[derive(Debug)]
+pub struct Checkerboard3DTexture<T> {
+    mapping: Box<TextureMapping3D>,
+    tex1: Arc<Texture<T>>,
+    tex2: Arc<Texture<T>>,
+}
+
+impl<T> Checkerboard3DTexture<T> {
+    pub fn new(mapping: Box<TextureMapping3D>, t1: Arc<Texture<T>>,
+               t2: Arc<Texture<T>>) -> Checkerboard3DTexture<T> {
+        Checkerboard3DTexture { mapping: mapping, tex1: t1, tex2: t2 }
+    }
+}
+
+impl<T> TextureBase<T> for Checkerboard3DTexture<T> {
+    fn eval(&self, dg: &DifferentialGeometry) -> T {
+        let (p, _, _) = self.mapping.map(dg);
+        if ((p.x.floor() + p.y.floor() + p.z.floor()) as i32) % 2 == 0 {
+            self.tex1.evaluate(dg)
+        } else {
+            self.tex2.evaluate(dg)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use texture::ConstantTexture;
     use texture::mapping2d::PlanarMapping2D;
+    use texture::mapping3d::IdentityMapping3D;
     use geometry::point::Point;
     use geometry::vector::Vector;
 
@@ -115,6 +142,27 @@ mod tests {
 
         dg.p = Point::new_with(1.5, 1.5, 0.0);
         assert_eq!(checker.evaluate(&dg), 1.0);
+    }
+
+    #[test]
+    fn checkerboard_texture_works_in_3d() {
+        let map = Box::new(IdentityMapping3D::new());
+        let tex1 = Arc::new(ConstantTexture::new(1.0f32)) as Arc<Texture<f32>>;
+        let tex2 = Arc::new(ConstantTexture::new(0.0f32)) as Arc<Texture<f32>>;
+        let checker = Checkerboard3DTexture::new(map, tex1, tex2);
+
+        let mut dg = DifferentialGeometry::new();
+        dg.p = Point::new_with(0.5, 0.5, 0.0);
+        assert_eq!(checker.evaluate(&dg), 1.0);
+
+        dg.p = Point::new_with(1.5, 0.5, 0.0);
+        assert_eq!(checker.evaluate(&dg), 0.0);
+
+        dg.p = Point::new_with(1.5, 1.5, 0.5);
+        assert_eq!(checker.evaluate(&dg), 1.0);
+
+        dg.p = Point::new_with(1.5, 1.5, 1.5);
+        assert_eq!(checker.evaluate(&dg), 0.0);
     }
 
     #[test]
