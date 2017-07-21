@@ -1,3 +1,4 @@
+pub mod checkerboard;
 pub mod mapping2d;
 pub mod mapping3d;
 pub mod mix;
@@ -73,6 +74,7 @@ Mul<U, Output=V> {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use geometry::vector::Vector;
