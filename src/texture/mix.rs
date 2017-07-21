@@ -14,7 +14,7 @@ pub struct MixTexture<T> where T: Lerp<f32> {
 
 impl<T> MixTexture<T> where T: Lerp<f32> {
     pub fn new(t1: Arc<Texture<T>>, t2: Arc<Texture<T>>,
-           amt: Arc<Texture<f32>>) -> MixTexture<T> {
+               amt: Arc<Texture<f32>>) -> MixTexture<T> {
         MixTexture { tex1: t1, tex2: t2, amount: amt }
     }
 }
