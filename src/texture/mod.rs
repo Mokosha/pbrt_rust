@@ -5,6 +5,7 @@ pub mod mix;
 pub mod bilerp;
 pub mod imagemap;
 pub mod uv;
+pub mod noise;
 
 use std::sync::Arc;
 use std::ops::Deref;
