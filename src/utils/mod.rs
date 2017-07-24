@@ -32,22 +32,11 @@ pub trait Clamp<T = Self> {
     fn clamp(self, a: T, b: T) -> Self;
 }
 
-// These need no actual implementation since we can just use the default...
-fn clamp_num<T: Copy+PartialOrd>(x: T, a: T, b: T) -> T {
-    if x.lt(&a) { a } else if x.gt(&b) { b } else { x }
+impl<T: Copy + PartialOrd> Clamp for T {
+    fn clamp(self, a: Self, b: Self) -> Self {
+        if self.lt(&a) { a } else if self.gt(&b) { b } else { self }
+    }
 }
-
-impl Clamp for f32 { fn clamp(self, a: f32, b: f32) -> f32 { clamp_num(self, a, b) } }
-impl Clamp for f64 { fn clamp(self, a: f64, b: f64) -> f64 { clamp_num(self, a, b) } }
-impl Clamp for i8  { fn clamp(self, a: i8, b: i8) -> i8 { clamp_num(self, a, b) } }
-impl Clamp for i16 { fn clamp(self, a: i16, b: i16) -> i16 { clamp_num(self, a, b) } }
-impl Clamp for i32 { fn clamp(self, a: i32, b: i32) -> i32 { clamp_num(self, a, b) } }
-impl Clamp for i64 { fn clamp(self, a: i64, b: i64) -> i64 { clamp_num(self, a, b) } }
-impl Clamp for u8  { fn clamp(self, a: u8, b: u8) -> u8 { clamp_num(self, a, b) } }
-impl Clamp for u16 { fn clamp(self, a: u16, b: u16) -> u16 { clamp_num(self, a, b) } }
-impl Clamp for u32 { fn clamp(self, a: u32, b: u32) -> u32 { clamp_num(self, a, b) } }
-impl Clamp for u64 { fn clamp(self, a: u64, b: u64) -> u64 { clamp_num(self, a, b) } }
-impl Clamp for usize { fn clamp(self, a: usize, b: usize) -> usize { clamp_num(self, a, b) } }
 
 pub trait Degrees {
     fn as_radians(self) -> Self;
