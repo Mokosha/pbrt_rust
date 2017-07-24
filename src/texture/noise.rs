@@ -1,4 +1,6 @@
 use geometry::point::Point;
+use geometry::vector::Vector;
+use utils::Clamp;
 use utils::Lerp;
 
 const NOISE_PERM_SIZE: usize = 256;
@@ -101,3 +103,24 @@ pub fn noise(x: f32, y: f32, z: f32) -> f32 {
 }
 
 pub fn noise_at(p: &Point) -> f32 { noise(p.x, p.y, p.z) }
+
+fn smoothstep(min: f32, max: f32, value: f32) -> f32 {
+    let v = ((value - min) / (max - min)).clamp(0.0, 1.0);
+    v * v * (-2.0 * v + 3.0)
+}
+
+pub fn fbm(p: &Point, dpdx: &Vector, dpdy: &Vector,
+           omega: f32, max_octaves: i32) -> f32 {
+    // Compute number of octaves for antialiased FBm
+    let s2 = dpdx.length_squared().max(dpdy.length_squared());
+    let foctaves = (max_octaves as f32).min(1.0 - 0.5 * s2.log2());
+    let octaves = foctaves.floor() as i32;
+
+    // Compute sum of octaves of noise for FBm
+    let (sum, lambda, o) = (0..octaves).fold(
+        (0.0, 1.0, 1.0), |(acc, lambda, o), i| {
+            (acc + o * noise_at(&(lambda * p)), lambda * 1.99, o * omega)
+        });
+    let partial_octave = foctaves - foctaves.floor();
+    o * smoothstep(0.3, 0.7, partial_octave) * noise_at(&(lambda * p))
+}
