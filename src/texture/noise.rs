@@ -66,7 +66,7 @@ fn noise_weight(t: f32) -> f32 {
     6.0 * t4 * t - 15.0 * t4 + 10.0 * t3
 }
 
-pub fn noise_at(x: f32, y: f32, z: f32) -> f32 {
+pub fn noise(x: f32, y: f32, z: f32) -> f32 {
     // Compute noise cell coordinates and offsets
     let noise_mask = (NOISE_PERM_SIZE - 1) as i32;
     let ix = ((x.floor() as i32) & noise_mask) as usize;
@@ -100,4 +100,4 @@ pub fn noise_at(x: f32, y: f32, z: f32) -> f32 {
     y0.lerp_with(y1, wz)
 }
 
-pub fn noise(p: &Point) -> f32 { noise_at(p.x, p.y, p.z) }
+pub fn noise_at(p: &Point) -> f32 { noise(p.x, p.y, p.z) }
