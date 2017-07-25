@@ -120,10 +120,27 @@ pub fn fbm(p: &Point, dpdx: &Vector, dpdy: &Vector,
     // Compute sum of octaves of noise for FBm
     let (sum, lambda, o) = (0..octaves).fold(
         (0.0, 1.0, 1.0), |(acc, lambda, o), i| {
+            let v = noise_at(&(lambda * p));
+            (acc + o * v, lambda * 1.99, o * omega)
+        });
+    let partial_octave = foctaves - foctaves.floor();
+    sum + o * smoothstep(0.3, 0.7, partial_octave) * noise_at(&(lambda * p))
+}
+
+pub fn turbulence(p: &Point, dpdx: &Vector, dpdy: &Vector,
+                  omega: f32, max_octaves: i32) -> f32 {
+    // Compute number of octaves for antialiased FBm
+    let s2 = dpdx.length_squared().max(dpdy.length_squared());
+    let foctaves = (max_octaves as f32).min(1.0 - 0.5 * s2.log2());
+    let octaves = foctaves.floor() as i32;
+
+    // Compute sum of octaves of noise for turbulence
+    let (sum, lambda, o) = (0..octaves).fold(
+        (0.0, 1.0, 1.0), |(acc, lambda, o), i| {
             (acc + o * noise_at(&(lambda * p)), lambda * 1.99, o * omega)
         });
     let partial_octave = foctaves - foctaves.floor();
-    o * smoothstep(0.3, 0.7, partial_octave) * noise_at(&(lambda * p))
+    sum + o * smoothstep(0.3, 0.7, partial_octave) * noise_at(&(lambda * p)).abs()
 }
 
 #[cfg(test)]
@@ -151,7 +168,6 @@ mod tests {
                     let v = noise((i as f32) + 0.3,
                                   (j as f32) + 0.2,
                                   (k as f32) + 0.1).abs();
-                    println!("{:?}", (i, j, k, v));
                     assert!(v.abs() <= 1.0);
                     assert!(v.abs() > 0.0);
                 }
@@ -161,7 +177,7 @@ mod tests {
 
     #[test]
     fn fbm_is_more_or_less_continuous() {
-        let mut p = Point::new_with(0.3, -0.3, 10.2);
+        let mut p = Point::new_with(0.3, -0.4, 10.2);
         let dpdx = Vector::new_with(1.0, 0.0, 0.0);
         let dpdy = Vector::new_with(0.0, 1.0, 0.0);
 
@@ -172,6 +188,28 @@ mod tests {
         p.z += 0.005;
 
         let v2 = fbm(&p, &dpdx, &dpdy, 1.0, 10);
-        assert!((v - v2).abs() < 0.0001);
+        assert!(v.abs() > 0.0);
+        assert!(v2.abs() > 0.0);
+        assert!(v != v2);
+        assert!((v - v2).abs() < 0.02);
+    }
+
+    #[test]
+    fn turbulence_is_more_or_less_continuous() {
+        let mut p = Point::new_with(0.3, -0.3, 10.2);
+        let dpdx = Vector::new_with(1.0, 0.0, 0.0);
+        let dpdy = Vector::new_with(0.0, 1.0, 0.0);
+
+        let v = turbulence(&p, &dpdx, &dpdy, 1.0, 10);
+
+        p.x += 0.01;
+        p.y -= 0.01;
+        p.z += 0.005;
+
+        let v2 = turbulence(&p, &dpdx, &dpdy, 1.0, 10);
+        assert!(v.abs() > 0.0);
+        assert!(v2.abs() > 0.0);
+        assert!(v != v2);
+        assert!((v - v2).abs() < 0.02);
     }
 }
