@@ -89,6 +89,7 @@ pub fn noise(x: f32, y: f32, z: f32) -> f32 {
     let w011 = grad(ix    , iy + 1, iz + 1, dx      , dy - 1.0, dz - 1.0);
     let w111 = grad(ix + 1, iy + 1, iz + 1, dx - 1.0, dy - 1.0, dz - 1.0);
 
+
     // Compute trilinear interpolation weights
     let wx = noise_weight(dx);
     let wy = noise_weight(dy);
@@ -123,4 +124,54 @@ pub fn fbm(p: &Point, dpdx: &Vector, dpdy: &Vector,
         });
     let partial_octave = foctaves - foctaves.floor();
     o * smoothstep(0.3, 0.7, partial_octave) * noise_at(&(lambda * p))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use geometry::point::Point;
+    use geometry::vector::Vector;
+
+    #[test]
+    fn noise_is_zero_at_integers() {
+        for i in -10..10 {
+            for j in -10..10 {
+                for k in -10..10 {
+                    assert_eq!(noise(i as f32, j as f32, k as f32), 0.0);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn noise_is_nonzero_at_nonintegers() {
+        for i in -10..10 {
+            for j in -10..10 {
+                for k in -10..10 {
+                    let v = noise((i as f32) + 0.3,
+                                  (j as f32) + 0.2,
+                                  (k as f32) + 0.1).abs();
+                    println!("{:?}", (i, j, k, v));
+                    assert!(v.abs() <= 1.0);
+                    assert!(v.abs() > 0.0);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn fbm_is_more_or_less_continuous() {
+        let mut p = Point::new_with(0.3, -0.3, 10.2);
+        let dpdx = Vector::new_with(1.0, 0.0, 0.0);
+        let dpdy = Vector::new_with(0.0, 1.0, 0.0);
+
+        let v = fbm(&p, &dpdx, &dpdy, 1.0, 10);
+
+        p.x += 0.01;
+        p.y -= 0.01;
+        p.z += 0.005;
+
+        let v2 = fbm(&p, &dpdx, &dpdy, 1.0, 10);
+        assert!((v - v2).abs() < 0.0001);
+    }
 }
