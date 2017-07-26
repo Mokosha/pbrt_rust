@@ -6,6 +6,7 @@ pub mod bilerp;
 pub mod imagemap;
 pub mod uv;
 pub mod dots;
+pub mod fbm;
 
 mod noise;
 
