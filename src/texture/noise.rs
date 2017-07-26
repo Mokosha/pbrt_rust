@@ -114,7 +114,7 @@ pub fn fbm(p: &Point, dpdx: &Vector, dpdy: &Vector,
            omega: f32, max_octaves: i32) -> f32 {
     // Compute number of octaves for antialiased FBm
     let s2 = dpdx.length_squared().max(dpdy.length_squared());
-    let foctaves = (max_octaves as f32).min(1.0 - 0.5 * s2.log2());
+    let foctaves = (-1.0 - 0.5 * s2.log2()).clamp(0.0, max_octaves as f32);
     let octaves = foctaves.floor() as i32;
 
     // Compute sum of octaves of noise for FBm
@@ -131,7 +131,7 @@ pub fn turbulence(p: &Point, dpdx: &Vector, dpdy: &Vector,
                   omega: f32, max_octaves: i32) -> f32 {
     // Compute number of octaves for antialiased FBm
     let s2 = dpdx.length_squared().max(dpdy.length_squared());
-    let foctaves = (max_octaves as f32).min(1.0 - 0.5 * s2.log2());
+    let foctaves = (-1.0 - 0.5 * s2.log2()).clamp(0.0, max_octaves as f32);
     let octaves = foctaves.floor() as i32;
 
     // Compute sum of octaves of noise for turbulence
@@ -178,8 +178,8 @@ mod tests {
     #[test]
     fn fbm_is_more_or_less_continuous() {
         let mut p = Point::new_with(0.3, -0.4, 10.2);
-        let dpdx = Vector::new_with(1.0, 0.0, 0.0);
-        let dpdy = Vector::new_with(0.0, 1.0, 0.0);
+        let dpdx = Vector::new_with(0.1, 0.0, 0.0);
+        let dpdy = Vector::new_with(0.0, 0.1, 0.0);
 
         let v = fbm(&p, &dpdx, &dpdy, 1.0, 10);
 
@@ -191,14 +191,14 @@ mod tests {
         assert!(v.abs() > 0.0);
         assert!(v2.abs() > 0.0);
         assert!(v != v2);
-        assert!((v - v2).abs() < 0.02);
+        assert!((v - v2).abs() < 0.06);
     }
 
     #[test]
     fn turbulence_is_more_or_less_continuous() {
         let mut p = Point::new_with(0.3, -0.3, 10.2);
-        let dpdx = Vector::new_with(1.0, 0.0, 0.0);
-        let dpdy = Vector::new_with(0.0, 1.0, 0.0);
+        let dpdx = Vector::new_with(0.1, 0.0, 0.0);
+        let dpdy = Vector::new_with(0.0, 0.1, 0.0);
 
         let v = turbulence(&p, &dpdx, &dpdy, 1.0, 10);
 
@@ -210,6 +210,6 @@ mod tests {
         assert!(v.abs() > 0.0);
         assert!(v2.abs() > 0.0);
         assert!(v != v2);
-        assert!((v - v2).abs() < 0.02);
+        assert!((v - v2).abs() < 0.06);
     }
 }
