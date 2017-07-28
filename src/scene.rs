@@ -13,7 +13,7 @@ use volume_region::VolumeRegion;
 pub struct Scene {
     aggregate : Primitive,
     lights : Vec<Light>,
-    volume_region : Option<VolumeRegion>,
+    volume_region : Option<Box<VolumeRegion>>,
     // Scene Public data 23
 }
 
@@ -36,7 +36,7 @@ impl Scene {
 
 impl HasBounds for Scene {
     fn world_bound(&self) -> BBox {
-        if let Some(volume) = self.volume_region {
+        if let Some(ref volume) = self.volume_region {
             let agg_box = &(self.aggregate).world_bound();
             agg_box.union(&volume.world_bound())
         } else {

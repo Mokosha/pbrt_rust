@@ -1,14 +1,40 @@
-use bbox;
+use bbox::BBox;
+use bbox::HasBounds;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
 
+use std::fmt::Debug;
+use std::ops::Deref;
+use std::marker::Send;
+use std::marker::Sync;
+
 use ::std::f32::consts::PI;
 
-#[derive(Debug, Copy, Clone)]
-pub struct VolumeRegion;
+mod internal {
+    use super::*;
 
-impl bbox::HasBounds for VolumeRegion {
-    fn world_bound(&self) -> bbox::BBox { bbox::BBox::new() }
+    pub trait VolumeRegionBase {
+        fn world_bound(&self) -> BBox;
+    }
+
+    impl<T> VolumeRegionBase for T where T: Deref<Target = VolumeRegion> {
+        fn world_bound(&self) -> BBox { self.deref().world_bound() }
+    }
+}
+
+pub trait VolumeRegion: Send + Sync {
+    fn world_bound(&self) -> BBox;
+}
+
+impl<T> VolumeRegion for T
+where T : Send + Sync + Debug + Clone + internal::VolumeRegionBase {
+    fn world_bound(&self) -> BBox {
+        (self as &internal::VolumeRegionBase).world_bound()
+    }
+}
+
+impl<T : VolumeRegion> HasBounds for T {
+    fn world_bound(&self) -> BBox { self.world_bound() }
 }
 
 pub fn phase_isotropic(_: &Vector, _: &Vector) -> f32 {
