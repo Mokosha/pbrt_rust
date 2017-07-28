@@ -14,42 +14,8 @@ use std::marker::Sync;
 
 use ::std::f32::consts::PI;
 
-mod internal {
-    use super::*;
-
-    pub trait VolumeRegionBase {
-        fn sigma_a(&self, &Point, &Vector, f32) -> Spectrum;
-        fn sigma_s(&self, &Point, &Vector, f32) -> Spectrum;
-        fn l_ve(&self, &Point, &Vector, f32) -> Spectrum;
-        fn p(&self, &Point, &Vector, &Vector, f32) -> f32;
-        fn tau(&self, &Ray, f32, f32) -> Spectrum;
-    }
-
-    impl<T> VolumeRegionBase for T where T: Deref<Target = VolumeRegion> {
-        fn sigma_a(&self, p: &Point, w: &Vector, time: f32) -> Spectrum {
-            VolumeRegionBase::sigma_a(self.deref(), p, w, time)
-        }
-
-        fn sigma_s(&self, p: &Point, w: &Vector, time: f32) -> Spectrum {
-            VolumeRegionBase::sigma_s(self.deref(), p, w, time)
-        }
-
-        fn l_ve(&self, p: &Point, w: &Vector, time: f32) -> Spectrum {
-            VolumeRegionBase::l_ve(self.deref(), p, w, time)
-        }
-
-        fn p(&self, pt: &Point, wo: &Vector, wi: &Vector, time: f32) -> f32 {
-            VolumeRegionBase::p(self.deref(), pt, wo, wi, time)
-        }
-
-        fn tau(&self, ray: &Ray, step: f32, offset: f32) -> Spectrum {
-            VolumeRegionBase::tau(self.deref(), ray, step, offset)
-        }
-    }
-}
-
-pub trait VolumeRegion: Send + Sync + Debug + HasBounds
-    + Intersectable<(f32, f32)> + internal::VolumeRegionBase {
+pub trait VolumeRegion:
+Send + Sync + Debug + HasBounds + Intersectable<(f32, f32)> {
         fn sigma_a(&self, &Point, &Vector, f32) -> Spectrum;
         fn sigma_s(&self, &Point, &Vector, f32) -> Spectrum;
         fn l_ve(&self, &Point, &Vector, f32) -> Spectrum;
@@ -57,32 +23,7 @@ pub trait VolumeRegion: Send + Sync + Debug + HasBounds
         fn tau(&self, &Ray, f32, f32) -> Spectrum;
 
         fn sigma_t(&self, p: &Point, w: &Vector, time: f32) -> Spectrum {
-            internal::VolumeRegionBase::sigma_a(self, p, w, time) +
-                internal::VolumeRegionBase::sigma_s(self, p, w, time)
-        }
-}
-
-impl<T> VolumeRegion for T where T:
-Send + Sync + Debug + HasBounds
-    + Intersectable<(f32, f32)> + internal::VolumeRegionBase {
-        fn sigma_a(&self, p: &Point, w: &Vector, time: f32) -> Spectrum {
-            (self as &internal::VolumeRegionBase).sigma_a(p, w, time)
-        }
-
-        fn sigma_s(&self, p: &Point, w: &Vector, time: f32) -> Spectrum {
-            (self as &internal::VolumeRegionBase).sigma_s(p, w, time)
-        }
-
-        fn l_ve(&self, p: &Point, w: &Vector, time: f32) -> Spectrum {
-            (self as &internal::VolumeRegionBase).l_ve(p, w, time)
-        }
-
-        fn p(&self, pt: &Point, wo: &Vector, wi: &Vector, time: f32) -> f32 {
-            (self as &internal::VolumeRegionBase).p(pt, wo, wi, time)
-        }
-
-        fn tau(&self, ray: &Ray, step: f32, offset: f32) -> Spectrum {
-            (self as &internal::VolumeRegionBase).tau(ray, step, offset)
+            self.sigma_a(p, w, time) + self.sigma_s(p, w, time)
         }
 }
 
