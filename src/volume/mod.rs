@@ -1,3 +1,5 @@
+pub mod homogeneous;
+
 use bbox::BBox;
 use bbox::HasBounds;
 use geometry::point::Point;

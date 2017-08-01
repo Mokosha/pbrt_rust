@@ -33,4 +33,4 @@ pub mod time;
 pub mod transform;
 pub mod utils;
 pub mod visibility_tester;
-pub mod volume_region;
+pub mod volume;

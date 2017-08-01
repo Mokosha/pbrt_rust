@@ -8,7 +8,7 @@ use primitive::Primitive;
 use ray::Ray;
 use shape::Shape;
 use transform::transform::Transform;
-use volume_region::VolumeRegion;
+use volume::VolumeRegion;
 
 pub struct Scene {
     aggregate : Primitive,
