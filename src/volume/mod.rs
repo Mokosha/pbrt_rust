@@ -1,3 +1,4 @@
+pub mod density;
 pub mod homogeneous;
 
 use bbox::BBox;
@@ -10,7 +11,6 @@ use ray::Ray;
 use spectrum::Spectrum;
 
 use std::fmt::Debug;
-use std::ops::Deref;
 use std::marker::Send;
 use std::marker::Sync;
 
