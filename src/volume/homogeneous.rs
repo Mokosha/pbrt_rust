@@ -29,7 +29,9 @@ impl HomogeneousVolumeDensity {
 }
 
 impl HasBounds for HomogeneousVolumeDensity {
-    fn world_bound(&self) -> BBox { self.world_to_volume.inverse().t(&self.extent) }
+    fn world_bound(&self) -> BBox {
+        self.world_to_volume.inverse().t(&self.extent)
+    }
 }
 
 impl Intersectable<(f32, f32)> for HomogeneousVolumeDensity {
