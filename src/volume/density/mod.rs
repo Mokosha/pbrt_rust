@@ -1,3 +1,5 @@
+pub mod volume_grid;
+
 use bbox::HasBounds;
 use geometry::point::Point;
 use geometry::vector::Vector;
