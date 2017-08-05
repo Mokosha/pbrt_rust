@@ -1,3 +1,4 @@
+pub mod exponential;
 pub mod volume_grid;
 
 use bbox::HasBounds;
