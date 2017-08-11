@@ -79,7 +79,8 @@ impl Primitive {
     pub fn geometric(s: Shape) -> Primitive {
         Primitive {
             base: PrimitiveBase::new(),
-            prim: Arc::new(Prim::Geometric(GeometricPrimitive::new(s, Material::broken())))
+            prim: Arc::new(Prim::Geometric(
+                GeometricPrimitive::new(s, Material::broken())))
         }
     }
 
