@@ -12,7 +12,7 @@ pub struct SpecularReflection {
 }
 
 impl SpecularReflection {
-    fn new(_r: Spectrum, _f: Fresnel) -> SpecularReflection {
+    pub fn new(_r: Spectrum, _f: Fresnel) -> SpecularReflection {
         SpecularReflection {
             r: _r,
             fresnel: _f
