@@ -10,9 +10,11 @@ use shape::Shape;
 use transform::transform::Transform;
 use volume::VolumeRegion;
 
+use std::sync::Arc;
+
 pub struct Scene {
     aggregate : Primitive,
-    lights : Vec<Light>,
+    lights : Vec<Arc<Light>>,
     volume_region : Option<Box<VolumeRegion>>,
     // Scene Public data 23
 }
@@ -27,8 +29,8 @@ impl Scene {
         }
     }
 
-    pub fn lights<'a>(&'a self) -> &'a Vec<Light> {
-        &self.lights
+    pub fn lights(&self) -> Vec<Arc<Light>> {
+        self.lights.clone()
     }
 
     // Scene Public methods 23

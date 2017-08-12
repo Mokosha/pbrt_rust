@@ -194,7 +194,7 @@ impl Renderer for SamplerRenderer {
             } else {
                 // Handle ray that doesn't intersect any geometry
                 let zero_spect = Spectrum::from(0f32);
-                let accum = |acc, light: &Light| acc + light.le(ray);
+                let accum = |acc, light: &Arc<Light>| acc + light.le(ray);
                 (None, scene.lights().iter().fold(zero_spect, accum))
             };
 
