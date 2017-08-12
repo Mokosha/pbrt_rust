@@ -1,3 +1,4 @@
+pub mod aggregate;
 pub mod density;
 pub mod homogeneous;
 

@@ -2,6 +2,7 @@ mod matte;
 mod measured;
 mod mix;
 mod plastic;
+mod subsurface;
 
 use std::sync::Arc;
 
@@ -17,6 +18,7 @@ use material::matte::MatteMaterial;
 use material::plastic::PlasticMaterial;
 use material::measured::MeasuredMaterial;
 use material::mix::MixMaterial;
+use material::subsurface::SubsurfaceMaterial;
 
 pub fn bump<Tex: Texture<f32>>(
     d: &Tex, dg_geom: &DifferentialGeometry,
@@ -32,7 +34,9 @@ pub fn bump<Tex: Texture<f32>>(
 
     dg_eval.p = &dg_shading.p + du * &dg_shading.dpdu;
     dg_eval.u = dg_shading.u + du;
-    dg_eval.nn = Normal::from(dg_shading.dpdu.cross_with(&dg_shading.dpdv) + du * &dg_shading.dndu).normalize();
+    dg_eval.nn = Normal::from(
+        dg_shading.dpdu.cross_with(&dg_shading.dpdv) + du * &dg_shading.dndu)
+        .normalize();
 
     let u_displace = d.evaluate(&dg_eval);
 
@@ -45,7 +49,9 @@ pub fn bump<Tex: Texture<f32>>(
     dg_eval.p = &dg_shading.p + dv * &dg_shading.dpdv;
     dg_eval.u = dg_shading.u;
     dg_eval.v = dg_shading.v + dv;
-    dg_eval.nn = Normal::from(dg_shading.dpdu.cross_with(&dg_shading.dpdv) + dv * &dg_shading.dndv).normalize();
+    dg_eval.nn = Normal::from(
+        dg_shading.dpdu.cross_with(&dg_shading.dpdv) + dv * &dg_shading.dndv)
+        .normalize();
 
     let v_displace = d.evaluate(&dg_eval);
     let displace = d.evaluate(dg_shading);
@@ -76,6 +82,7 @@ pub enum Material {
     Plastic(PlasticMaterial),
     Measured(MeasuredMaterial),
     Mixed(MixMaterial),
+    Subsurface(SubsurfaceMaterial),
     Broken
 }
 
@@ -102,6 +109,15 @@ impl Material {
         Material::Mixed(MixMaterial::new(m1, m2, sc))
     }
 
+    pub fn subsurface(scale: f32, k_r: Arc<Texture<Spectrum>>,
+                      sigma_a: Arc<Texture<Spectrum>>,
+                      sigma_prime_s: Arc<Texture<Spectrum>>,
+                      eta: Arc<Texture<f32>>,
+                      bm: Option<Arc<Texture<f32>>>) -> Material {
+        Material::Subsurface(
+            SubsurfaceMaterial::new(scale, k_r, sigma_a, sigma_prime_s, eta, bm))
+    }
+
     // !FIXME!
     pub fn broken() -> Material { Material::Broken }
 
@@ -112,13 +128,17 @@ impl Material {
             &Material::Plastic(ref mat) => mat.get_bsdf(dg, dgs),
             &Material::Measured(ref mat) => mat.get_bsdf(dg, dgs),
             &Material::Mixed(ref mat) => mat.get_bsdf(dg, dgs),
+            &Material::Subsurface(ref mat) => mat.get_bsdf(dg, dgs),
             _ => unimplemented!()
         }
     }
 
     pub fn get_bssrdf(&self, dg: DifferentialGeometry,
                       dgs: DifferentialGeometry) -> Option<BSSRDF> {
-        None
+        match self {
+            &Material::Subsurface(ref mat) => Some(mat.get_bssrdf(dg, dgs)),
+            _ => None
+        }
     }
 }
 
