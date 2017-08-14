@@ -39,14 +39,14 @@ mod internal {
 #[derive(PartialOrd,Ord,PartialEq,Eq)]
 pub struct LightSample;
 
+impl LightSample {
+    pub fn new(rng: &mut RNG) -> LightSample { LightSample }
+}
+
 pub trait Light : ::std::marker::Send + ::std::marker::Sync {
     fn le(&self, &RayDifferential) -> Spectrum;
     fn sample_l(&self, &Point, f32, LightSample, Time)
                 -> (Spectrum, Vector, f32, VisibilityTester);
     fn power(&self, &Scene) -> Spectrum;
     fn is_delta_light(&self) -> bool;
-}
-
-impl LightSample {
-    pub fn new(rng: &mut RNG) -> LightSample { LightSample }
 }
