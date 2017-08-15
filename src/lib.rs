@@ -29,7 +29,6 @@ pub mod shape;
 pub mod spectrum;
 pub mod scene;
 pub mod texture;
-pub mod time;
 pub mod transform;
 pub mod utils;
 pub mod visibility_tester;

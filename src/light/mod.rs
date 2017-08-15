@@ -1,7 +1,6 @@
 use ray::RayDifferential;
 use rng::RNG;
 use spectrum::Spectrum;
-use time::Time;
 use visibility_tester::VisibilityTester;
 use geometry::point::Point;
 use geometry::vector::Vector;
@@ -44,8 +43,11 @@ impl LightSample {
 }
 
 pub trait Light : ::std::marker::Send + ::std::marker::Sync {
-    fn le(&self, &RayDifferential) -> Spectrum;
-    fn sample_l(&self, &Point, f32, LightSample, Time)
+    fn le(&self, &RayDifferential) -> Spectrum {
+        Spectrum::from(0.0)
+    }
+
+    fn sample_l(&self, &Point, f32, LightSample, f32)
                 -> (Spectrum, Vector, f32, VisibilityTester);
     fn power(&self, &Scene) -> Spectrum;
     fn is_delta_light(&self) -> bool;

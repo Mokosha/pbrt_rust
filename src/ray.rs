@@ -3,13 +3,12 @@ use std::cell::RefCell;
 use geometry::point::Point;
 use geometry::vector::Vector;
 use std::f32;
-use time::Time;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Ray {
     pub o: Point,
     pub d: Vector,
-    pub time: Time,
+    pub time: f32,
     pub depth: usize,
     mint: RefCell<f32>,
     maxt: RefCell<f32>
@@ -20,7 +19,7 @@ impl Ray {
         Ray {
             o: Point::new(),
             d: Vector::new(),
-            time: Time::from(0f32),
+            time: 0.0,
             depth: 0,
             mint: RefCell::new(0.0),
             maxt: RefCell::new(f32::MAX)
@@ -31,7 +30,7 @@ impl Ray {
         Ray {
             o: origin,
             d: dir,
-            time: Time::from(0f32),
+            time: 0.0,
             depth: 0,
             mint: RefCell::new(start),
             maxt: RefCell::new(f32::MAX)
@@ -55,7 +54,7 @@ impl Ray {
     pub fn set_maxt(&self, t: f32) { *(self.maxt.borrow_mut()) = t; }
     pub fn maxt(&self) -> f32 { *(self.maxt.borrow()) }
 
-    pub fn set_time(&mut self, t: f32) { self.time = Time::from(t) }
+    pub fn set_time(&mut self, t: f32) { self.time = t }
     pub fn set_depth(&mut self, d: usize) { self.depth = d }
 
     pub fn point_at(&self, t: f32) -> Point { &self.o + (&self.d * t) }
@@ -134,14 +133,13 @@ mod tests {
     use std::cell::RefCell;
     use geometry::point::Point;
     use geometry::vector::Vector;
-    use time::Time;
 
     #[test]
     fn rays_can_be_created() {
         assert_eq!(Ray::new(), Ray {
             o: Point::new(),
             d: Vector::new(),
-            time: Time::from(0.0),
+            time: 0.0,
             depth: 0,
             mint: RefCell::new(0.0),
             maxt: RefCell::new(::std::f32::MAX)
@@ -153,7 +151,7 @@ mod tests {
         assert_eq!(r, Ray {
             o: o.clone(),
             d: d.clone(),
-            time: Time::from(0.0),
+            time: 0.0,
             depth: 0,
             mint: RefCell::new(2.0),
             maxt: RefCell::new(::std::f32::MAX)
@@ -164,7 +162,7 @@ mod tests {
                    Ray {
                        o: Point::new_with(0.1, 1.0, 10.0),
                        d: Vector::new_with(1.0, 1.0, 1.0),
-                       time: Time::from(0.0),
+                       time: 0.0,
                        depth: 1,
                        mint: RefCell::new(1.0),
                        maxt: RefCell::new(::std::f32::MAX)
