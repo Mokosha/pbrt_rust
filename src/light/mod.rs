@@ -1,3 +1,5 @@
+pub mod point;
+
 use ray::RayDifferential;
 use rng::RNG;
 use spectrum::Spectrum;
@@ -10,14 +12,15 @@ use transform::transform::Transform;
 mod internal {
     use super::*;
 
-    struct LightBase {
+    #[derive(Clone, Debug, PartialOrd, PartialEq)]
+    pub struct LightBase {
         num_samples: usize,
         light_to_world: Transform,
         world_to_light: Transform
     }
 
     impl LightBase {
-        fn new(l2w: Transform) -> LightBase {
+        pub fn new(l2w: Transform) -> LightBase {
             LightBase {
                 num_samples: 1,
                 light_to_world: l2w.clone(),
@@ -25,7 +28,7 @@ mod internal {
             }
         }
 
-        fn new_with_samples(l2w: Transform, ns: usize) -> LightBase {
+        pub fn new_with_samples(l2w: Transform, ns: usize) -> LightBase {
             LightBase {
                 num_samples: ns,
                 light_to_world: l2w.clone(),
