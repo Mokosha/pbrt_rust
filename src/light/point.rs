@@ -18,7 +18,7 @@ pub struct PointLight {
 }
 
 impl PointLight {
-    fn new(l2w: Transform, intensity: Spectrum) -> PointLight {
+    pub fn new(l2w: Transform, intensity: Spectrum) -> PointLight {
         let light_pos = l2w.xf(Point::new());
         PointLight { base: internal::LightBase::new(l2w), light_pos, intensity }
     }

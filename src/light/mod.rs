@@ -1,4 +1,5 @@
 pub mod point;
+pub mod spot;
 
 use ray::RayDifferential;
 use rng::RNG;
@@ -14,9 +15,9 @@ mod internal {
 
     #[derive(Clone, Debug, PartialOrd, PartialEq)]
     pub struct LightBase {
-        num_samples: usize,
-        light_to_world: Transform,
-        world_to_light: Transform
+        pub num_samples: usize,
+        pub light_to_world: Transform,
+        pub world_to_light: Transform
     }
 
     impl LightBase {
