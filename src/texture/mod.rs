@@ -1,12 +1,14 @@
-pub mod checkerboard;
-pub mod mapping2d;
-pub mod mapping3d;
-pub mod mix;
 pub mod bilerp;
-pub mod imagemap;
-pub mod uv;
+pub mod checkerboard;
 pub mod dots;
 pub mod fbm;
+pub mod imagemap;
+pub mod imagewrap;
+pub mod mapping2d;
+pub mod mapping3d;
+pub mod mipmap;
+pub mod mix;
+pub mod uv;
 
 mod noise;
 
