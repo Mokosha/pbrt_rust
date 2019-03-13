@@ -4,15 +4,19 @@ extern crate pbrt_rust;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::sync::Arc;
 use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
 
 use pbrt_rust::geometry::point::Point;
 use pbrt_rust::geometry::vector::Vector;
-use pbrt_rust::params::ParamSet;
+use pbrt_rust::params::{ParamSet, TextureParams};
 use pbrt_rust::scene::Scene;
 use pbrt_rust::transform::transform::Transform;
+use pbrt_rust::spectrum::Spectrum;
+use pbrt_rust::texture::Texture;
+use pbrt_rust::texture::ConstantTexture;
 
 pub struct Options {
     num_cores: usize,
@@ -63,6 +67,10 @@ impl TransformSet {
     fn new() -> TransformSet {
         TransformSet { t: vec![Transform::new(), Transform::new()] }
     }
+
+    fn is_animated(&self) -> bool {
+        self.t.iter().zip(self.t.iter().skip(1)).any(|(t1, t2)| t1 != t2)
+    }
 }
 
 fn inverse(ts: &TransformSet) -> TransformSet {
@@ -92,6 +100,7 @@ impl IndexMut<usize> for TransformSet {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct RenderOptions {
     transform_start_time: f32,
     transform_end_time: f32,
@@ -156,16 +165,28 @@ impl RenderOptions {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 struct GraphicsState {
-    material: String
+    material: String,
+    float_textures: Arc<HashMap<String, Arc<Texture<f32>>>>,
+    spectrum_textures: Arc<HashMap<String, Arc<Texture<Spectrum>>>>,
 }
 
 impl GraphicsState {
     fn new() -> GraphicsState {
         GraphicsState {
-            material: String::from("lambertian")
+            material: String::from("lambertian"),
+            float_textures: Arc::new(HashMap::new()),
+            spectrum_textures: Arc::new(HashMap::new()),
         }
+    }
+
+    fn float_textures(&self) -> Arc<HashMap<String, Arc<Texture<f32>>>> {
+        self.float_textures.clone()
+    }
+
+    fn spectrum_textures(&self) -> Arc<HashMap<String, Arc<Texture<Spectrum>>>> {
+        self.spectrum_textures.clone()
     }
 }
 
@@ -232,6 +253,15 @@ macro_rules! verify_world {
     ($x:expr) => {
         if get_current_api_state() != STATE_WORLD_BLOCK {
             panic!("{} must be called from a world block!", $x);
+        }
+    };
+}
+
+macro_rules! warn_if_animated_xform {
+    ($x:expr) => {
+        if CUR_TRANSFORMS.lock().unwrap().is_animated() {
+            print!("Animated transformations set; ignoring for {} and ", $x);
+            println!("using the start transform only");
         }
     };
 }
@@ -413,6 +443,48 @@ fn pbrt_camera(name: &String, params: &ParamSet) {
         inverse(CUR_TRANSFORMS.lock().unwrap().deref());
     NAMED_COORDINATE_SYSTEMS.lock().unwrap().insert(
         String::from("camera"), RENDER_OPTIONS.lock().unwrap().camera_to_world.clone());
+}
+
+fn make_float_texture(name: &String, tex_to_world: &Transform, params: &TextureParams) -> Arc<Texture<f32>> {
+    match name.as_ref() {
+        "constant" => Arc::new(ConstantTexture::new(params.find_float(&("value".to_string()), 0.0))),
+        _ => panic!("Unknown float texture type"),
+    }
+}
+
+fn make_color_texture(name: &String, tex_to_world: &Transform, params: &TextureParams) -> Arc<Texture<Spectrum>> {
+    match name.as_ref() {
+        "definitely isn't this" => panic!("Oops, it is."),
+        _ => panic!("Unknown color texture type"),
+    }
+}
+
+fn pbrt_texture(name: &String, ty: &String, texname: &String, params: &ParamSet) {
+    verify_world!("Texture");
+    let mut fts = GRAPHICS_STATE.lock().unwrap().float_textures();
+    let mut sts = GRAPHICS_STATE.lock().unwrap().spectrum_textures();
+    let tp = TextureParams::new(params, params, fts.clone(), sts.clone());
+    match ty.as_ref() {
+        "float" => {
+            if fts.contains_key("float") {
+                println!("Texture {} being redefined", texname);
+            }
+            warn_if_animated_xform!("Texture");
+            let ft = make_float_texture(
+                texname, &CUR_TRANSFORMS.lock().unwrap()[0], &tp);
+            (*Arc::get_mut(&mut fts).unwrap()).insert(name.clone(), ft);
+        },
+        "color" => {
+            if fts.contains_key("color") {
+                println!("Texture {} being redefined", texname);
+            }
+            warn_if_animated_xform!("Texture");
+            let st = make_color_texture(
+                texname, &CUR_TRANSFORMS.lock().unwrap()[0], &tp);
+            (*Arc::get_mut(&mut sts).unwrap()).insert(name.clone(), st);
+        },
+        _ => panic!("Texture type {} unknown!", ty),
+    }
 }
 
 fn pbrt_world_begin() {

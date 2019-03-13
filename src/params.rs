@@ -261,13 +261,13 @@ impl ParamSet {
 }
 
 pub struct TextureParams<'a> {
-    float_textures: &'static HashMap<String, Arc<Texture<f32>>>,
-    spectrum_textures: &'static HashMap<String, Arc<Texture<Spectrum>>>,
+    float_textures: Arc<HashMap<String, Arc<Texture<f32>>>>,
+    spectrum_textures: Arc<HashMap<String, Arc<Texture<Spectrum>>>>,
     geom_params: &'a ParamSet,
     material_params: &'a ParamSet
 }
 
-fn find_texture<T>(textures: &'static HashMap<String, Arc<Texture<T>>>,
+fn find_texture<T>(textures: Arc<HashMap<String, Arc<Texture<T>>>>,
                    name: &String) -> Arc<Texture<T>> {
     match textures.get(name) {
         Some(tex) => tex.clone() as Arc<Texture<T>>,
@@ -276,10 +276,10 @@ fn find_texture<T>(textures: &'static HashMap<String, Arc<Texture<T>>>,
 }
 
 impl<'a> TextureParams<'a> {
-    fn new(geomp: &'a ParamSet, matp: &'a ParamSet,
-           ft: &'static HashMap<String, Arc<Texture<f32>>>,
-           st: &'static HashMap<String, Arc<Texture<Spectrum>>>)
-           -> TextureParams<'a> {
+    pub fn new(geomp: &'a ParamSet, matp: &'a ParamSet,
+               ft: Arc<HashMap<String, Arc<Texture<f32>>>>,
+               st: Arc<HashMap<String, Arc<Texture<Spectrum>>>>)
+               -> TextureParams<'a> {
         TextureParams {
             float_textures: ft,
             spectrum_textures: st,
@@ -291,9 +291,9 @@ impl<'a> TextureParams<'a> {
     pub fn get_spectrum_texture(&self, n: &String, def: &Spectrum)
                                 -> Arc<Texture<Spectrum>> {
         if let Some(names) = self.geom_params.find_tex(n) {
-            find_texture(&self.spectrum_textures, &names[0])
+            find_texture(self.spectrum_textures.clone(), &names[0])
         } else if let Some(names) = self.material_params.find_tex(n) {
-            find_texture(&self.spectrum_textures, &names[0])
+            find_texture(self.spectrum_textures.clone(), &names[0])
         } else {
             let val = self.geom_params.find_one_spectrum(
                 n, self.material_params.find_one_spectrum(n, def.clone()));
@@ -304,9 +304,9 @@ impl<'a> TextureParams<'a> {
     pub fn get_float_texture(&self, n: &String, def: f32)
                                 -> Arc<Texture<f32>> {
         if let Some(names) = self.geom_params.find_tex(n) {
-            find_texture(&self.float_textures, &names[0])
+            find_texture(self.float_textures.clone(), &names[0])
         } else if let Some(names) = self.material_params.find_tex(n) {
-            find_texture(&self.float_textures, &names[0])
+            find_texture(self.float_textures.clone(), &names[0])
         } else {
             let val = self.geom_params.find_one_float(
                 n, self.material_params.find_one_float(n, def));
