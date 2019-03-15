@@ -9,9 +9,11 @@ use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
 
-use pbrt_rust::material::Material;
 use pbrt_rust::geometry::point::Point;
 use pbrt_rust::geometry::vector::Vector;
+use pbrt_rust::material::Material;
+use pbrt_rust::light::point::PointLight;
+use pbrt_rust::light::Light;
 use pbrt_rust::params::{ParamSet, TextureParams};
 use pbrt_rust::scene::Scene;
 use pbrt_rust::transform::transform::Transform;
@@ -101,7 +103,7 @@ impl IndexMut<usize> for TransformSet {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct RenderOptions {
     transform_start_time: f32,
     transform_end_time: f32,
@@ -129,7 +131,9 @@ pub struct RenderOptions {
 
     camera_name: String,
     camera_params: ParamSet,
-    camera_to_world: TransformSet
+    camera_to_world: TransformSet,
+
+    lights: Vec<Arc<Light>>,
 }
 
 impl RenderOptions {
@@ -161,7 +165,9 @@ impl RenderOptions {
 
             camera_name: String::from("perspective"),
             camera_params: ParamSet::new(),
-            camera_to_world: TransformSet::new()
+            camera_to_world: TransformSet::new(),
+
+            lights: Vec::new(),
         }
     }
 }
@@ -175,6 +181,9 @@ struct GraphicsState {
 
     named_materials: HashMap<String, Arc<Material>>,
     current_named_material: Option<String>,
+
+    area_light: String,
+    area_light_params: ParamSet,
 }
 
 impl GraphicsState {
@@ -186,6 +195,8 @@ impl GraphicsState {
             spectrum_textures: Arc::new(HashMap::new()),
             named_materials: HashMap::new(),
             current_named_material: None,
+            area_light: String::new(),
+            area_light_params: ParamSet::new(),
         }
     }
 
@@ -478,6 +489,19 @@ fn make_material(name: String, _tex_to_world: &Transform, params: TextureParams)
     }
 }
 
+fn make_light(name: &str, light_to_world: &Transform, params: &ParamSet) -> Arc<Light> {
+    match name {
+        "point" => {
+            let i = params.find_one_spectrum("I", Spectrum::from(1.0));
+            let sc = params.find_one_spectrum("scale", Spectrum::from(1.0));
+            let p = params.find_one_point("from", Point::new_with(0.0, 0.0, 0.0));
+            let l2w = Transform::translate(&Vector::new_with(p.x, p.y, p.z)) * light_to_world;
+            Arc::new(PointLight::new(l2w, i * sc))
+        },
+        _ => panic!("Unknown light type: {}", name)
+    }
+}
+
 fn pbrt_make_named_material(name: &String, params: &ParamSet) {
     verify_world!("make_named_material");
     let mtl_params = GRAPHICS_STATE.lock().unwrap().material_params.clone();
@@ -527,6 +551,19 @@ fn pbrt_texture(name: &String, ty: &String, texname: &String, params: &ParamSet)
         },
         _ => panic!("Texture type {} unknown!", ty),
     }
+}
+
+fn pbrt_light_source(name: &String, params: &ParamSet) {
+    verify_world!("LightSource");
+    warn_if_animated_xform!("LightSource");
+    let lt = make_light(name, &CUR_TRANSFORMS.lock().unwrap()[0], params);
+    RENDER_OPTIONS.lock().unwrap().lights.push(lt);
+}
+
+fn pbrt_area_light_source(name: &String, params: &ParamSet) {
+    verify_world!("AreaLightSource");
+    GRAPHICS_STATE.lock().unwrap().area_light = name.clone();
+    GRAPHICS_STATE.lock().unwrap().area_light_params = params.clone();
 }
 
 fn pbrt_world_begin() {

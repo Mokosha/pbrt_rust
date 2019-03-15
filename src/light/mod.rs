@@ -46,7 +46,7 @@ impl LightSample {
     pub fn new(rng: &mut RNG) -> LightSample { LightSample }
 }
 
-pub trait Light : ::std::marker::Send + ::std::marker::Sync {
+pub trait Light : ::std::marker::Send + ::std::marker::Sync + ::std::fmt::Debug {
     fn le(&self, &RayDifferential) -> Spectrum {
         Spectrum::from(0.0)
     }
