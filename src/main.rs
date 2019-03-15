@@ -9,6 +9,7 @@ use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
 
+use pbrt_rust::material::Material;
 use pbrt_rust::geometry::point::Point;
 use pbrt_rust::geometry::vector::Vector;
 use pbrt_rust::params::{ParamSet, TextureParams};
@@ -168,16 +169,23 @@ impl RenderOptions {
 #[derive(Clone, Debug)]
 struct GraphicsState {
     material: String,
+    material_params: ParamSet,
     float_textures: Arc<HashMap<String, Arc<Texture<f32>>>>,
     spectrum_textures: Arc<HashMap<String, Arc<Texture<Spectrum>>>>,
+
+    named_materials: HashMap<String, Arc<Material>>,
+    current_named_material: Option<String>,
 }
 
 impl GraphicsState {
     fn new() -> GraphicsState {
         GraphicsState {
-            material: String::from("lambertian"),
+            material: String::from("matte"),
+            material_params: ParamSet::new(),
             float_textures: Arc::new(HashMap::new()),
             spectrum_textures: Arc::new(HashMap::new()),
+            named_materials: HashMap::new(),
+            current_named_material: None,
         }
     }
 
@@ -445,18 +453,52 @@ fn pbrt_camera(name: &String, params: &ParamSet) {
         String::from("camera"), RENDER_OPTIONS.lock().unwrap().camera_to_world.clone());
 }
 
-fn make_float_texture(name: &String, tex_to_world: &Transform, params: &TextureParams) -> Arc<Texture<f32>> {
+fn make_float_texture(name: &String, tex_to_world: &Transform, params: TextureParams) -> Arc<Texture<f32>> {
     match name.as_ref() {
         "constant" => Arc::new(ConstantTexture::new(params.find_float(&("value".to_string()), 0.0))),
-        _ => panic!("Unknown float texture type"),
+        _ => panic!("Unknown float texture type: {}", name),
     }
 }
 
-fn make_color_texture(name: &String, tex_to_world: &Transform, params: &TextureParams) -> Arc<Texture<Spectrum>> {
+fn make_color_texture(name: &String, tex_to_world: &Transform, params: TextureParams) -> Arc<Texture<Spectrum>> {
     match name.as_ref() {
         "definitely isn't this" => panic!("Oops, it is."),
-        _ => panic!("Unknown color texture type"),
+        _ => panic!("Unknown color texture type: {}", name),
     }
+}
+
+fn make_material(name: String, _tex_to_world: &Transform, params: TextureParams) -> Arc<Material> {
+    match name.as_ref() {
+        "matte" => Arc::new(
+            Material::matte(
+                params.get_spectrum_texture("Kd", &Spectrum::from(0.5)),
+                params.get_float_texture("sigma", 0.0),
+                params.get_float_texture_or_null("bumpmap"))),
+        _ => panic!("Unknown material type: {}", name),
+    }
+}
+
+fn pbrt_make_named_material(name: &String, params: &ParamSet) {
+    verify_world!("make_named_material");
+    let mtl_params = GRAPHICS_STATE.lock().unwrap().material_params.clone();
+    let mp = TextureParams::new(params, &mtl_params,
+                                GRAPHICS_STATE.lock().unwrap().float_textures(),
+                                GRAPHICS_STATE.lock().unwrap().spectrum_textures());
+    let mat_name = mp.find_str("type", "unknown_type".to_string());
+    warn_if_animated_xform!("make_named_material");
+    if let "" = mat_name.as_ref() {
+        panic!("No parameter string \"type\" found in make_named_material");
+    } else {
+        let mtl = make_material(mat_name, &CUR_TRANSFORMS.lock().unwrap()[0], mp);
+        GRAPHICS_STATE.lock().unwrap().named_materials.insert(name.clone(), mtl);
+    }
+}
+
+fn pbrt_material(name: &String, params: &ParamSet) {
+    verify_world!("Material");
+    GRAPHICS_STATE.lock().unwrap().material = name.clone();
+    GRAPHICS_STATE.lock().unwrap().material_params = params.clone();
+    GRAPHICS_STATE.lock().unwrap().current_named_material = None;
 }
 
 fn pbrt_texture(name: &String, ty: &String, texname: &String, params: &ParamSet) {
@@ -471,7 +513,7 @@ fn pbrt_texture(name: &String, ty: &String, texname: &String, params: &ParamSet)
             }
             warn_if_animated_xform!("Texture");
             let ft = make_float_texture(
-                texname, &CUR_TRANSFORMS.lock().unwrap()[0], &tp);
+                texname, &CUR_TRANSFORMS.lock().unwrap()[0], tp);
             (*Arc::get_mut(&mut fts).unwrap()).insert(name.clone(), ft);
         },
         "color" => {
@@ -480,7 +522,7 @@ fn pbrt_texture(name: &String, ty: &String, texname: &String, params: &ParamSet)
             }
             warn_if_animated_xform!("Texture");
             let st = make_color_texture(
-                texname, &CUR_TRANSFORMS.lock().unwrap()[0], &tp);
+                texname, &CUR_TRANSFORMS.lock().unwrap()[0], tp);
             (*Arc::get_mut(&mut sts).unwrap()).insert(name.clone(), st);
         },
         _ => panic!("Texture type {} unknown!", ty),
