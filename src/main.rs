@@ -9,13 +9,17 @@ use std::ops::Deref;
 use std::ops::Index;
 use std::ops::IndexMut;
 
+use pbrt_rust::area_light::AreaLight;
 use pbrt_rust::geometry::point::Point;
 use pbrt_rust::geometry::vector::Vector;
 use pbrt_rust::material::Material;
 use pbrt_rust::light::point::PointLight;
 use pbrt_rust::light::Light;
 use pbrt_rust::params::{ParamSet, TextureParams};
+use pbrt_rust::primitive::{Primitive, FullyRefinable};
 use pbrt_rust::scene::Scene;
+use pbrt_rust::shape::Shape;
+use pbrt_rust::transform::animated::AnimatedTransform;
 use pbrt_rust::transform::transform::Transform;
 use pbrt_rust::spectrum::Spectrum;
 use pbrt_rust::texture::Texture;
@@ -134,6 +138,11 @@ pub struct RenderOptions {
     camera_to_world: TransformSet,
 
     lights: Vec<Arc<Light>>,
+
+    primitives: Vec<Arc<Primitive>>,
+
+    instances: HashMap<String, Vec<Arc<Primitive>>>,
+    current_instance: Option<String>
 }
 
 impl RenderOptions {
@@ -168,6 +177,10 @@ impl RenderOptions {
             camera_to_world: TransformSet::new(),
 
             lights: Vec::new(),
+            primitives: Vec::new(),
+
+            instances: HashMap::new(),
+            current_instance: None,
         }
     }
 }
@@ -184,6 +197,8 @@ struct GraphicsState {
 
     area_light: String,
     area_light_params: ParamSet,
+
+    reverse_orientation: bool,
 }
 
 impl GraphicsState {
@@ -197,7 +212,22 @@ impl GraphicsState {
             current_named_material: None,
             area_light: String::new(),
             area_light_params: ParamSet::new(),
+            reverse_orientation: false,
         }
+    }
+
+    fn create_material(&self, params: &ParamSet) -> Arc<Material> {
+        let mp = TextureParams::new(params,
+                                    &self.material_params,
+                                    self.float_textures(),
+                                    self.spectrum_textures());
+
+        self.current_named_material.as_ref()
+            .filter(|name| self.named_materials.contains_key(*name))
+            .map_or(Arc::new(make_material(&self.material,
+                                           &CUR_TRANSFORMS.lock().unwrap()[0],
+                                           mp)),
+                    |name| self.named_materials[name].clone())
     }
 
     fn float_textures(&self) -> Arc<HashMap<String, Arc<Texture<f32>>>> {
@@ -478,13 +508,12 @@ fn make_color_texture(name: &String, tex_to_world: &Transform, params: TexturePa
     }
 }
 
-fn make_material(name: String, _tex_to_world: &Transform, params: TextureParams) -> Arc<Material> {
+fn make_material(name: &String, _tex_to_world: &Transform, params: TextureParams) -> Material {
     match name.as_ref() {
-        "matte" => Arc::new(
-            Material::matte(
-                params.get_spectrum_texture("Kd", &Spectrum::from(0.5)),
-                params.get_float_texture("sigma", 0.0),
-                params.get_float_texture_or_null("bumpmap"))),
+        "matte" => Material::matte(
+            params.get_spectrum_texture("Kd", &Spectrum::from(0.5)),
+            params.get_float_texture("sigma", 0.0),
+            params.get_float_texture_or_null("bumpmap")),
         _ => panic!("Unknown material type: {}", name),
     }
 }
@@ -502,6 +531,26 @@ fn make_light(name: &str, light_to_world: &Transform, params: &ParamSet) -> Arc<
     }
 }
 
+fn make_area_light(name: &str, light_to_world: &Transform, params: &ParamSet,
+                   shape: Shape) -> AreaLight {
+    unimplemented!()
+}
+
+fn make_shape(name: &str, obj_to_world: Transform, world_to_obj: Transform,
+              reverse_orientation: bool, params: &ParamSet) -> Shape {
+    match name {
+        "sphere" => {
+            let radius = params.find_one_float("radius", 1.0);
+            let zmin = params.find_one_float("zmin", -radius);
+            let zmax = params.find_one_float("zmax", radius);
+            let phimax = params.find_one_float("phimax", 360.0);
+            Shape::sphere(obj_to_world, world_to_obj, reverse_orientation,
+                          radius, zmin, zmax, phimax)
+        },
+        _ => panic!("Unknown shape type: {}", name)
+    }
+}
+
 fn pbrt_make_named_material(name: &String, params: &ParamSet) {
     verify_world!("make_named_material");
     let mtl_params = GRAPHICS_STATE.lock().unwrap().material_params.clone();
@@ -513,8 +562,8 @@ fn pbrt_make_named_material(name: &String, params: &ParamSet) {
     if let "" = mat_name.as_ref() {
         panic!("No parameter string \"type\" found in make_named_material");
     } else {
-        let mtl = make_material(mat_name, &CUR_TRANSFORMS.lock().unwrap()[0], mp);
-        GRAPHICS_STATE.lock().unwrap().named_materials.insert(name.clone(), mtl);
+        let mtl = make_material(&mat_name, &CUR_TRANSFORMS.lock().unwrap()[0], mp);
+        GRAPHICS_STATE.lock().unwrap().named_materials.insert(name.clone(), Arc::new(mtl));
     }
 }
 
@@ -564,6 +613,86 @@ fn pbrt_area_light_source(name: &String, params: &ParamSet) {
     verify_world!("AreaLightSource");
     GRAPHICS_STATE.lock().unwrap().area_light = name.clone();
     GRAPHICS_STATE.lock().unwrap().area_light_params = params.clone();
+}
+
+fn pbrt_shape(name: &String, params: &ParamSet) {
+    verify_world!("Shape");
+    let ro = GRAPHICS_STATE.lock().unwrap().reverse_orientation;
+    let prim =
+        // Create primitive for animated shape
+        if CUR_TRANSFORMS.lock().unwrap().is_animated() {
+            // Create initial shape for animated shape
+            if !GRAPHICS_STATE.lock().unwrap().area_light.is_empty() {
+                println!("Warning: ignoring currently set area light when creating animated shape");
+            }
+
+            let id = Transform::new();
+            let shape = make_shape(name, id.clone(), id.clone(), ro, params);
+            let mtl = GRAPHICS_STATE.lock().unwrap().create_material(params);
+
+            // Get animated world_to_object transform for shape
+            let w2o0 = CUR_TRANSFORMS.lock().unwrap()[0].clone();
+            let w2o1 = CUR_TRANSFORMS.lock().unwrap()[1].clone();
+            let xf_start = RENDER_OPTIONS.lock().unwrap().transform_start_time;
+            let xf_end = RENDER_OPTIONS.lock().unwrap().transform_end_time;
+
+            let animated_world_to_object =
+                AnimatedTransform::new(w2o0, xf_start, w2o1, xf_end);
+
+            if !shape.can_intersect() {
+                // Refine animated shape and create BVH if more than one shape
+                // created
+                let base_prim = Primitive::geometric(shape, mtl);
+                let refined_prims = base_prim.fully_refine();
+                if refined_prims.is_empty() { return; }
+                if refined_prims.len() > 1 {
+                    let bvh = Primitive::bvh(refined_prims, 10, "equal");
+                    Primitive::transformed(Arc::new(bvh), animated_world_to_object)
+                } else {
+                    Primitive::transformed(
+                        Arc::new(refined_prims.into_iter().last().unwrap()),
+                        animated_world_to_object)
+                }
+            } else {
+                Primitive::transformed(Arc::new(Primitive::geometric(shape, mtl)),
+                                       animated_world_to_object)
+            }
+        } else {
+            // Create primitive for static shape
+            let (obj_to_world, world_to_obj) = {
+                let t = CUR_TRANSFORMS.lock().unwrap()[0].clone();
+                let t_inv = t.inverse();
+                (t, t_inv)
+            };
+            let shape =
+                make_shape(name, obj_to_world.clone(), world_to_obj, ro, params);
+            let mtl = GRAPHICS_STATE.lock().unwrap().create_material(params);
+
+            // Possibly create area light for shape
+            if !GRAPHICS_STATE.lock().unwrap().area_light.is_empty() {
+                let area_light =
+                    make_area_light(
+                        &GRAPHICS_STATE.lock().unwrap().area_light,
+                        &obj_to_world,
+                        &GRAPHICS_STATE.lock().unwrap().area_light_params,
+                        shape.clone());
+
+                Primitive::geometric_area_light(shape, mtl, Arc::new(area_light))
+            } else {
+                Primitive::geometric(shape, mtl)
+            }
+        };
+    let prim = Arc::new(prim);
+
+    // Add primitive to scene or current instance
+    if let Some(i) = RENDER_OPTIONS.lock().unwrap().current_instance.as_ref() {
+        RENDER_OPTIONS.lock().unwrap().instances.get_mut(i).unwrap().push(prim)
+    } else {
+        if let Some(light) = prim.area_light() {
+            RENDER_OPTIONS.lock().unwrap().lights.push(light);
+        }
+        RENDER_OPTIONS.lock().unwrap().primitives.push(prim);
+    }
 }
 
 fn pbrt_world_begin() {
