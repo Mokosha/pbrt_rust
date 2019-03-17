@@ -194,6 +194,13 @@ impl Shape {
         Shape::LoopSubdiv( LoopSubdiv::new(o2w, w2o, ro, vertex_indices, points, nl) )
     }
 
+    pub fn can_intersect(&self) -> bool {
+        match self {
+            &Shape::LoopSubdiv(_) => false,
+            _ => true
+        }
+    }
+
     pub fn object_bound(&self) -> BBox {
         match self {
             &Shape::Sphere(ref s) => s.object_bound(),
