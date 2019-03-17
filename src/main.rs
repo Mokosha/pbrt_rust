@@ -695,6 +695,27 @@ fn pbrt_shape(name: &String, params: &ParamSet) {
     }
 }
 
+fn pbrt_object_begin(name: String) {
+    verify_world!("ObjectBegin");
+    pbrt_attribute_begin();
+    if RENDER_OPTIONS.lock().unwrap().current_instance.is_some() {
+        panic!("ObjectBegin called inside of instance definition!");
+    }
+
+    RENDER_OPTIONS.lock().unwrap().instances.insert(name.clone(), Vec::new());
+    RENDER_OPTIONS.lock().unwrap().current_instance = Some(name);
+}
+
+fn pbrt_object_end() {
+    verify_world!("ObjectEnd");
+    if RENDER_OPTIONS.lock().unwrap().current_instance.is_some() {
+        panic!("ObjectEnd called outside of instance definition!");
+    }
+
+    RENDER_OPTIONS.lock().unwrap().current_instance = None;
+    pbrt_attribute_end();
+}
+
 fn pbrt_world_begin() {
     verify_options!("WorldBegin");
     set_current_api_state(STATE_WORLD_BLOCK);
