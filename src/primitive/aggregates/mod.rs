@@ -74,7 +74,7 @@ mod tests {
     use transform::transform::Transform;
 
     pub fn sphere_at(v: Vector) -> Primitive {
-        Primitive::geometric(Shape::sphere(
+        Primitive::simple(Shape::sphere(
             Transform::translate(&v), Transform::translate(&(-v)),
             false, 1.0, -1.0, 1.0, 360.0))
     }

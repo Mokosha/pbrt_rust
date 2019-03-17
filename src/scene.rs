@@ -22,7 +22,7 @@ pub struct Scene {
 impl Scene {
     pub fn new() -> Scene {
         Scene {
-            aggregate: Primitive::geometric(Shape::sphere(
+            aggregate: Primitive::simple(Shape::sphere(
                 Transform::new(), Transform::new(), false, 1.0, -1.0, 1.0, 360.0)),
             lights: vec![],
             volume_region: None,
