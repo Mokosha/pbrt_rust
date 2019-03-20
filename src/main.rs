@@ -17,13 +17,16 @@ use pbrt_rust::light::point::PointLight;
 use pbrt_rust::light::Light;
 use pbrt_rust::params::{ParamSet, TextureParams};
 use pbrt_rust::primitive::{Primitive, FullyRefinable};
+use pbrt_rust::renderer::Renderer;
 use pbrt_rust::scene::Scene;
 use pbrt_rust::shape::Shape;
-use pbrt_rust::transform::animated::AnimatedTransform;
-use pbrt_rust::transform::transform::Transform;
 use pbrt_rust::spectrum::Spectrum;
 use pbrt_rust::texture::Texture;
 use pbrt_rust::texture::ConstantTexture;
+use pbrt_rust::transform::animated::AnimatedTransform;
+use pbrt_rust::transform::transform::Transform;
+use pbrt_rust::volume::VolumeRegion;
+use pbrt_rust::volume::aggregate::AggregateVolumeRegion;
 
 pub struct Options {
     num_cores: usize,
@@ -142,25 +145,27 @@ pub struct RenderOptions {
     primitives: Vec<Arc<Primitive>>,
 
     instances: HashMap<String, Vec<Arc<Primitive>>>,
-    current_instance: Option<String>
+    current_instance: Option<String>,
+
+    volume_regions: Vec<Arc<VolumeRegion>>,
 }
 
 impl RenderOptions {
     fn new() -> RenderOptions {
         RenderOptions {
             transform_start_time: 0.0,
-            transform_end_time: 0.0,
+            transform_end_time: 1.0,
 
             filter_name: String::from("box"),
             filter_params: ParamSet::new(),
 
-            film_name: String::new(),
+            film_name: String::from("image"),
             film_params: ParamSet::new(),
 
-            sampler_name: String::new(),
+            sampler_name: String::from("lowdiscrepancy"),
             sampler_params: ParamSet::new(),
 
-            accelerator_name: String::new(),
+            accelerator_name: String::from("bvh"),
             accelerator_params: ParamSet::new(),
 
             surf_integrator_name: String::new(),
@@ -169,7 +174,7 @@ impl RenderOptions {
             vol_integrator_name: String::new(),
             vol_integrator_params: ParamSet::new(),
 
-            renderer_name: String::new(),
+            renderer_name: String::from("sampler"),
             renderer_params: ParamSet::new(),
 
             camera_name: String::from("perspective"),
@@ -181,7 +186,39 @@ impl RenderOptions {
 
             instances: HashMap::new(),
             current_instance: None,
+
+            volume_regions: Vec::new(),
         }
+    }
+
+    fn make_renderer(&self) -> Arc<Renderer> {
+        unimplemented!()
+    }
+
+    fn make_scene(&mut self) -> Scene {
+        // initialize volume region
+        let volume_region = {
+            if self.volume_regions.is_empty() { None }
+            else if self.volume_regions.len() == 1 { Some(self.volume_regions[0].clone()) }
+            else {
+                let b: Arc<VolumeRegion> =
+                    Arc::new(AggregateVolumeRegion::new(self.volume_regions.clone()));
+                Some(b)
+            }
+        };
+
+        let accelerator = make_accelerator(&self.accelerator_name,
+                                           &self.primitives,
+                                           &self.accelerator_params);
+
+        let scene = Scene::new_with(accelerator, self.lights.clone(), volume_region);
+
+        // Erase primitives lights and volume regions from render options
+        self.primitives.clear();
+        self.lights.clear();
+        self.volume_regions.clear();
+
+        scene
     }
 }
 
@@ -551,7 +588,7 @@ fn make_shape(name: &str, obj_to_world: Transform, world_to_obj: Transform,
     }
 }
 
-fn make_accelerator(name: &str, prims: &Vec<Arc<Primitive>>, params: &ParamSet) -> Vec<Arc<Primitive>> {
+fn make_accelerator(name: &str, prims: &Vec<Arc<Primitive>>, params: &ParamSet) -> Arc<Primitive> {
     unimplemented!()
 }
 
@@ -737,7 +774,7 @@ fn pbrt_object_instance(name: &String) {
         let accel = make_accelerator(&RENDER_OPTIONS.lock().unwrap().accelerator_name,
                                      RENDER_OPTIONS.lock().unwrap().instances.get(name).unwrap(),
                                      &RENDER_OPTIONS.lock().unwrap().accelerator_params);
-        RENDER_OPTIONS.lock().unwrap().instances.insert(name.to_string(), accel);
+        RENDER_OPTIONS.lock().unwrap().instances.insert(name.to_string(), vec![accel]);
     }
 
     let w2i0 = CUR_TRANSFORMS.lock().unwrap()[0].clone();
@@ -757,6 +794,34 @@ fn pbrt_world_begin() {
     for_active_transforms(|t| { *t = Transform::new(); });
     NAMED_COORDINATE_SYSTEMS.lock().unwrap().insert(
         String::from("world"), CUR_TRANSFORMS.lock().unwrap().clone());
+}
+
+fn pbrt_world_end() {
+    verify_world!("WorldEnd");
+    // Ensure there are no pushed graphics states
+    while PUSHED_GRAPHICS_STATES.lock().unwrap().len() > 0 {
+        println!("Missing end to pbrt_attribute_begin()");
+        PUSHED_GRAPHICS_STATES.lock().unwrap().pop();
+        PUSHED_TRANSFORMS.lock().unwrap().pop();
+    }
+
+    while PUSHED_TRANSFORMS.lock().unwrap().len() > 0 {
+        println!("Missing end to pbrt_transform_begin()");
+        PUSHED_TRANSFORMS.lock().unwrap().pop();
+    }
+
+    // Create scene and render
+    let mut renderer = RENDER_OPTIONS.lock().unwrap().make_renderer();
+    let scene = RENDER_OPTIONS.lock().unwrap().make_scene();
+    Arc::get_mut(&mut renderer).unwrap().render(&scene);
+
+    // Clean up after rendering
+    set_current_api_state(STATE_OPTIONS_BLOCK);
+    for i in 0..MAX_TRANSFORMS {
+        CUR_TRANSFORMS.lock().unwrap()[i] = Transform::new();
+    }
+    pbrt_active_transform_all();
+    NAMED_COORDINATE_SYSTEMS.lock().unwrap().clear();
 }
 
 fn parse_file(_ : &str) -> Option<Scene> { None }

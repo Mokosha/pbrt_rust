@@ -11,15 +11,16 @@ use transform::transform::Transform;
 use volume::VolumeRegion;
 
 use std::f32;
+use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AggregateVolumeRegion {
-    regions: Vec<Box<VolumeRegion>>,
+    regions: Vec<Arc<VolumeRegion>>,
     bound: BBox,
 }
 
 impl AggregateVolumeRegion {
-    pub fn new(r: Vec<Box<VolumeRegion>>) -> AggregateVolumeRegion {
+    pub fn new(r: Vec<Arc<VolumeRegion>>) -> AggregateVolumeRegion {
         let b = r.iter().fold(BBox::new(), |old_box, region| {
             old_box.unioned_with(region.world_bound())
         });
