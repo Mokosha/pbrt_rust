@@ -54,6 +54,8 @@ impl GeometricPrimitive {
         let dgs = self.s.get_shading_geometry(o2w, dg.clone());
         self.m.get_bssrdf(dg, dgs)
     }
+
+    pub fn can_intersect(&self) -> bool { self.s.can_intersect() }
 }
 
 impl Intersectable for GeometricPrimitive {

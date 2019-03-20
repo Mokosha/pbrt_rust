@@ -551,6 +551,10 @@ fn make_shape(name: &str, obj_to_world: Transform, world_to_obj: Transform,
     }
 }
 
+fn make_accelerator(name: &str, prims: &Vec<Arc<Primitive>>, params: &ParamSet) -> Vec<Arc<Primitive>> {
+    unimplemented!()
+}
+
 fn pbrt_make_named_material(name: &String, params: &ParamSet) {
     verify_world!("make_named_material");
     let mtl_params = GRAPHICS_STATE.lock().unwrap().material_params.clone();
@@ -714,6 +718,36 @@ fn pbrt_object_end() {
 
     RENDER_OPTIONS.lock().unwrap().current_instance = None;
     pbrt_attribute_end();
+}
+
+fn pbrt_object_instance(name: &String) {
+    verify_world!("ObjectInstance");
+    if !RENDER_OPTIONS.lock().unwrap().instances.contains_key(name) {
+        println!("Can't find object named {}", name);
+    }
+
+    if RENDER_OPTIONS.lock().unwrap().instances.get(name).unwrap().is_empty() {
+        return;
+    }
+
+    if RENDER_OPTIONS.lock().unwrap().instances.get(name).map_or(false, |prims| {
+        prims.len() > 1 || !prims[0].can_intersect()
+    }) {
+        // Refine instance Primitives and create aggregate
+        let accel = make_accelerator(&RENDER_OPTIONS.lock().unwrap().accelerator_name,
+                                     RENDER_OPTIONS.lock().unwrap().instances.get(name).unwrap(),
+                                     &RENDER_OPTIONS.lock().unwrap().accelerator_params);
+        RENDER_OPTIONS.lock().unwrap().instances.insert(name.to_string(), accel);
+    }
+
+    let w2i0 = CUR_TRANSFORMS.lock().unwrap()[0].clone();
+    let w2i1 = CUR_TRANSFORMS.lock().unwrap()[1].clone();
+    let xf_start = RENDER_OPTIONS.lock().unwrap().transform_start_time;
+    let xf_end = RENDER_OPTIONS.lock().unwrap().transform_end_time;
+    let animated_world_to_instance =
+        AnimatedTransform::new(w2i0, xf_start, w2i1, xf_end);
+    let prim = RENDER_OPTIONS.lock().unwrap().instances.get(name).unwrap()[0].clone();
+    RENDER_OPTIONS.lock().unwrap().primitives.push(prim);    
 }
 
 fn pbrt_world_begin() {

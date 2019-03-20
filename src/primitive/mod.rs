@@ -119,6 +119,14 @@ impl Primitive {
         }
     }
 
+    pub fn can_intersect(&self) -> bool {
+        match self.prim.as_ref() {
+            &Prim::Geometric(ref p) => p.can_intersect(),
+            &Prim::Transformed(ref p) => p.primitive().can_intersect(),
+            &Prim::Aggregate(ref a) => true, // all aggregates are intersectable
+        }
+    }
+
     pub fn get_id(&self) -> usize { self.base.prim_id }
 
     pub fn area_light(&self) -> Option<Arc<AreaLight>> {
