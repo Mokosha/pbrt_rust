@@ -80,7 +80,7 @@ impl Microfacet {
 
 impl BxDF for Microfacet {
     fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
-        (bsdf::BSDF_REFLECTION | bsdf::BSDF_GLOSSY).contains(ty)
+        (bsdf::BxDFType::BSDF_REFLECTION | bsdf::BxDFType::BSDF_GLOSSY).contains(ty)
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
@@ -127,7 +127,7 @@ impl FresnelBlend {
 
 impl BxDF for FresnelBlend {
     fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
-        (bsdf::BSDF_REFLECTION | bsdf::BSDF_GLOSSY).contains(ty)
+        (bsdf::BxDFType::BSDF_REFLECTION | bsdf::BxDFType::BSDF_GLOSSY).contains(ty)
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {

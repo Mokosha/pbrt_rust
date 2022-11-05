@@ -1,6 +1,5 @@
 use geometry::point::Point;
 use geometry::vector::Vector;
-use utils::Clamp;
 use utils::Lerp;
 
 const NOISE_PERM_SIZE: usize = 256;

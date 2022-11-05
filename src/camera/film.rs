@@ -5,7 +5,6 @@ use self::image::ImageBuffer;
 use camera::CameraSample;
 use filter::Filter;
 use spectrum::Spectrum;
-use utils::Clamp;
 
 use spectrum::xyz_to_rgb;
 use utils::get_crop_window;

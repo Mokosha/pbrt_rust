@@ -12,8 +12,6 @@ use primitive::Primitive;
 use primitive::Refinable;
 use ray::Ray;
 
-use utils::Clamp;
-
 #[derive(Debug, Clone)]
 struct Voxel {
     primitives: Vec<Weak<RwLock<Primitive>>>,

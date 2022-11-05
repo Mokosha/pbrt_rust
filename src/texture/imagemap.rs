@@ -24,7 +24,6 @@ use spectrum::Spectrum;
 use texture::mapping2d::TextureMapping2D;
 use texture::internal::TextureBase;
 use texture::Texture;
-use utils::Clamp;
 use utils::Lerp;
 use utils::blocked_vec::BlockedVec;
 
@@ -423,13 +422,13 @@ pub struct ImageTexture<Tmemory: Default + Clone> {
 fn read_image<P>(filename: &P)
                  -> ImageResult<(u32, u32, Vec<Spectrum>)> where P: AsRef<Path> {
     open(filename)
-        .and_then(|raw_img| Ok(raw_img.to_rgb()))
+        .and_then(|raw_img| Ok(raw_img.into_rgb8()))
         .and_then(|rgb_img| {
             let mut spec_vec = Vec::new();
             for &pixel in rgb_img.pixels() {
-                let r = (pixel.data[0] as f32) / 255f32;
-                let g = (pixel.data[1] as f32) / 255f32;
-                let b = (pixel.data[2] as f32) / 255f32;
+                let r = (pixel[0] as f32) / 255f32;
+                let g = (pixel[1] as f32) / 255f32;
+                let b = (pixel[2] as f32) / 255f32;
                 spec_vec.push(Spectrum::from_rgb([r, g, b]));
             }
             Ok((rgb_img.width(), rgb_img.height(), spec_vec))

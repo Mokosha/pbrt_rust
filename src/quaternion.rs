@@ -2,7 +2,6 @@ use geometry::normal::Normalize;
 use geometry::vector::Dot;
 use geometry::vector::Vector;
 use std::f32;
-use utils::Clamp;
 use utils::Lerp;
 
 #[derive(Debug, Clone, PartialEq)]

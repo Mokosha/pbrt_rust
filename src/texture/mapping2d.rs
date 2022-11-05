@@ -34,7 +34,7 @@ mod internal {
 
 pub trait TextureMapping2D:
 Debug + Send + Sync + internal::TextureMapping2DBase {
-    fn map(&self, &DifferentialGeometry) ->
+    fn map(&self, _: &DifferentialGeometry) ->
         (f32, f32, f32, f32, f32, f32);
 }
 

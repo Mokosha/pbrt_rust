@@ -5,7 +5,6 @@ use std::ops::Mul;
 use std::ops::Neg;
 
 use utils::Lerp;
-use utils::Clamp;
 
 const SAMPLED_LAMBDA_START: usize = 400;
 const SAMPLED_LAMBDA_END: usize = 700;
@@ -487,6 +486,10 @@ impl Spectrum {
             Spectrum::RGB(rgb) => rgb_to_samples_spectrum(rgb, ty)
         }
     }
+
+    pub fn clamp(self, a: f32, b: f32) -> Spectrum {
+        self.transform(|x| x.clamp(a, b))
+    }
 }
 
 impl ::std::convert::From<f32> for Spectrum {
@@ -613,12 +616,6 @@ impl Neg for Spectrum {
     type Output = Spectrum;
     fn neg(self) -> Spectrum {
         self.transform(|x| -x)
-    }
-}
-
-impl Clamp<f32> for Spectrum {
-    fn clamp(self, a: f32, b: f32) -> Spectrum {
-        self.transform(|x| x.clamp(a, b))
     }
 }
 

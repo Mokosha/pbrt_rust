@@ -47,12 +47,12 @@ impl LightSample {
 }
 
 pub trait Light : ::std::marker::Send + ::std::marker::Sync + ::std::fmt::Debug {
-    fn le(&self, &RayDifferential) -> Spectrum {
+    fn le(&self, _: &RayDifferential) -> Spectrum {
         Spectrum::from(0.0)
     }
 
-    fn sample_l(&self, &Point, f32, LightSample, f32)
+    fn sample_l(&self, _: &Point, _: f32, _: LightSample, _: f32)
                 -> (Spectrum, Vector, f32, VisibilityTester);
-    fn power(&self, &Scene) -> Spectrum;
+    fn power(&self, _: &Scene) -> Spectrum;
     fn is_delta_light(&self) -> bool;
 }

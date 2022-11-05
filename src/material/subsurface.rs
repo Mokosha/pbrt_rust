@@ -7,7 +7,6 @@ use bsdf::specular::SpecularReflection;
 use diff_geom::DifferentialGeometry;
 use spectrum::Spectrum;
 use texture::Texture;
-use utils::Clamp;
 
 use material::bump;
 

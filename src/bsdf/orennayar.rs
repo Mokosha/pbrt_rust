@@ -30,7 +30,7 @@ impl OrenNayar {
 
 impl BxDF for OrenNayar {
     fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
-        (bsdf::BSDF_REFLECTION | bsdf::BSDF_DIFFUSE).contains(ty)
+        (bsdf::BxDFType::BSDF_REFLECTION | bsdf::BxDFType::BSDF_DIFFUSE).contains(ty)
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {

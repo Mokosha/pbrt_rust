@@ -10,7 +10,6 @@ use shape::ShapeIntersection;
 use transform::transform::Transform;
 use transform::transform::ApplyTransform;
 use utils::Degrees;
-use utils::Clamp;
 
 use shape::helpers::compute_dg;
 

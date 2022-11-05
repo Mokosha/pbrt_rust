@@ -5,7 +5,6 @@ use geometry::vector::*;
 use geometry::normal::Normalize;
 use geometry::point::Point;
 use spectrum::Spectrum;
-use utils::Clamp;
 use utils::kdtree::*;
 
 fn brdf_remap(wo: &Vector, wi: &Vector) -> Point {
@@ -92,7 +91,7 @@ impl KdTreeProc<IrregIsotropicSample> for IrregIsoProc {
 
 impl BxDF for IrregIsotropic {
     fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
-        (bsdf::BSDF_REFLECTION | bsdf::BSDF_GLOSSY).contains(ty)
+        (bsdf::BxDFType::BSDF_REFLECTION | bsdf::BxDFType::BSDF_GLOSSY).contains(ty)
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
@@ -139,7 +138,7 @@ impl RegularHalfangle {
 
 impl BxDF for RegularHalfangle {
     fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
-        (bsdf::BSDF_REFLECTION | bsdf::BSDF_GLOSSY).contains(ty)
+        (bsdf::BxDFType::BSDF_REFLECTION | bsdf::BxDFType::BSDF_GLOSSY).contains(ty)
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {

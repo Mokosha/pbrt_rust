@@ -21,7 +21,7 @@ mod internal {
     use super::*;
 
     pub trait TextureBase<T> {
-        fn eval(&self, &DifferentialGeometry) -> T;
+        fn eval(&self, _: &DifferentialGeometry) -> T;
     }
 
     impl<U, T> TextureBase<T> for U where U: Deref<Target = Texture<T>> {
@@ -32,7 +32,7 @@ mod internal {
 }
 
 pub trait Texture<T>: Debug + Send + Sync + internal::TextureBase<T> {
-    fn evaluate(&self, &DifferentialGeometry) -> T;
+    fn evaluate(&self, _: &DifferentialGeometry) -> T;
 }
 
 impl<U, T> Texture<T> for U where U:

@@ -9,7 +9,6 @@ use ray::Ray;
 use spectrum::Spectrum;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
-use utils::Clamp;
 use utils::Lerp;
 use volume::density::internal::DensityRegion;
 use volume::VolumeRegion;
