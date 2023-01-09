@@ -63,7 +63,7 @@ pub struct BSDF {
     ng: Normal,
     sn: Vector,
     tn: Vector,
-    bxdfs: Vec<Box<BxDF>>
+    bxdfs: Vec<Box<dyn BxDF>>
 }
 
 impl BSDF {
@@ -194,12 +194,12 @@ impl<T: BxDF> BxDF for BRDFtoBTDF<T> {
 
 #[derive(Debug)]
 pub struct ScaledBxDF {
-    bxdf: Box<BxDF>,
+    bxdf: Box<dyn BxDF>,
     scale: Spectrum
 }
 
 impl ScaledBxDF {
-    pub fn new(input: Box<BxDF>, sc: Spectrum) -> ScaledBxDF {
+    pub fn new(input: Box<dyn BxDF>, sc: Spectrum) -> ScaledBxDF {
         ScaledBxDF {
             bxdf: input,
             scale: sc

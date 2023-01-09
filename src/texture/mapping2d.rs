@@ -24,7 +24,7 @@ mod internal {
             (f32, f32, f32, f32, f32, f32);
     }
 
-    impl<U> TextureMapping2DBase for U where U: Deref<Target = TextureMapping2D> {
+    impl<U> TextureMapping2DBase for U where U: Deref<Target = dyn TextureMapping2D> {
         fn map_dg(&self, dg: &DifferentialGeometry)
                   -> (f32, f32, f32, f32, f32, f32) {
             self.deref().map(&dg)

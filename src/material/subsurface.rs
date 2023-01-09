@@ -6,26 +6,26 @@ use bsdf::fresnel::Fresnel;
 use bsdf::specular::SpecularReflection;
 use diff_geom::DifferentialGeometry;
 use spectrum::Spectrum;
-use texture::Texture;
+use texture::{Texture, ScalarTextureReference, ColorTextureReference};
 
 use material::bump;
 
 #[derive(Clone, Debug)]
 pub struct SubsurfaceMaterial {
     scale: f32,
-    k_r: Arc<Texture<Spectrum>>,
-    sigma_a: Arc<Texture<Spectrum>>,
-    sigma_prime_s: Arc<Texture<Spectrum>>,
-    eta: Arc<Texture<f32>>,
-    bump_map: Option<Arc<Texture<f32>>>
+    k_r: ColorTextureReference,
+    sigma_a: ColorTextureReference,
+    sigma_prime_s: ColorTextureReference,
+    eta: ScalarTextureReference,
+    bump_map: Option<ScalarTextureReference>
 }
 
 impl SubsurfaceMaterial {
-    pub fn new(scale: f32, k_r: Arc<Texture<Spectrum>>,
-               sigma_a: Arc<Texture<Spectrum>>,
-               sigma_prime_s: Arc<Texture<Spectrum>>,
-               eta: Arc<Texture<f32>>,
-               bump_map: Option<Arc<Texture<f32>>>) -> SubsurfaceMaterial {
+    pub fn new(scale: f32, k_r: ColorTextureReference,
+               sigma_a: ColorTextureReference,
+               sigma_prime_s: ColorTextureReference,
+               eta: ScalarTextureReference,
+               bump_map: Option<ScalarTextureReference>) -> SubsurfaceMaterial {
         SubsurfaceMaterial { scale, k_r, sigma_a, sigma_prime_s, eta, bump_map }
     }
 

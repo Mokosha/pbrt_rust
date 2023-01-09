@@ -8,11 +8,11 @@ use texture::Texture;
 
 #[derive(Debug)]
 pub struct UVTexture {
-    mapping: Box<TextureMapping2D>
+    mapping: Box<dyn TextureMapping2D>
 }
 
 impl UVTexture {
-    pub fn new(_mapping: Box<TextureMapping2D>) -> UVTexture {
+    pub fn new(_mapping: Box<dyn TextureMapping2D>) -> UVTexture {
         UVTexture { mapping: _mapping }
     }
 }

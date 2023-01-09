@@ -258,7 +258,7 @@ impl ::std::ops::Index<usize> for Matrix4x4 {
     type Output = [f32; 4];
     fn index(&self, i: usize) -> &[f32; 4] {
         match i {
-            0 ... 3 => &self.m[i],
+            0 ..= 3 => &self.m[i],
             _ => panic!("Error - Matrix4x4 index out of bounds!")
         }
     }
@@ -267,7 +267,7 @@ impl ::std::ops::Index<usize> for Matrix4x4 {
 impl ::std::ops::IndexMut<usize> for Matrix4x4 {
     fn index_mut(&mut self, i: usize) -> &mut [f32; 4] {
         match i {
-            0 ... 3 => &mut self.m[i],
+            0 ..= 3 => &mut self.m[i],
             _ => panic!("Error - Matrix4x4 index out of bounds!")
         }
     }

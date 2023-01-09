@@ -28,7 +28,7 @@ mod internal {
         fn get_g(&self) -> f32;
         fn world_to_volume(&self) -> Transform;
 
-        fn density(&self, Point) -> f32;
+        fn density(&self, p: Point) -> f32;
     }
 }
 

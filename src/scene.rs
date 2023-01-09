@@ -14,8 +14,8 @@ use std::sync::Arc;
 
 pub struct Scene {
     aggregate : Arc<Primitive>,
-    lights : Vec<Arc<Light>>,
-    volume_region : Option<Arc<VolumeRegion>>,
+    lights : Vec<Arc<dyn Light>>,
+    volume_region : Option<Arc<dyn VolumeRegion>>,
     // Scene Public data 23
 }
 
@@ -30,8 +30,8 @@ impl Scene {
     }
 
     pub fn new_with(aggregate: Arc<Primitive>,
-                    lights: Vec<Arc<Light>>,
-                    volume_region: Option<Arc<VolumeRegion>>) -> Scene {
+                    lights: Vec<Arc<dyn Light>>,
+                    volume_region: Option<Arc<dyn VolumeRegion>>) -> Scene {
         Scene {
             aggregate: aggregate.clone(),
             lights: lights.clone(),
@@ -39,7 +39,7 @@ impl Scene {
         }
     }
 
-    pub fn lights(&self) -> Vec<Arc<Light>> {
+    pub fn lights(&self) -> Vec<Arc<dyn Light>> {
         self.lights.clone()
     }
 

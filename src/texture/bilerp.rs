@@ -8,7 +8,7 @@ use utils::Lerp;
 
 #[derive(Clone, Debug)]
 pub struct BilerpTexture<T> where T: Lerp<f32> {
-    mapping: Arc<TextureMapping2D>,
+    mapping: Arc<dyn TextureMapping2D>,
     v00: T,
     v01: T,
     v10: T,

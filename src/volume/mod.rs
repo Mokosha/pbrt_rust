@@ -19,11 +19,11 @@ use ::std::f32::consts::PI;
 
 pub trait VolumeRegion:
 Send + Sync + Debug + HasBounds + Intersectable<(f32, f32)> {
-        fn sigma_a(&self, &Point, &Vector, f32) -> Spectrum;
-        fn sigma_s(&self, &Point, &Vector, f32) -> Spectrum;
-        fn l_ve(&self, &Point, &Vector, f32) -> Spectrum;
-        fn p(&self, &Point, &Vector, &Vector, f32) -> f32;
-        fn tau(&self, &Ray, f32, f32) -> Spectrum;
+        fn sigma_a(&self, p: &Point, w: &Vector, time: f32) -> Spectrum;
+        fn sigma_s(&self, p: &Point, w: &Vector, time: f32) -> Spectrum;
+        fn l_ve(&self, p: &Point, w: &Vector, time: f32) -> Spectrum;
+        fn p(&self, p: &Point, w: &Vector, wp: &Vector, time: f32) -> f32;
+        fn tau(&self, ray: &Ray, t0: f32, t1: f32) -> Spectrum;
 
         fn sigma_t(&self, p: &Point, w: &Vector, time: f32) -> Spectrum {
             self.sigma_a(p, w, time) + self.sigma_s(p, w, time)

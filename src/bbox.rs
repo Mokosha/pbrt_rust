@@ -6,7 +6,7 @@ use ray::Ray;
 use utils::Lerp;
 
 pub trait Union<T = Self> : Sized {
-    fn union(&self, &T) -> Self;
+    fn union(&self, v: &T) -> Self;
 
     fn union_with(&mut self, v: &T) {
         let new_self = self.union(v);

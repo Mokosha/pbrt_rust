@@ -19,7 +19,7 @@ use intersection::Intersectable;
 use primitive::Refinable;
 use primitive::FullyRefinable;
 use ray::Ray;
-use texture::Texture;
+use texture::{Texture, ScalarTextureReference};
 use transform::transform::Transform;
 
 use shape::sphere::Sphere;
@@ -38,7 +38,7 @@ pub struct ShapeBase {
     pub shape_id: usize
 }
 
-static NEXT_SHAPE_ID: AtomicUsize = ::std::sync::atomic::ATOMIC_USIZE_INIT;
+static NEXT_SHAPE_ID: AtomicUsize = ::std::sync::atomic::AtomicUsize::new(0);
 
 impl ShapeBase {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool) -> ShapeBase {
@@ -185,7 +185,7 @@ impl Shape {
     pub fn triangle_mesh(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
                          _p: &[Point], _n: Option<&[Normal]>,
                          _s: Option<&[Vector]>, uv: Option<&[f32]>,
-                         _atex: Option<Arc<Box<Texture<f32>>>>) -> Shape {
+                         _atex: Option<ScalarTextureReference>) -> Shape {
         Shape::TriangleMesh( Mesh::new(o2w, w2o, ro, vi, _p, _n, _s, uv, _atex) )
     }
 

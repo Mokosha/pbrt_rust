@@ -186,7 +186,7 @@ impl Transform {
 }
 
 pub trait ApplyTransform<T : Clone> {
-    fn xf(&self, T) -> T;
+    fn xf(&self, xf: T) -> T;
     fn t(&self, v: &T) -> T {
         self.xf(v.clone())
     }
@@ -314,7 +314,7 @@ impl ::std::ops::Index<usize> for Transform {
     type Output = [f32; 4];
     fn index(&self, i: usize) -> &[f32; 4] {
         match i {
-            0 ... 3 => &self.m[i],
+            0 ..= 3 => &self.m[i],
             _ => panic!("Error - Transform index out of bounds!")
         }
     }
@@ -323,7 +323,7 @@ impl ::std::ops::Index<usize> for Transform {
 impl ::std::ops::IndexMut<usize> for Transform {
     fn index_mut(&mut self, i: usize) -> &mut [f32; 4] {
         match i {
-            0 ... 3 => &mut self.m[i],
+            0 ..= 3 => &mut self.m[i],
             _ => panic!("Error - Transform index out of bounds!")
         }
     }

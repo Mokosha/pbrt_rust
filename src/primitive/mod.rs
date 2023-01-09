@@ -28,7 +28,7 @@ pub struct PrimitiveBase {
     pub prim_id: usize
 }
 
-static NEXT_PRIM_ID: AtomicUsize = ::std::sync::atomic::ATOMIC_USIZE_INIT;
+static NEXT_PRIM_ID: AtomicUsize = ::std::sync::atomic::AtomicUsize::new(0);
 
 impl PrimitiveBase {
     pub fn new() -> PrimitiveBase { PrimitiveBase {

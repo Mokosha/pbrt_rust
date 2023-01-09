@@ -15,12 +15,12 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct AggregateVolumeRegion {
-    regions: Vec<Arc<VolumeRegion>>,
+    regions: Vec<Arc<dyn VolumeRegion>>,
     bound: BBox,
 }
 
 impl AggregateVolumeRegion {
-    pub fn new(r: Vec<Arc<VolumeRegion>>) -> AggregateVolumeRegion {
+    pub fn new(r: Vec<Arc<dyn VolumeRegion>>) -> AggregateVolumeRegion {
         let b = r.iter().fold(BBox::new(), |old_box, region| {
             old_box.unioned_with(region.world_bound())
         });

@@ -175,7 +175,7 @@ mod tests {
         result.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let expected = [0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0];
 
-        for (x, y) in result.into_iter().zip(expected.into_iter().map(|x| *x)) {
+        for (x, y) in result.into_iter().zip(expected.iter().map(|x| *x)) {
             assert_eq!(x, y);
         }
 
@@ -185,7 +185,7 @@ mod tests {
         result5.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let expected5 = [0.0, 0.2, 0.4, 0.6, 0.8];
         let factor = 3.0 * (1.0 / (5.0 * 4.0));
-        for (x, y) in result5.into_iter().zip(expected5.into_iter().map(|x| *x)) {
+        for (x, y) in result5.into_iter().zip(expected5.iter().map(|x| *x)) {
             assert!((x - (y + factor)).abs() < 1e-6);
         }
     }

@@ -404,19 +404,12 @@ impl Ord for TexInfo {
     }
 }
 
-type TextureCache<T> = BTreeMap<TexInfo, Arc<MIPMap<T>>>;
-
-lazy_static! {
-    static ref FLOAT_TEXTURES: Mutex<TextureCache<f32>> =
-        Mutex::new(TextureCache::new());
-    static ref SPECTRUM_TEXTURES: Mutex<TextureCache<Spectrum>> =
-        Mutex::new(TextureCache::new());
-}
+struct TextureCache<T: std::default::Default + std::clone::Clone>(BTreeMap<TexInfo, Arc<MIPMap<T>>>);
 
 #[derive(Debug)]
 pub struct ImageTexture<Tmemory: Default + Clone> {
     mipmap: Arc<MIPMap<Tmemory>>,
-    mapping: Box<TextureMapping2D>
+    mapping: Box<dyn TextureMapping2D>
 }
 
 fn read_image<P>(filename: &P)
@@ -435,101 +428,110 @@ fn read_image<P>(filename: &P)
         })
 }
 
-// !TODO! Use function specialization here once it becomes stable
-// https://github.com/rust-lang/rust/issues/31844
-fn get_f32_texture<P>(
-    filename: &P, do_trilinear: bool, max_aniso: f32, wrap_mode: ImageWrap,
-    scale: f32, gamma: f32)
-    -> Arc<MIPMap<f32>> where P: AsRef<Path> + AsRef<OsStr> {
-    let tex_info = TexInfo {
-        filename: PathBuf::from(filename),
-        do_trilinear: do_trilinear,
-        max_aniso: max_aniso,
-        wrap: wrap_mode,
-        gamma: gamma
-    };
+impl TextureCache<f32> {
+    pub fn new() -> TextureCache<f32> { TextureCache(BTreeMap::new()) }
 
-    if let Some(tex) = FLOAT_TEXTURES.lock().unwrap().get(&tex_info) {
-        return tex.clone();
+    fn get_texture<P>(
+        &mut self, filename: &P, do_trilinear: bool, max_aniso: f32, wrap_mode: ImageWrap,
+        scale: f32, gamma: f32)
+        -> Arc<MIPMap<f32>> where P: AsRef<Path> + AsRef<OsStr> {
+        let tex_info = TexInfo {
+            filename: PathBuf::from(filename),
+            do_trilinear: do_trilinear,
+            max_aniso: max_aniso,
+            wrap: wrap_mode,
+            gamma: gamma
+        };
+
+        if let Some(tex) = self.0.get(&tex_info) {
+            return tex.clone();
+        }
+
+        let read_img_result = read_image(filename);
+        let ret = if let Ok((width, height, texels)) = read_img_result {
+            // Convert texels to f32 and create MIPMap
+            let pixels = texels.into_iter()
+                .map(|s| (s.y() * scale).powf(gamma))
+                .collect::<Vec<_>>();
+            Arc::new(MIPMap::new(width as usize, height as usize, pixels,
+                                do_trilinear, max_aniso, wrap_mode))
+        } else {
+            // Create one-values mipmap
+            Arc::new(MIPMap::new(1, 1, vec![scale.powf(gamma); 1],
+                                do_trilinear, max_aniso, wrap_mode))
+        };
+
+        self.0.insert(tex_info.clone(), ret);
+        self.0.get(&tex_info).unwrap().clone()
     }
 
-    let read_img_result = read_image(filename);
-    let ret = if let Ok((width, height, texels)) = read_img_result {
-        // Convert texels to f32 and create MIPMap
-        let pixels = texels.into_iter()
-            .map(|s| (s.y() * scale).powf(gamma))
-            .collect::<Vec<_>>();
-        Arc::new(MIPMap::new(width as usize, height as usize, pixels,
-                             do_trilinear, max_aniso, wrap_mode))
-    } else {
-        // Create one-values mipmap
-        Arc::new(MIPMap::new(1, 1, vec![scale.powf(gamma); 1],
-                             do_trilinear, max_aniso, wrap_mode))
-    };
-
-    FLOAT_TEXTURES.lock().unwrap().insert(tex_info.clone(), ret);
-    FLOAT_TEXTURES.lock().unwrap().get(&tex_info).unwrap().clone()
-}
-
-fn get_spectrum_texture<P>(
-    filename: &P, do_trilinear: bool, max_aniso: f32, wrap_mode: ImageWrap,
-    scale: f32, gamma: f32)
-    -> Arc<MIPMap<Spectrum>> where P: AsRef<Path> + AsRef<OsStr> {
-    let tex_info = TexInfo {
-        filename: PathBuf::from(filename),
-        do_trilinear: do_trilinear,
-        max_aniso: max_aniso,
-        wrap: wrap_mode,
-        gamma: gamma
-    };
-
-    if let Some(tex) = SPECTRUM_TEXTURES.lock().unwrap().get(&tex_info) {
-        return tex.clone();
+    pub fn new_texture<P>(
+        &mut self, m: Box<dyn TextureMapping2D>, filename: &P, do_trilinear: bool, max_aniso: f32,
+        wrap_mode: ImageWrap, scale: f32, gamma: f32)
+        -> ImageTexture<f32> where P: AsRef<Path> + AsRef<OsStr> {
+        ImageTexture {
+            mipmap: self.get_texture(
+                filename, do_trilinear, max_aniso, wrap_mode, scale, gamma),
+            mapping: m
+        }
     }
 
-    let read_img_result = read_image(filename);
-    let ret = if let Ok((width, height, texels)) = read_img_result {
-        // Convert texels to Spectrum and create MIPMap
-        let pixels = texels.into_iter()
-            .map(|s| (s * scale).powf(gamma))
-            .collect();
-        Arc::new(MIPMap::new(width as usize, height as usize, pixels,
-                             do_trilinear, max_aniso, wrap_mode))
-    } else {
-        // Create one-values mipmap
-        Arc::new(MIPMap::new(1, 1, vec![Spectrum::from(scale.powf(gamma)); 1],
-                             do_trilinear, max_aniso, wrap_mode))
-    };
-
-    SPECTRUM_TEXTURES.lock().unwrap().insert(tex_info.clone(), ret);
-    SPECTRUM_TEXTURES.lock().unwrap().get(&tex_info).unwrap().clone()
-}
-
-pub fn new_float_texture<P>(
-    m: Box<TextureMapping2D>, filename: &P, do_trilinear: bool, max_aniso: f32,
-    wrap_mode: ImageWrap, scale: f32, gamma: f32)
-    -> ImageTexture<f32> where P: AsRef<Path> + AsRef<OsStr> {
-    ImageTexture {
-        mipmap: get_f32_texture(
-            filename, do_trilinear, max_aniso, wrap_mode, scale, gamma),
-        mapping: m
+    pub fn clear(&mut self) {
+        self.0.clear();
     }
 }
 
-pub fn new_rgb_texture<P>(
-    m: Box<TextureMapping2D>, filename: &P, do_trilinear: bool, max_aniso: f32,
-    wrap_mode: ImageWrap, scale: f32, gamma: f32)
-    -> ImageTexture<Spectrum> where P: AsRef<Path> + AsRef<OsStr> {
-    ImageTexture {
-        mipmap: get_spectrum_texture(
-            filename, do_trilinear, max_aniso, wrap_mode, scale, gamma),
-        mapping: m
-    }
-}
+impl TextureCache<Spectrum> {
+    pub fn new() -> TextureCache<Spectrum> { TextureCache(BTreeMap::new()) }
 
-pub fn clear_texture_cache() {
-    FLOAT_TEXTURES.lock().unwrap().clear();
-    SPECTRUM_TEXTURES.lock().unwrap().clear();
+    fn get_texture<P>(
+        &mut self, filename: &P, do_trilinear: bool, max_aniso: f32, wrap_mode: ImageWrap,
+        scale: f32, gamma: f32)
+        -> Arc<MIPMap<Spectrum>> where P: AsRef<Path> + AsRef<OsStr> {
+        let tex_info = TexInfo {
+            filename: PathBuf::from(filename),
+            do_trilinear: do_trilinear,
+            max_aniso: max_aniso,
+            wrap: wrap_mode,
+            gamma: gamma
+        };
+    
+        if let Some(tex) = self.0.get(&tex_info) {
+            return tex.clone();
+        }
+    
+        let read_img_result = read_image(filename);
+        let ret = if let Ok((width, height, texels)) = read_img_result {
+            // Convert texels to Spectrum and create MIPMap
+            let pixels = texels.into_iter()
+                .map(|s| (s * scale).powf(gamma))
+                .collect();
+            Arc::new(MIPMap::new(width as usize, height as usize, pixels,
+                                    do_trilinear, max_aniso, wrap_mode))
+        } else {
+            // Create one-values mipmap
+            Arc::new(MIPMap::new(1, 1, vec![Spectrum::from(scale.powf(gamma)); 1],
+                                    do_trilinear, max_aniso, wrap_mode))
+        };
+    
+        self.0.insert(tex_info.clone(), ret);
+        self.0.get(&tex_info).unwrap().clone()
+    }
+
+    pub fn new_texture<P>(
+        &mut self, m: Box<dyn TextureMapping2D>, filename: &P, do_trilinear: bool, max_aniso: f32,
+        wrap_mode: ImageWrap, scale: f32, gamma: f32)
+        -> ImageTexture<Spectrum> where P: AsRef<Path> + AsRef<OsStr> {
+        ImageTexture {
+            mipmap: self.get_texture(
+                filename, do_trilinear, max_aniso, wrap_mode, scale, gamma),
+            mapping: m
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
 }
 
 impl<T: Default + Clone + ::std::fmt::Debug +
@@ -562,7 +564,8 @@ mod tests {
         let this_file = Path::new(file!());
         let test_file = Path::join(this_file.parent().unwrap(),
                                    "testdata/checkerboard_square.png");
-        let tex = new_rgb_texture(
+        let mut tex_cache = TextureCache::<Spectrum>::new();
+        let tex = tex_cache.new_texture(
             mapping, &test_file, false, 1.0, ImageWrap::Repeat, 1.0, 2.2);
 
         let mut dg = DifferentialGeometry::new();
@@ -585,7 +588,8 @@ mod tests {
         let this_file = Path::new(file!());
         let test_file = Path::join(this_file.parent().unwrap(),
                                    "testdata/checkerboard_stretched.png");
-        let tex = new_float_texture(
+        let mut tex_cache = TextureCache::<f32>::new();
+        let tex = tex_cache.new_texture(
             mapping, &test_file, false, 1.0, ImageWrap::Repeat, 1.0, 2.2);
 
         let mut dg = DifferentialGeometry::new();
@@ -608,7 +612,8 @@ mod tests {
         let this_file = Path::new(file!());
         let test_file = Path::join(this_file.parent().unwrap(),
                                    "testdata/checkerboard_square.png");
-        let tex = new_rgb_texture(
+        let mut tex_cache = TextureCache::<Spectrum>::new();
+        let tex = tex_cache.new_texture(
             mapping, &test_file, false, 1.0, ImageWrap::Repeat, 1.0, 2.2);
 
         let mut dg = DifferentialGeometry::new();
@@ -645,7 +650,8 @@ mod tests {
         let this_file = Path::new(file!());
         let test_file = Path::join(this_file.parent().unwrap(),
                                    "testdata/checkerboard_square.png");
-        let tex = new_rgb_texture(
+        let mut tex_cache = TextureCache::<Spectrum>::new();
+        let tex = tex_cache.new_texture(
             mapping, &test_file, false, 1.0, ImageWrap::Black, 1.0, 2.2);
 
         let mut dg = DifferentialGeometry::new();
@@ -682,7 +688,8 @@ mod tests {
         let this_file = Path::new(file!());
         let test_file = Path::join(this_file.parent().unwrap(),
                                    "testdata/checkerboard_square.png");
-        let tex = new_float_texture(
+        let mut tex_cache = TextureCache::<f32>::new();
+        let tex = tex_cache.new_texture(
             mapping, &test_file, false, 1.0, ImageWrap::Clamp, 1.0, 2.2);
 
         let mut dg = DifferentialGeometry::new();
@@ -715,7 +722,8 @@ mod tests {
         let this_file = Path::new(file!());
         let test_file = Path::join(this_file.parent().unwrap(),
                                    "testdata/checkerboard_stretched.png");
-        let tex = new_float_texture(
+        let mut tex_cache = TextureCache::<f32>::new();
+        let tex = tex_cache.new_texture(
             mapping, &test_file, true, 1.0, ImageWrap::Clamp, 1.0, 2.2);
 
         let mut dg = DifferentialGeometry::new();
@@ -732,7 +740,8 @@ mod tests {
         let this_file = Path::new(file!());
         let test_file = Path::join(this_file.parent().unwrap(),
                                    "testdata/checkerboard_stretched.png");
-        let tex = new_float_texture(
+        let mut tex_cache = TextureCache::<f32>::new();
+        let tex = tex_cache.new_texture(
             mapping, &test_file, false, 100.0, ImageWrap::Clamp, 1.0, 2.2);
 
         let mut dg = DifferentialGeometry::new();

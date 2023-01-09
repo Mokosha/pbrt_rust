@@ -6,11 +6,11 @@ use scene;
 use intersection::Intersection;
 
 pub trait Renderer {
-    fn render(&mut self, &scene::Scene);
+    fn render(&mut self, scene: &scene::Scene);
 
     fn li<'a>(
-        &self, &'a scene::Scene, &ray::RayDifferential,
-        &Sample, &mut RNG) -> (Spectrum, Option<Intersection>, Spectrum);
+        &self, scene: &'a scene::Scene, ray: &ray::RayDifferential,
+        sample: &Sample, rng: &mut RNG) -> (Spectrum, Option<Intersection>, Spectrum);
 
     fn li_simple(
         &self, scene: &scene::Scene, ray: &ray::RayDifferential,
@@ -19,8 +19,8 @@ pub trait Renderer {
     }
 
     fn transmittance(
-        &self, &scene::Scene, &ray::RayDifferential,
-        &Sample, &mut RNG) -> Spectrum;
+        &self, scene: &scene::Scene, ray: &ray::RayDifferential,
+        sample: &Sample, rng: &mut RNG) -> Spectrum;
 
     // Rnderer Interface
 }

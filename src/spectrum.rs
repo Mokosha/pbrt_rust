@@ -625,14 +625,14 @@ impl ::std::ops::Index<usize> for Spectrum {
         match self {
             &Spectrum::Sampled(ref cs) => {
                 match index {
-                    0...29 => cs.get(index).unwrap(),
+                    0..=29 => cs.get(index).unwrap(),
                     _ => panic!("Error - Sampled Spectrum index out of bounds!")
                 }
             },
 
             &Spectrum::RGB(ref cs) => {
                 match index {
-                    0...2 => cs.get(index).unwrap(),
+                    0..=2 => cs.get(index).unwrap(),
                     _ => panic!("Error - RGB Spectrum index out of bounds!")
                 }
             },
@@ -645,14 +645,14 @@ impl ::std::ops::IndexMut<usize> for Spectrum {
         match self {
             &mut Spectrum::Sampled(ref mut cs) => {
                 match index {
-                    0...29 => cs.get_mut(index).unwrap(),
+                    0..=29 => cs.get_mut(index).unwrap(),
                     _ => panic!("Error - Sampled Spectrum index out of bounds!")
                 }
             },
 
             &mut Spectrum::RGB(ref mut cs) => {
                 match index {
-                    0...2 => cs.get_mut(index).unwrap(),
+                    0..=2 => cs.get_mut(index).unwrap(),
                     _ => panic!("Error - RGB Spectrum index out of bounds!")
                 }
             },

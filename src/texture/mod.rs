@@ -24,7 +24,7 @@ mod internal {
         fn eval(&self, _: &DifferentialGeometry) -> T;
     }
 
-    impl<U, T> TextureBase<T> for U where U: Deref<Target = Texture<T>> {
+    impl<U, T> TextureBase<T> for U where U: Deref<Target = dyn Texture<T>> {
         fn eval(&self, dg: &DifferentialGeometry) -> T {
             self.deref().evaluate(&dg)
         }
@@ -41,6 +41,10 @@ Debug + Send + Sync + internal::TextureBase<T> {
         self.eval(&dg)
     }
 }
+
+pub type TextureReference<T> = Arc<dyn Texture<T>>;
+pub type ColorTextureReference = TextureReference<Spectrum>;
+pub type ScalarTextureReference = TextureReference<f32>;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct ConstantTexture<T: Clone> {
@@ -61,12 +65,12 @@ impl<T> internal::TextureBase<T> for ConstantTexture<T> where T: Clone {
 
 #[derive(Clone, Debug)]
 pub struct ScaleTexture<T, U> {
-    tex1: Arc<Texture<T>>,
-    tex2: Arc<Texture<U>>
+    tex1: TextureReference<T>,
+    tex2: TextureReference<U>
 }
 
 impl<T, U> ScaleTexture<T, U> {
-    pub fn new(t1: Arc<Texture<T>>, t2: Arc<Texture<U>>) -> ScaleTexture<T, U> {
+    pub fn new(t1: TextureReference<T>, t2: TextureReference<U>) -> ScaleTexture<T, U> {
         ScaleTexture { tex1: t1, tex2: t2 }
     }
 }
@@ -91,9 +95,8 @@ mod tests {
 
     #[test]
     fn scale_texture_works() {
-        let tex1 = Arc::new(ConstantTexture::new(2.0f32)) as Arc<Texture<f32>>;
-        let tex2 = Arc::new(ConstantTexture::new(Vector::new_with(1.0, 2.0, 3.0)))
-            as Arc<Texture<Vector>>;
+        let tex1 = Arc::new(ConstantTexture::new(2.0f32));
+        let tex2 = Arc::new(ConstantTexture::new(Vector::new_with(1.0, 2.0, 3.0)));
         let scale_tex = ScaleTexture::new(tex1, tex2);
         assert_eq!(scale_tex.evaluate(&DifferentialGeometry::new()),
                    Vector::new_with(2.0, 4.0, 6.0));

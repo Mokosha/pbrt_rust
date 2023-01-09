@@ -13,12 +13,12 @@ use material::Material;
 pub struct MixMaterial {
     m1: Arc<Material>,
     m2: Arc<Material>,
-    scale: Arc<Texture<Spectrum>>
+    scale: Arc<dyn Texture<Spectrum>>
 }
 
 impl MixMaterial {
     pub fn new(m1: Arc<Material>, m2: Arc<Material>,
-               sc: Arc<Texture<Spectrum>>) -> MixMaterial {
+               sc: Arc<dyn Texture<Spectrum>>) -> MixMaterial {
         MixMaterial { m1: m1, m2: m2, scale: sc }
     }
 

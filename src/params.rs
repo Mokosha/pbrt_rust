@@ -261,24 +261,24 @@ impl ParamSet {
 }
 
 pub struct TextureParams<'a> {
-    float_textures: Arc<HashMap<String, Arc<Texture<f32>>>>,
-    spectrum_textures: Arc<HashMap<String, Arc<Texture<Spectrum>>>>,
+    float_textures: Arc<HashMap<String, Arc<dyn Texture<f32>>>>,
+    spectrum_textures: Arc<HashMap<String, Arc<dyn Texture<Spectrum>>>>,
     geom_params: &'a ParamSet,
     material_params: &'a ParamSet
 }
 
-fn find_texture<T>(textures: Arc<HashMap<String, Arc<Texture<T>>>>,
-                   name: &str) -> Arc<Texture<T>> {
+fn find_texture<T>(textures: Arc<HashMap<String, Arc<dyn Texture<T>>>>,
+                   name: &str) -> Arc<dyn Texture<T>> {
     match textures.get(name) {
-        Some(tex) => tex.clone() as Arc<Texture<T>>,
+        Some(tex) => tex.clone() as Arc<dyn Texture<T>>,
         None => panic!("Couldn't find texture named \"{}\"", name)
     }
 }
 
 impl<'a> TextureParams<'a> {
     pub fn new(geomp: &'a ParamSet, matp: &'a ParamSet,
-               ft: Arc<HashMap<String, Arc<Texture<f32>>>>,
-               st: Arc<HashMap<String, Arc<Texture<Spectrum>>>>)
+               ft: Arc<HashMap<String, Arc<dyn Texture<f32>>>>,
+               st: Arc<HashMap<String, Arc<dyn Texture<Spectrum>>>>)
                -> TextureParams<'a> {
         TextureParams {
             float_textures: ft,
@@ -289,31 +289,31 @@ impl<'a> TextureParams<'a> {
     }
 
     pub fn get_spectrum_texture(&self, name: &str, def: &Spectrum)
-                                -> Arc<Texture<Spectrum>> {
+                                -> Arc<dyn Texture<Spectrum>> {
         self.get_spectrum_texture_or_null(name).unwrap_or({
             let val = self.geom_params.find_one_spectrum(
                 name, self.material_params.find_one_spectrum(name, def.clone()));
-            Arc::new(ConstantTexture::new(val)) as Arc<Texture<Spectrum>>
+            Arc::new(ConstantTexture::new(val)) as Arc<dyn Texture<Spectrum>>
         })
     }
 
     pub fn get_spectrum_texture_or_null(&self, name: &str)
-                                        -> Option<Arc<Texture<Spectrum>>> {
+                                        -> Option<Arc<dyn Texture<Spectrum>>> {
         self.geom_params.find_tex(name).or(self.material_params.find_tex(name))
             .map(|names| find_texture(self.spectrum_textures.clone(), &names[0]))        
     }
 
     pub fn get_float_texture(&self, name: &str, def: f32)
-                             -> Arc<Texture<f32>> {
+                             -> Arc<dyn Texture<f32>> {
         self.get_float_texture_or_null(name).unwrap_or({
             let val = self.geom_params.find_one_float(
                 name, self.material_params.find_one_float(name, def));
-            Arc::new(ConstantTexture::new(val)) as Arc<Texture<f32>>
+            Arc::new(ConstantTexture::new(val)) as Arc<dyn Texture<f32>>
         })
     }
 
     pub fn get_float_texture_or_null(&self, name: &str)
-                                     -> Option<Arc<Texture<f32>>> {
+                                     -> Option<Arc<dyn Texture<f32>>> {
         self.geom_params.find_tex(name).or(self.material_params.find_tex(name))
             .map(|names| find_texture(self.float_textures.clone(), &names[0]))
     }

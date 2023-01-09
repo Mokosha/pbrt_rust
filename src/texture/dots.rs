@@ -4,18 +4,18 @@ use diff_geom::DifferentialGeometry;
 use texture::internal::TextureBase;
 use texture::mapping2d::TextureMapping2D;
 use texture::noise::noise;
-use texture::Texture;
+use texture::TextureReference;
 
 #[derive(Debug)]
 pub struct DotsTexture<T> {
-    mapping: Box<TextureMapping2D>,
-    inside_dot: Arc<Texture<T>>,
-    outside_dot: Arc<Texture<T>>
+    mapping: Box<dyn TextureMapping2D>,
+    inside_dot: TextureReference<T>,
+    outside_dot: TextureReference<T>
 }
 
 impl<T> DotsTexture<T> {
-    pub fn new(mapping: Box<TextureMapping2D>, t1: Arc<Texture<T>>,
-               t2: Arc<Texture<T>>) -> DotsTexture<T> {
+    pub fn new(mapping: Box<dyn TextureMapping2D>, t1: TextureReference<T>,
+               t2: TextureReference<T>) -> DotsTexture<T> {
         DotsTexture { mapping: mapping, inside_dot: t1, outside_dot: t2 }
     }
 }

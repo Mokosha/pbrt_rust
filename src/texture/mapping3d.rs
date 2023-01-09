@@ -17,7 +17,7 @@ mod internal {
         fn map_dg(&self, dg: &DifferentialGeometry) -> (Point, Vector, Vector);
     }
 
-    impl<U> TextureMapping3DBase for U where U: Deref<Target = TextureMapping3D> {
+    impl<U> TextureMapping3DBase for U where U: Deref<Target = dyn TextureMapping3D> {
         fn map_dg(&self, dg: &DifferentialGeometry) -> (Point, Vector, Vector) {
             self.deref().map(&dg)
         }
