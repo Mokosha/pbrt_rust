@@ -12,7 +12,7 @@ use diff_geom::DifferentialGeometry;
 use geometry::vector::*;
 use geometry::normal::*;
 use spectrum::Spectrum;
-use texture::Texture;
+use texture::{Texture, ScalarTextureReference, ColorTextureReference};
 
 use material::matte::MatteMaterial;
 use material::plastic::PlasticMaterial;
@@ -87,33 +87,33 @@ pub enum Material {
 }
 
 impl Material {
-    pub fn matte(kd: Arc<Texture<Spectrum>>,
-                 sig: Arc<Texture<f32>>,
-                 bump_map: Option<Arc<Texture<f32>>>) -> Material {
+    pub fn matte(kd: ColorTextureReference,
+                 sig: ScalarTextureReference,
+                 bump_map: Option<ScalarTextureReference>) -> Material {
         Material::Matte(MatteMaterial::new(kd, sig, bump_map))
     }
 
-    pub fn plastic(kd: Arc<Texture<Spectrum>>,
-                   ks: Arc<Texture<Spectrum>>,
-                   rough: Arc<Texture<f32>>,
-                   bm: Option<Arc<Texture<f32>>>) -> Material {
+    pub fn plastic(kd: ColorTextureReference,
+                   ks: ColorTextureReference,
+                   rough: ScalarTextureReference,
+                   bm: Option<ScalarTextureReference>) -> Material {
         Material::Plastic(PlasticMaterial::new(kd, ks, rough, bm))
     }
 
-    pub fn measured(filename: String, b: Option<Arc<Texture<f32>>>) -> Material {
+    pub fn measured(filename: String, b: Option<ScalarTextureReference>) -> Material {
         Material::Measured(MeasuredMaterial::new(filename, b))
     }
 
     pub fn mixed(m1: Arc<Material>, m2: Arc<Material>,
-                 sc: Arc<Texture<Spectrum>>) -> Material {
+                 sc: ColorTextureReference) -> Material {
         Material::Mixed(MixMaterial::new(m1, m2, sc))
     }
 
-    pub fn subsurface(scale: f32, k_r: Arc<Texture<Spectrum>>,
-                      sigma_a: Arc<Texture<Spectrum>>,
-                      sigma_prime_s: Arc<Texture<Spectrum>>,
-                      eta: Arc<Texture<f32>>,
-                      bm: Option<Arc<Texture<f32>>>) -> Material {
+    pub fn subsurface(scale: f32, k_r: ColorTextureReference,
+                      sigma_a: ColorTextureReference,
+                      sigma_prime_s: ColorTextureReference,
+                      eta: ScalarTextureReference,
+                      bm: Option<ScalarTextureReference>) -> Material {
         Material::Subsurface(
             SubsurfaceMaterial::new(scale, k_r, sigma_a, sigma_prime_s, eta, bm))
     }

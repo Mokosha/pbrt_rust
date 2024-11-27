@@ -13,23 +13,33 @@ use volume::VolumeRegion;
 use std::sync::Arc;
 
 pub struct Scene {
-    aggregate : Primitive,
-    lights : Vec<Arc<Light>>,
-    volume_region : Option<Box<VolumeRegion>>,
+    aggregate : Arc<Primitive>,
+    lights : Vec<Arc<dyn Light>>,
+    volume_region : Option<Arc<dyn VolumeRegion>>,
     // Scene Public data 23
 }
 
 impl Scene {
     pub fn new() -> Scene {
         Scene {
-            aggregate: Primitive::geometric(Shape::sphere(
-                Transform::new(), Transform::new(), false, 1.0, -1.0, 1.0, 360.0)),
+            aggregate: Arc::new(Primitive::simple(Shape::sphere(
+                Transform::new(), Transform::new(), false, 1.0, -1.0, 1.0, 360.0))),
             lights: vec![],
             volume_region: None,
         }
     }
 
-    pub fn lights(&self) -> Vec<Arc<Light>> {
+    pub fn new_with(aggregate: Arc<Primitive>,
+                    lights: Vec<Arc<dyn Light>>,
+                    volume_region: Option<Arc<dyn VolumeRegion>>) -> Scene {
+        Scene {
+            aggregate: aggregate.clone(),
+            lights: lights.clone(),
+            volume_region: volume_region
+        }
+    }
+
+    pub fn lights(&self) -> Vec<Arc<dyn Light>> {
         self.lights.clone()
     }
 

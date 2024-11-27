@@ -16,7 +16,7 @@ use primitive::Refinable;
 use ray::Ray;
 use shape::ShapeBase;
 use shape::ShapeIntersection;
-use texture::Texture;
+use texture::{Texture, ScalarTextureReference};
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
 
@@ -267,7 +267,7 @@ impl ::std::ops::Index<usize> for Triangle {
     type Output = Point;
     fn index(&self, i: usize) -> &Point {
         match i {
-            0 ... 2 => &(self.mesh.p[self.v[i]]),
+            0 ..= 2 => &(self.mesh.p[self.v[i]]),
             _ => panic!("Error - Triangle index out of bounds!")
         }
     }
@@ -281,7 +281,7 @@ pub struct Mesh {
     n: Option<Vec<Normal>>,
     s: Option<Vec<Vector>>,
     uvs: Option<Vec<f32>>,
-    atex: Option<Arc<Texture<f32>>>
+    atex: Option<ScalarTextureReference>
 }
 
 impl PartialEq for Mesh {
@@ -298,7 +298,7 @@ impl PartialEq for Mesh {
 impl Mesh {
     pub fn new(o2w: Transform, w2o: Transform, ro: bool, vi: &[usize],
                _p: &[Point], _n: Option<&[Normal]>, _s: Option<&[Vector]>,
-               uv: Option<&[f32]>, _atex: Option<Arc<Box<Texture<f32>>>>)
+               uv: Option<&[f32]>, _atex: Option<ScalarTextureReference>)
                -> Mesh {
         assert!(vi.len() % 3 == 0);
         let xf = o2w.clone();
@@ -309,7 +309,7 @@ impl Mesh {
             n: _n.map(|v| v.to_vec()),
             s: _s.map(|v| v.to_vec()),
             uvs: uv.map(|v| v.to_vec()),
-            atex: _atex.map(|t| t.clone() as Arc<Texture<f32>>)
+            atex: _atex.clone()
         }
     }
 

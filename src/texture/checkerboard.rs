@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use diff_geom::DifferentialGeometry;
-use texture::Texture;
+use texture::TextureReference;
 use texture::internal::TextureBase;
 use texture::mapping2d::TextureMapping2D;
 use texture::mapping3d::TextureMapping3D;
@@ -15,21 +15,21 @@ enum CheckerboardAA {
 
 #[derive(Debug)]
 pub struct CheckerboardTexture<T> {
-    mapping: Box<TextureMapping2D>,
-    tex1: Arc<Texture<T>>,
-    tex2: Arc<Texture<T>>,
+    mapping: Box<dyn TextureMapping2D>,
+    tex1: TextureReference<T>,
+    tex2: TextureReference<T>,
     aa_method: CheckerboardAA
 }
 
 impl<T> CheckerboardTexture<T> {
-    pub fn new(mapping: Box<TextureMapping2D>, t1: Arc<Texture<T>>,
-               t2: Arc<Texture<T>>) -> CheckerboardTexture<T> {
+    pub fn new(mapping: Box<dyn TextureMapping2D>, t1: TextureReference<T>,
+               t2: TextureReference<T>) -> CheckerboardTexture<T> {
         CheckerboardTexture { mapping: mapping, tex1: t1, tex2: t2,
                               aa_method: CheckerboardAA::NONE }
     }
 
-    pub fn new_antialiased(mapping: Box<TextureMapping2D>, t1: Arc<Texture<T>>,
-                           t2: Arc<Texture<T>>) -> CheckerboardTexture<T> {
+    pub fn new_antialiased(mapping: Box<dyn TextureMapping2D>, t1: TextureReference<T>,
+                           t2: TextureReference<T>) -> CheckerboardTexture<T> {
         CheckerboardTexture { mapping: mapping, tex1: t1, tex2: t2,
                               aa_method: CheckerboardAA::CLOSEDFORM }
     }
@@ -94,14 +94,14 @@ impl<T> TextureBase<T> for CheckerboardTexture<T> where T: Lerp<f32> {
 
 #[derive(Debug)]
 pub struct Checkerboard3DTexture<T> {
-    mapping: Box<TextureMapping3D>,
-    tex1: Arc<Texture<T>>,
-    tex2: Arc<Texture<T>>,
+    mapping: Box<dyn TextureMapping3D>,
+    tex1: TextureReference<T>,
+    tex2: TextureReference<T>,
 }
 
 impl<T> Checkerboard3DTexture<T> {
-    pub fn new(mapping: Box<TextureMapping3D>, t1: Arc<Texture<T>>,
-               t2: Arc<Texture<T>>) -> Checkerboard3DTexture<T> {
+    pub fn new(mapping: Box<dyn TextureMapping3D>, t1: TextureReference<T>,
+               t2: TextureReference<T>) -> Checkerboard3DTexture<T> {
         Checkerboard3DTexture { mapping: mapping, tex1: t1, tex2: t2 }
     }
 }
@@ -120,6 +120,7 @@ impl<T> TextureBase<T> for Checkerboard3DTexture<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use texture::Texture;
     use texture::ConstantTexture;
     use texture::mapping2d::PlanarMapping2D;
     use texture::mapping3d::IdentityMapping3D;
@@ -129,8 +130,8 @@ mod tests {
     #[test]
     fn checkerboard_texture_works() {
         let map = Box::new(PlanarMapping2D::new());
-        let tex1 = Arc::new(ConstantTexture::new(1.0f32)) as Arc<Texture<f32>>;
-        let tex2 = Arc::new(ConstantTexture::new(0.0f32)) as Arc<Texture<f32>>;
+        let tex1 = Arc::new(ConstantTexture::new(1.0f32));
+        let tex2 = Arc::new(ConstantTexture::new(0.0f32));
         let checker = CheckerboardTexture::new(map, tex1, tex2);
 
         let mut dg = DifferentialGeometry::new();
@@ -147,8 +148,8 @@ mod tests {
     #[test]
     fn checkerboard_texture_works_in_3d() {
         let map = Box::new(IdentityMapping3D::new());
-        let tex1 = Arc::new(ConstantTexture::new(1.0f32)) as Arc<Texture<f32>>;
-        let tex2 = Arc::new(ConstantTexture::new(0.0f32)) as Arc<Texture<f32>>;
+        let tex1 = Arc::new(ConstantTexture::new(1.0f32));
+        let tex2 = Arc::new(ConstantTexture::new(0.0f32));
         let checker = Checkerboard3DTexture::new(map, tex1, tex2);
 
         let mut dg = DifferentialGeometry::new();
@@ -168,8 +169,8 @@ mod tests {
     #[test]
     fn checkerboard_texture_interpolates() {
         let map = Box::new(PlanarMapping2D::new());
-        let tex1 = Arc::new(ConstantTexture::new(1.0f32)) as Arc<Texture<f32>>;
-        let tex2 = Arc::new(ConstantTexture::new(0.0f32)) as Arc<Texture<f32>>;
+        let tex1 = Arc::new(ConstantTexture::new(1.0f32));
+        let tex2 = Arc::new(ConstantTexture::new(0.0f32));
         let checker = CheckerboardTexture::new_antialiased(map, tex1, tex2);
 
         let mut dg = DifferentialGeometry::new();

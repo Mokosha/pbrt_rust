@@ -28,16 +28,6 @@ impl<T: Mul<f64, Output = T> + Add<T, Output = T> + Clone> Lerp<f64> for T {
     fn lerp_with(self, b: Self, t: f64) -> Self { self * (1.0 - t) + b * t }
 }
 
-pub trait Clamp<T = Self> {
-    fn clamp(self, a: T, b: T) -> Self;
-}
-
-impl<T: Copy + PartialOrd> Clamp for T {
-    fn clamp(self, a: Self, b: Self) -> Self {
-        if self.lt(&a) { a } else if self.gt(&b) { b } else { self }
-    }
-}
-
 pub trait Degrees {
     fn as_radians(self) -> Self;
     fn as_degrees(self) -> Self;
@@ -285,8 +275,6 @@ mod tests {
         assert_eq!(2f32.clamp(1f32, 2f32), 2f32);
         assert_eq!(3f32.clamp(1f32, 2f32), 2f32);
 
-        assert_eq!(0f32.clamp(1f32, f32::NAN), 1f32);
-        assert_eq!(0f32.clamp(f32::NAN, 1f32), 0f32);
         assert!(f32::NAN.clamp(1f32, 2f32).is_nan()); // can't un-nan
 
         assert_eq!(0f64.clamp(1f64, 2f64), 1f64);
@@ -295,8 +283,6 @@ mod tests {
         assert_eq!(2f64.clamp(1f64, 2f64), 2f64);
         assert_eq!(3f64.clamp(1f64, 2f64), 2f64);
 
-        assert_eq!(0f64.clamp(1f64, f64::NAN), 1f64);
-        assert_eq!(0f64.clamp(f64::NAN, 1f64), 0f64);
         assert!(f64::NAN.clamp(1f64, 2f64).is_nan()); // can't un-nan
 
         assert_eq!(0i8.clamp(1i8, 2i8), 1i8);

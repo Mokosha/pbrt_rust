@@ -6,21 +6,20 @@ use bsdf::orennayar::OrenNayar;
 use diff_geom::DifferentialGeometry;
 use spectrum::Spectrum;
 use texture::Texture;
-use utils::Clamp;
 
 use material::bump;
 
 #[derive(Clone, Debug)]
 pub struct MatteMaterial {
-    sigma: Arc<Texture<f32>>,
-    bump_map: Option<Arc<Texture<f32>>>,
-    k_d: Arc<Texture<Spectrum>>
+    sigma: Arc<dyn Texture<f32>>,
+    bump_map: Option<Arc<dyn Texture<f32>>>,
+    k_d: Arc<dyn Texture<Spectrum>>
 }
 
 impl MatteMaterial {
-    pub fn new(kd: Arc<Texture<Spectrum>>,
-               sig: Arc<Texture<f32>>,
-               bump_map: Option<Arc<Texture<f32>>>) -> MatteMaterial {
+    pub fn new(kd: Arc<dyn Texture<Spectrum>>,
+               sig: Arc<dyn Texture<f32>>,
+               bump_map: Option<Arc<dyn Texture<f32>>>) -> MatteMaterial {
         MatteMaterial {
             sigma: sig,
             bump_map: bump_map,

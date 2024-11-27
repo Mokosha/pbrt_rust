@@ -12,8 +12,6 @@ use primitive::Primitive;
 use primitive::Refinable;
 use ray::Ray;
 
-use utils::Clamp;
-
 #[derive(Debug, Clone)]
 struct Voxel {
     primitives: Vec<Weak<RwLock<Primitive>>>,
@@ -359,7 +357,7 @@ mod tests {
         let tet_tris : [usize; 12] =
             [ 0, 3, 2, 0, 1, 2, 0, 3, 1, 1, 2, 3 ];
 
-        let m = vec![Primitive::geometric(Shape::triangle_mesh(
+        let m = vec![Primitive::simple(Shape::triangle_mesh(
             Transform::new(), Transform::new(), false, &tet_tris,
             &tet_pts, None, None, None, None))];
 

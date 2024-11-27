@@ -13,34 +13,33 @@ use geometry::vector::*;
 use geometry::normal::*;
 use rng::RNG;
 use spectrum::Spectrum;
-use utils::Clamp;
 
 use std::clone::Clone;
 use std::fmt::Debug;
 use std::marker::Sized;
 
 bitflags! {
-    pub flags BxDFType: u32 {
-        const BSDF_REFLECTION = (1 << 0),
-        const BSDF_TRANSMISSION = (1 << 1),
-        const BSDF_DIFFUSE = (1 << 2),
-        const BSDF_GLOSSY = (1 << 3),
-        const BSDF_SPECULAR = (1 << 4),
+    pub struct BxDFType: u32 {
+        const BSDF_REFLECTION = (1 << 0);
+        const BSDF_TRANSMISSION = (1 << 1);
+        const BSDF_DIFFUSE = (1 << 2);
+        const BSDF_GLOSSY = (1 << 3);
+        const BSDF_SPECULAR = (1 << 4);
         const BSDF_ALL_TYPES =
-            BSDF_DIFFUSE.bits | BSDF_GLOSSY.bits | BSDF_SPECULAR.bits,
+            Self::BSDF_DIFFUSE.bits | Self::BSDF_GLOSSY.bits | Self::BSDF_SPECULAR.bits;
         const BSDF_ALL_REFLECTION =
-            BSDF_REFLECTION.bits | BSDF_ALL_TYPES.bits,
+            Self::BSDF_REFLECTION.bits | Self::BSDF_ALL_TYPES.bits;
         const BSDF_ALL_TRANSMISSION =
-            BSDF_TRANSMISSION.bits | BSDF_ALL_TYPES.bits,
+            Self::BSDF_TRANSMISSION.bits | Self::BSDF_ALL_TYPES.bits;
         const BSDF_ALL =
-            BSDF_ALL_TRANSMISSION.bits | BSDF_ALL_REFLECTION.bits
+            Self::BSDF_ALL_TRANSMISSION.bits | Self::BSDF_ALL_REFLECTION.bits;
     }
 }
 
 pub trait BxDF : Debug + 'static {
-    fn matches_flags(&self, BxDFType) -> bool;
-    fn f(&self, &Vector, &Vector) -> Spectrum;
-    fn sample_f(&self, &Vector, f32, f32) -> (Vector, f32, Spectrum);
+    fn matches_flags(&self, _: BxDFType) -> bool;
+    fn f(&self, _: &Vector, _: &Vector) -> Spectrum;
+    fn sample_f(&self, _: &Vector, _: f32, _: f32) -> (Vector, f32, Spectrum);
 
     fn rho_hd(&self, v: &Vector, samples: &[f32]) -> Spectrum {
         unimplemented!()
@@ -64,7 +63,7 @@ pub struct BSDF {
     ng: Normal,
     sn: Vector,
     tn: Vector,
-    bxdfs: Vec<Box<BxDF>>
+    bxdfs: Vec<Box<dyn BxDF>>
 }
 
 impl BSDF {
@@ -132,9 +131,9 @@ impl BSDF {
 
     pub fn f(&self, wo_w: Vector, wi_w: Vector, in_flags: BxDFType) -> Spectrum {
         let flags = if wi_w.dot(&self.ng) * wo_w.dot(&self.ng) > 0.0 {
-            in_flags & !BSDF_TRANSMISSION
+            in_flags & !BxDFType::BSDF_TRANSMISSION
         } else {
-            in_flags & !BSDF_REFLECTION
+            in_flags & !BxDFType::BSDF_REFLECTION
         };
 
         let wo = self.world_to_local(wo_w);
@@ -170,7 +169,7 @@ fn other_hemi(v: &Vector) -> Vector {
 
 impl<T: BxDF> BxDF for BRDFtoBTDF<T> {
     fn matches_flags(&self, ty: BxDFType) -> bool {
-        let flags = BSDF_REFLECTION | BSDF_TRANSMISSION;
+        let flags = BxDFType::BSDF_REFLECTION | BxDFType::BSDF_TRANSMISSION;
         self.brdf.matches_flags(ty ^ flags)
     }
 
@@ -195,12 +194,12 @@ impl<T: BxDF> BxDF for BRDFtoBTDF<T> {
 
 #[derive(Debug)]
 pub struct ScaledBxDF {
-    bxdf: Box<BxDF>,
+    bxdf: Box<dyn BxDF>,
     scale: Spectrum
 }
 
 impl ScaledBxDF {
-    pub fn new(input: Box<BxDF>, sc: Spectrum) -> ScaledBxDF {
+    pub fn new(input: Box<dyn BxDF>, sc: Spectrum) -> ScaledBxDF {
         ScaledBxDF {
             bxdf: input,
             scale: sc

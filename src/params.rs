@@ -27,18 +27,18 @@ pub struct ParamSet(HashMap<String, ParamTy>);
 impl ParamSet {
     pub fn new() -> ParamSet { ParamSet(HashMap::new()) }
 
-    fn add_param(&mut self, name: &String, data: ParamTy) {
+    fn add_param(&mut self, name: &str, data: ParamTy) {
         let &mut ParamSet(ref mut map) = self;
-        if let Some(_) = map.insert(name.clone(), data) {
+        if let Some(_) = map.insert(name.to_string(), data) {
             println!("WARNING: Param {} already exists!", name);
         }
     }
 
-    pub fn add_float(&mut self, name: &String, data: Vec<f32>) {
+    pub fn add_float(&mut self, name: &str, data: Vec<f32>) {
         self.add_param(name, ParamTy::Float(data))
     }
 
-    pub fn find_one_float(&self, name: &String, def: f32) -> f32 {
+    pub fn find_one_float(&self, name: &str, def: f32) -> f32 {
         let &ParamSet(ref map) = self;
         if let Some(&ParamTy::Float(ref f)) = map.get(name) {
             if f.is_empty() { def } else { f[0] }
@@ -47,7 +47,7 @@ impl ParamSet {
         }
     }
 
-    pub fn find_float<'a>(&'a self, name: &String) -> Option<&'a [f32]> {
+    pub fn find_float<'a>(&'a self, name: &str) -> Option<&'a [f32]> {
         let &ParamSet(ref map) = self;
         map.get(name).and_then(|res| {
             match res {
@@ -57,11 +57,11 @@ impl ParamSet {
         })
     }
 
-    pub fn add_bool(&mut self, name: &String, data: Vec<bool>) {
+    pub fn add_bool(&mut self, name: &str, data: Vec<bool>) {
         self.add_param(name, ParamTy::Bool(data))
     }
 
-    pub fn find_one_bool(&self, name: &String, def: bool) -> bool {
+    pub fn find_one_bool(&self, name: &str, def: bool) -> bool {
         let &ParamSet(ref map) = self;
         if let Some(&ParamTy::Bool(ref f)) = map.get(name) {
             if f.is_empty() { def } else { f[0] }
@@ -70,7 +70,7 @@ impl ParamSet {
         }
     }
 
-    pub fn find_bool<'a>(&'a self, name: &String) -> Option<&'a [bool]> {
+    pub fn find_bool<'a>(&'a self, name: &str) -> Option<&'a [bool]> {
         let &ParamSet(ref map) = self;
         map.get(name).and_then(|res| {
             match res {
@@ -80,11 +80,11 @@ impl ParamSet {
         })
     }
 
-    pub fn add_int(&mut self, name: &String, data: Vec<i32>) {
+    pub fn add_int(&mut self, name: &str, data: Vec<i32>) {
         self.add_param(name, ParamTy::Int(data))
     }
 
-    pub fn find_one_int(&self, name: &String, def: i32) -> i32 {
+    pub fn find_one_int(&self, name: &str, def: i32) -> i32 {
         let &ParamSet(ref map) = self;
         if let Some(&ParamTy::Int(ref f)) = map.get(name) {
             if f.is_empty() { def } else { f[0] }
@@ -93,7 +93,7 @@ impl ParamSet {
         }
     }
 
-    pub fn find_int<'a>(&'a self, name: &String) -> Option<&'a [i32]> {
+    pub fn find_int<'a>(&'a self, name: &str) -> Option<&'a [i32]> {
         let &ParamSet(ref map) = self;
         map.get(name).and_then(|res| {
             match res {
@@ -103,11 +103,11 @@ impl ParamSet {
         })
     }
 
-    pub fn add_point(&mut self, name: &String, data: Vec<Point>) {
+    pub fn add_point(&mut self, name: &str, data: Vec<Point>) {
         self.add_param(name, ParamTy::Point(data))
     }
 
-    pub fn find_one_point(&self, name: &String, def: Point) -> Point {
+    pub fn find_one_point(&self, name: &str, def: Point) -> Point {
         let &ParamSet(ref map) = self;
         if let Some(&ParamTy::Point(ref f)) = map.get(name) {
             if f.is_empty() { def } else { f[0].clone() }
@@ -116,7 +116,7 @@ impl ParamSet {
         }
     }
 
-    pub fn find_point<'a>(&'a self, name: &String) -> Option<&'a [Point]> {
+    pub fn find_point<'a>(&'a self, name: &str) -> Option<&'a [Point]> {
         let &ParamSet(ref map) = self;
         map.get(name).and_then(|res| {
             match res {
@@ -126,11 +126,11 @@ impl ParamSet {
         })
     }
 
-    pub fn add_vec(&mut self, name: &String, data: Vec<Vector>) {
+    pub fn add_vec(&mut self, name: &str, data: Vec<Vector>) {
         self.add_param(name, ParamTy::Vec(data))
     }
 
-    pub fn find_one_vec(&self, name: &String, def: Vector) -> Vector {
+    pub fn find_one_vec(&self, name: &str, def: Vector) -> Vector {
         let &ParamSet(ref map) = self;
         if let Some(&ParamTy::Vec(ref f)) = map.get(name) {
             if f.is_empty() { def } else { f[0].clone() }
@@ -139,7 +139,7 @@ impl ParamSet {
         }
     }
 
-    pub fn find_vec<'a>(&'a self, name: &String) -> Option<&'a [Vector]> {
+    pub fn find_vec<'a>(&'a self, name: &str) -> Option<&'a [Vector]> {
         let &ParamSet(ref map) = self;
         map.get(name).and_then(|res| {
             match res {
@@ -149,11 +149,11 @@ impl ParamSet {
         })
     }
 
-    pub fn add_normal(&mut self, name: &String, data: Vec<Normal>) {
+    pub fn add_normal(&mut self, name: &str, data: Vec<Normal>) {
         self.add_param(name, ParamTy::Normal(data))
     }
 
-    pub fn find_one_normal(&self, name: &String, def: Normal) -> Normal {
+    pub fn find_one_normal(&self, name: &str, def: Normal) -> Normal {
         let &ParamSet(ref map) = self;
         if let Some(&ParamTy::Normal(ref f)) = map.get(name) {
             if f.is_empty() { def } else { f[0].clone() }
@@ -162,7 +162,7 @@ impl ParamSet {
         }
     }
 
-    pub fn find_normal<'a>(&'a self, name: &String) -> Option<&'a [Normal]> {
+    pub fn find_normal<'a>(&'a self, name: &str) -> Option<&'a [Normal]> {
         let &ParamSet(ref map) = self;
         map.get(name).and_then(|res| {
             match res {
@@ -172,12 +172,12 @@ impl ParamSet {
         })
     }
 
-    pub fn add_str(&mut self, name: &String, data: Vec<String>) {
+    pub fn add_str(&mut self, name: &str, data: Vec<String>) {
         self.add_param(name, ParamTy::Str(data))
     }
 
 
-    pub fn find_one_str(&self, name: &String, def: String) -> String {
+    pub fn find_one_str(&self, name: &str, def: String) -> String {
         let &ParamSet(ref map) = self;
         if let Some(&ParamTy::Str(ref f)) = map.get(name) {
             if f.is_empty() { def } else { f[0].clone() }
@@ -186,7 +186,7 @@ impl ParamSet {
         }
     }
 
-    pub fn find_str<'a>(&'a self, name: &String) -> Option<&'a [String]> {
+    pub fn find_str<'a>(&'a self, name: &str) -> Option<&'a [String]> {
         let &ParamSet(ref map) = self;
         map.get(name).and_then(|res| {
             match res {
@@ -196,12 +196,12 @@ impl ParamSet {
         })
     }
 
-    pub fn add_tex(&mut self, name: &String, data: Vec<String>) {
+    pub fn add_tex(&mut self, name: &str, data: Vec<String>) {
         self.add_param(name, ParamTy::Tex(data))
     }
 
 
-    pub fn find_one_tex(&self, name: &String, def: String) -> String {
+    pub fn find_one_tex(&self, name: &str, def: String) -> String {
         let &ParamSet(ref map) = self;
         if let Some(&ParamTy::Tex(ref f)) = map.get(name) {
             if f.is_empty() { def } else { f[0].clone() }
@@ -210,7 +210,7 @@ impl ParamSet {
         }
     }
 
-    pub fn find_tex<'a>(&'a self, name: &String) -> Option<&'a [String]> {
+    pub fn find_tex<'a>(&'a self, name: &str) -> Option<&'a [String]> {
         let &ParamSet(ref map) = self;
         map.get(name).and_then(|res| {
             match res {
@@ -220,26 +220,26 @@ impl ParamSet {
         })
     }
 
-    pub fn add_rgb_spectrum(&mut self, name: &String, data: Vec<f32>) {
+    pub fn add_rgb_spectrum(&mut self, name: &str, data: Vec<f32>) {
         unimplemented!()
     }
 
-    pub fn add_xyz_spectrum(&mut self, name: &String, data: Vec<f32>) {
+    pub fn add_xyz_spectrum(&mut self, name: &str, data: Vec<f32>) {
         unimplemented!()
     }
 
-    pub fn add_blackbody_spectrum(&mut self, name: &String, data: Vec<f32>) {
+    pub fn add_blackbody_spectrum(&mut self, name: &str, data: Vec<f32>) {
         unimplemented!()
     }
 
-    pub fn find_one_spectrum(&self, name: &String, def: Spectrum) -> Spectrum {
+    pub fn find_one_spectrum(&self, name: &str, def: Spectrum) -> Spectrum {
         let &ParamSet(ref map) = self;
         if let Some(&ParamTy::Spec(ref s)) = map.get(name) {
             if s.is_empty() { def } else { s[0].clone() }
         } else { def }
     }
 
-    pub fn find_spectrum<'a>(&'a self, name: &String)
+    pub fn find_spectrum<'a>(&'a self, name: &str)
                              -> Option<&'a [Spectrum]> {
         let &ParamSet(ref map) = self;
         map.get(name).and_then(|res| {
@@ -250,36 +250,36 @@ impl ParamSet {
         })
     }
 
-    pub fn add_sampled_spectrum_files(&mut self, name: &String,
+    pub fn add_sampled_spectrum_files(&mut self, name: &str,
                                       data: Vec<String>) {
         unimplemented!()
     }
 
-    pub fn add_sampled_spectrum(&mut self, name: &String, data: Vec<f32>) {
+    pub fn add_sampled_spectrum(&mut self, name: &str, data: Vec<f32>) {
         unimplemented!()
     }
 }
 
 pub struct TextureParams<'a> {
-    float_textures: &'static HashMap<String, Arc<Texture<f32>>>,
-    spectrum_textures: &'static HashMap<String, Arc<Texture<Spectrum>>>,
+    float_textures: Arc<HashMap<String, Arc<dyn Texture<f32>>>>,
+    spectrum_textures: Arc<HashMap<String, Arc<dyn Texture<Spectrum>>>>,
     geom_params: &'a ParamSet,
     material_params: &'a ParamSet
 }
 
-fn find_texture<T>(textures: &'static HashMap<String, Arc<Texture<T>>>,
-                   name: &String) -> Arc<Texture<T>> {
+fn find_texture<T>(textures: Arc<HashMap<String, Arc<dyn Texture<T>>>>,
+                   name: &str) -> Arc<dyn Texture<T>> {
     match textures.get(name) {
-        Some(tex) => tex.clone() as Arc<Texture<T>>,
+        Some(tex) => tex.clone() as Arc<dyn Texture<T>>,
         None => panic!("Couldn't find texture named \"{}\"", name)
     }
 }
 
 impl<'a> TextureParams<'a> {
-    fn new(geomp: &'a ParamSet, matp: &'a ParamSet,
-           ft: &'static HashMap<String, Arc<Texture<f32>>>,
-           st: &'static HashMap<String, Arc<Texture<Spectrum>>>)
-           -> TextureParams<'a> {
+    pub fn new(geomp: &'a ParamSet, matp: &'a ParamSet,
+               ft: Arc<HashMap<String, Arc<dyn Texture<f32>>>>,
+               st: Arc<HashMap<String, Arc<dyn Texture<Spectrum>>>>)
+               -> TextureParams<'a> {
         TextureParams {
             float_textures: ft,
             spectrum_textures: st,
@@ -288,70 +288,74 @@ impl<'a> TextureParams<'a> {
         }
     }
 
-    pub fn get_spectrum_texture(&self, n: &String, def: &Spectrum)
-                                -> Arc<Texture<Spectrum>> {
-        if let Some(names) = self.geom_params.find_tex(n) {
-            find_texture(&self.spectrum_textures, &names[0])
-        } else if let Some(names) = self.material_params.find_tex(n) {
-            find_texture(&self.spectrum_textures, &names[0])
-        } else {
+    pub fn get_spectrum_texture(&self, name: &str, def: &Spectrum)
+                                -> Arc<dyn Texture<Spectrum>> {
+        self.get_spectrum_texture_or_null(name).unwrap_or({
             let val = self.geom_params.find_one_spectrum(
-                n, self.material_params.find_one_spectrum(n, def.clone()));
-            Arc::new(ConstantTexture::new(val)) as Arc<Texture<Spectrum>>
-        }
+                name, self.material_params.find_one_spectrum(name, def.clone()));
+            Arc::new(ConstantTexture::new(val)) as Arc<dyn Texture<Spectrum>>
+        })
     }
 
-    pub fn get_float_texture(&self, n: &String, def: f32)
-                                -> Arc<Texture<f32>> {
-        if let Some(names) = self.geom_params.find_tex(n) {
-            find_texture(&self.float_textures, &names[0])
-        } else if let Some(names) = self.material_params.find_tex(n) {
-            find_texture(&self.float_textures, &names[0])
-        } else {
+    pub fn get_spectrum_texture_or_null(&self, name: &str)
+                                        -> Option<Arc<dyn Texture<Spectrum>>> {
+        self.geom_params.find_tex(name).or(self.material_params.find_tex(name))
+            .map(|names| find_texture(self.spectrum_textures.clone(), &names[0]))        
+    }
+
+    pub fn get_float_texture(&self, name: &str, def: f32)
+                             -> Arc<dyn Texture<f32>> {
+        self.get_float_texture_or_null(name).unwrap_or({
             let val = self.geom_params.find_one_float(
-                n, self.material_params.find_one_float(n, def));
-            Arc::new(ConstantTexture::new(val)) as Arc<Texture<f32>>
-        }
+                name, self.material_params.find_one_float(name, def));
+            Arc::new(ConstantTexture::new(val)) as Arc<dyn Texture<f32>>
+        })
     }
 
-    pub fn find_float(&self, n: &String, def: f32) -> f32 {
+    pub fn get_float_texture_or_null(&self, name: &str)
+                                     -> Option<Arc<dyn Texture<f32>>> {
+        self.geom_params.find_tex(name).or(self.material_params.find_tex(name))
+            .map(|names| find_texture(self.float_textures.clone(), &names[0]))
+    }
+
+    pub fn find_float(&self, name: &str, def: f32) -> f32 {
         self.geom_params.find_one_float(
-            n, self.material_params.find_one_float(n, def))
+            name, self.material_params.find_one_float(name, def))
     }
 
-    pub fn find_bool(&self, n: &String, def: bool) -> bool {
+    pub fn find_bool(&self, name: &str, def: bool) -> bool {
         self.geom_params.find_one_bool(
-            n, self.material_params.find_one_bool(n, def))
+            name, self.material_params.find_one_bool(name, def))
     }
 
-    pub fn find_int(&self, n: &String, def: i32) -> i32 {
+    pub fn find_int(&self, name: &str, def: i32) -> i32 {
         self.geom_params.find_one_int(
-            n, self.material_params.find_one_int(n, def))
+            name, self.material_params.find_one_int(name, def))
     }
 
-    pub fn find_point(&self, n: &String, def: Point) -> Point {
+    pub fn find_point(&self, name: &str, def: Point) -> Point {
         self.geom_params.find_one_point(
-            n, self.material_params.find_one_point(n, def))
+            name, self.material_params.find_one_point(name, def))
     }
 
-    pub fn find_vec(&self, n: &String, def: Vector) -> Vector {
+    pub fn find_vec(&self, name: &str, def: Vector) -> Vector {
         self.geom_params.find_one_vec(
-            n, self.material_params.find_one_vec(n, def))
+            name, self.material_params.find_one_vec(name, def))
     }
 
-    pub fn find_normal(&self, n: &String, def: Normal) -> Normal {
+    pub fn find_normal(&self, name: &str, def: Normal) -> Normal {
         self.geom_params.find_one_normal(
-            n, self.material_params.find_one_normal(n, def))
+            name, self.material_params.find_one_normal(name, def))
     }
 
-    pub fn find_str(&self, n: &String, def: String) -> String {
+    pub fn find_str(&self, name: &str, def: String) -> String {
         self.geom_params.find_one_str(
-            n, self.material_params.find_one_str(n, def))
+            name, self.material_params.find_one_str(name, def))
     }
 
-    pub fn find_spectrum(&self, n: &String, def: Spectrum) -> Spectrum {
+    pub fn find_spectrum(&self, name: &str, def: Spectrum) -> Spectrum {
         self.geom_params.find_one_spectrum(
-            n, self.material_params.find_one_spectrum(n, def))
+            name, self.material_params.find_one_spectrum(name, def))
     }
 }
 

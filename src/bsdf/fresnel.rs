@@ -1,6 +1,5 @@
 use geometry::vector::Vector;
 use spectrum::Spectrum;
-use utils::Clamp;
 
 fn fr_diel(cosi: f32, cost: f32, etai: &Spectrum,
            etat: &Spectrum) -> Spectrum {

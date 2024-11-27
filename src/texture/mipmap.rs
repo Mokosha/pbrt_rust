@@ -5,7 +5,6 @@ use std::iter::Sum;
 
 use texture::imagewrap::ImageWrap;
 use utils::blocked_vec::BlockedVec;
-use utils::Clamp;
 use utils::Lerp;
 
 use std::cmp;

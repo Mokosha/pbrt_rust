@@ -24,7 +24,7 @@ mod internal {
             (f32, f32, f32, f32, f32, f32);
     }
 
-    impl<U> TextureMapping2DBase for U where U: Deref<Target = TextureMapping2D> {
+    impl<U> TextureMapping2DBase for U where U: Deref<Target = dyn TextureMapping2D> {
         fn map_dg(&self, dg: &DifferentialGeometry)
                   -> (f32, f32, f32, f32, f32, f32) {
             self.deref().map(&dg)
@@ -34,7 +34,7 @@ mod internal {
 
 pub trait TextureMapping2D:
 Debug + Send + Sync + internal::TextureMapping2DBase {
-    fn map(&self, &DifferentialGeometry) ->
+    fn map(&self, _: &DifferentialGeometry) ->
         (f32, f32, f32, f32, f32, f32);
 }
 

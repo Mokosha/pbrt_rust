@@ -26,7 +26,7 @@ pub fn specular_reflect<R: Renderer>(
     let p = &(bsdf.dg_shading.p);
     let n = &(bsdf.dg_shading.nn);
     let (wi, pdf, f) = bsdf.sample_f(
-        &wo, BSDFSample::new(rng), bsdf::BSDF_REFLECTION | bsdf::BSDF_SPECULAR);
+        &wo, BSDFSample::new(rng), bsdf::BxDFType::BSDF_REFLECTION | bsdf::BxDFType::BSDF_SPECULAR);
 
     let win = wi.abs_dot(n);
     if pdf <= 0f32 || f.is_black() || win == 0f32 {
@@ -80,7 +80,7 @@ pub fn specular_transmit<R: Renderer>(
     let n = &(bsdf.dg_shading.nn);
     let (wi, pdf, f) = bsdf.sample_f(
         &wo, BSDFSample::new(rng),
-        bsdf::BSDF_TRANSMISSION | bsdf::BSDF_SPECULAR);
+        bsdf::BxDFType::BSDF_TRANSMISSION | bsdf::BxDFType::BSDF_SPECULAR);
 
     let win = wi.abs_dot(n);
     if pdf <= 0f32 || f.is_black() || win == 0f32 {

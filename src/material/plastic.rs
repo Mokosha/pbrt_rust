@@ -7,24 +7,23 @@ use bsdf::microfacet::Microfacet;
 use bsdf::microfacet::MicrofacetDistribution;
 use diff_geom::DifferentialGeometry;
 use spectrum::Spectrum;
-use texture::Texture;
-use utils::Clamp;
+use texture::{Texture, ScalarTextureReference, ColorTextureReference};
 
 use material::bump;
 
 #[derive(Clone, Debug)]
 pub struct PlasticMaterial {
-    k_d: Arc<Texture<Spectrum>>,
-    k_s: Arc<Texture<Spectrum>>,
-    roughness: Arc<Texture<f32>>,
-    bump_map: Option<Arc<Texture<f32>>>
+    k_d: ColorTextureReference,
+    k_s: ColorTextureReference,
+    roughness: ScalarTextureReference,
+    bump_map: Option<ScalarTextureReference>
 }
 
 impl PlasticMaterial {
-    pub fn new(kd: Arc<Texture<Spectrum>>,
-               ks: Arc<Texture<Spectrum>>,
-               rough: Arc<Texture<f32>>,
-               bm: Option<Arc<Texture<f32>>>) -> PlasticMaterial {
+    pub fn new(kd: ColorTextureReference,
+               ks: ColorTextureReference,
+               rough: ScalarTextureReference,
+               bm: Option<ScalarTextureReference>) -> PlasticMaterial {
         PlasticMaterial {
             k_d: kd, k_s: ks, roughness: rough, bump_map: bm
         }

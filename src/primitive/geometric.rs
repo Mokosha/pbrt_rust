@@ -19,28 +19,28 @@ use transform::transform::Transform;
 pub struct GeometricPrimitive {
     s: Shape,
     m: Arc<Material>,
-    area_light: Arc<Option<AreaLight>>
+    area_light: Option<Arc<AreaLight>>
 }
 
 impl GeometricPrimitive {
-    pub fn new(_s: Shape, _m: Material) -> GeometricPrimitive {
+    pub fn new(_s: Shape, _m: Arc<Material>) -> GeometricPrimitive {
         GeometricPrimitive {
             s: _s,
-            m: Arc::new(_m),
-            area_light: Arc::new(None)
+            m: _m,
+            area_light: None
         }
     }
 
-    pub fn new_lit(_s: Shape, _m: Material, al: AreaLight) -> GeometricPrimitive {
+    pub fn new_lit(_s: Shape, _m: Arc<Material>, al: Arc<AreaLight>) -> GeometricPrimitive {
         GeometricPrimitive {
             s: _s,
-            m: Arc::new(_m),
-            area_light: Arc::new(Some(al))
+            m: _m,
+            area_light: Some(al.clone())
         }
     }
 
-    pub fn area_light(&self) -> Option<AreaLight> {
-        self.area_light.as_ref().clone()
+    pub fn area_light(&self) -> Option<Arc<AreaLight>> {
+        self.area_light.clone()
     }
 
     pub fn get_bsdf(&self, dg: DifferentialGeometry,
@@ -54,6 +54,8 @@ impl GeometricPrimitive {
         let dgs = self.s.get_shading_geometry(o2w, dg.clone());
         self.m.get_bssrdf(dg, dgs)
     }
+
+    pub fn can_intersect(&self) -> bool { self.s.can_intersect() }
 }
 
 impl Intersectable for GeometricPrimitive {

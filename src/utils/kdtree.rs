@@ -32,7 +32,7 @@ impl KdNode {
 }
 
 pub trait KdTreeProc<NodeData> {
-    fn run(&mut self, &Point, &NodeData, f32, &mut f32);
+    fn run(&mut self, p: &Point, node: &NodeData, dist_sq: f32, max_dist_sq: &mut f32);
 }
 
 pub trait HasPoint {

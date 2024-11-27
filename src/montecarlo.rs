@@ -175,7 +175,7 @@ mod tests {
         result.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let expected = [0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0];
 
-        for (x, y) in result.into_iter().zip(expected.into_iter().map(|x| *x)) {
+        for (x, y) in result.into_iter().zip(expected.iter().map(|x| *x)) {
             assert_eq!(x, y);
         }
 
@@ -185,7 +185,7 @@ mod tests {
         result5.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let expected5 = [0.0, 0.2, 0.4, 0.6, 0.8];
         let factor = 3.0 * (1.0 / (5.0 * 4.0));
-        for (x, y) in result5.into_iter().zip(expected5.into_iter().map(|x| *x)) {
+        for (x, y) in result5.into_iter().zip(expected5.iter().map(|x| *x)) {
             assert!((x - (y + factor)).abs() < 1e-6);
         }
     }
@@ -259,7 +259,7 @@ mod tests {
         halton.sample(2, &mut sample[1]);
         halton.sample(3, &mut sample[2]);
         halton.sample(4, &mut sample[3]);
-
+        
         let mut is_there = [false; 4];
 
         let dim2 = [0.5, 0.25, 0.75, 0.125];
@@ -276,7 +276,7 @@ mod tests {
             *t = false;
         }
 
-        let dim3 = [1.0 / 3.0, 2.0 / 3.0, 7.0 / 9.0, 1.0 / 9.0];
+        let dim3 = [1.0 / 6.0, 5.0 / 6.0, 7.0 / 18.0, 1.0 / 18.0];
         for (i, &d) in dim3.iter().enumerate() {
             for s in sample.iter() {
                 if s[1] == d {
@@ -290,8 +290,8 @@ mod tests {
             *t = false;
         }
 
-        let factor = 1.0 / (5.0 * 4.0);
-        let dim5 = [2.0 / 5.0, 0.0, 4.0 / 5.0, 3.0 / 5.0];
+        let factor = 0.15;
+        let dim5 = [4.0 / 5.0, 2.0 / 5.0, 0.0, 1.0 / 5.0];
         for &d in dim5.iter() {
             for (i, s) in sample.iter().enumerate() {
                 if (s[2] - (d + factor)).abs() < 1e-6 {

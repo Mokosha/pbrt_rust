@@ -9,11 +9,11 @@ use texture::noise::turbulence;
 pub struct FBmTexture {
     omega: f32,
     octaves: i32,
-    mapping: Box<TextureMapping3D>
+    mapping: Box<dyn TextureMapping3D>
 }
 
 impl FBmTexture {
-    pub fn new(oct: i32, roughness: f32, map: Box<TextureMapping3D>) -> FBmTexture {
+    pub fn new(oct: i32, roughness: f32, map: Box<dyn TextureMapping3D>) -> FBmTexture {
         FBmTexture { omega: roughness, octaves: oct, mapping: map }
     }
 }
@@ -29,11 +29,11 @@ impl TextureBase<f32> for FBmTexture {
 pub struct WrinkledTexture {
     omega: f32,
     octaves: i32,
-    mapping: Box<TextureMapping3D>
+    mapping: Box<dyn TextureMapping3D>
 }
 
 impl WrinkledTexture {
-    pub fn new(oct: i32, roughness: f32, map: Box<TextureMapping3D>)
+    pub fn new(oct: i32, roughness: f32, map: Box<dyn TextureMapping3D>)
                -> WrinkledTexture {
         WrinkledTexture { omega: roughness, octaves: oct, mapping: map }
     }

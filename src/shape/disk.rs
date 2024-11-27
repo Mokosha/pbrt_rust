@@ -10,7 +10,6 @@ use shape::ShapeBase;
 use shape::ShapeIntersection;
 use transform::transform::ApplyTransform;
 use transform::transform::Transform;
-use utils::Clamp;
 use utils::Degrees;
 
 #[derive(Debug, PartialEq, Clone)]

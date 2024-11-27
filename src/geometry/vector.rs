@@ -1,5 +1,4 @@
 use utils::Lerp;
-use utils::Clamp;
 
 pub trait Dot<T = Self> {
     fn dot(&self, v2: &T) -> f32;

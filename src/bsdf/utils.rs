@@ -1,5 +1,4 @@
 use geometry::vector::Vector;
-use utils::Clamp;
 
 use std::f32;
 

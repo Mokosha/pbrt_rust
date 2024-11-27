@@ -28,7 +28,7 @@ pub struct PrimitiveBase {
     pub prim_id: usize
 }
 
-static NEXT_PRIM_ID: AtomicUsize = ::std::sync::atomic::ATOMIC_USIZE_INIT;
+static NEXT_PRIM_ID: AtomicUsize = ::std::sync::atomic::AtomicUsize::new(0);
 
 impl PrimitiveBase {
     pub fn new() -> PrimitiveBase { PrimitiveBase {
@@ -76,11 +76,25 @@ pub struct Primitive {
 }
 
 impl Primitive {
-    pub fn geometric(s: Shape) -> Primitive {
+    pub fn simple(s: Shape) -> Primitive {
         Primitive {
             base: PrimitiveBase::new(),
             prim: Arc::new(Prim::Geometric(
-                GeometricPrimitive::new(s, Material::broken())))
+                GeometricPrimitive::new(s, Arc::new(Material::broken()))))
+        }
+    }
+
+    pub fn geometric(s: Shape, mtl: Arc<Material>) -> Primitive {
+        Primitive {
+            base: PrimitiveBase::new(),
+            prim: Arc::new(Prim::Geometric(GeometricPrimitive::new(s, mtl)))
+        }
+    }
+
+    pub fn geometric_area_light(s: Shape, mtl: Arc<Material>, al: Arc<AreaLight>) -> Primitive {
+        Primitive {
+            base: PrimitiveBase::new(),
+            prim: Arc::new(Prim::Geometric(GeometricPrimitive::new_lit(s, mtl, al)))
         }
     }
 
@@ -98,11 +112,26 @@ impl Primitive {
         }
     }
 
+    pub fn bvh(p: Vec<Primitive>, max_prims: usize, sm: &'static str) -> Primitive {
+        Primitive {
+            base: PrimitiveBase::new(),
+            prim: Arc::new(Prim::Aggregate(Aggregate::bvh(p, max_prims, sm))),
+        }
+    }
+
+    pub fn can_intersect(&self) -> bool {
+        match self.prim.as_ref() {
+            &Prim::Geometric(ref p) => p.can_intersect(),
+            &Prim::Transformed(ref p) => p.primitive().can_intersect(),
+            &Prim::Aggregate(ref a) => true, // all aggregates are intersectable
+        }
+    }
+
     pub fn get_id(&self) -> usize { self.base.prim_id }
 
-    pub fn area_light(&self) -> Option<AreaLight> {
+    pub fn area_light(&self) -> Option<Arc<AreaLight>> {
         match self.prim.as_ref() {
-            &Prim::Geometric(ref p) => p.area_light().clone(),
+            &Prim::Geometric(ref p) => p.area_light(),
             _ => panic!("Only geometric primitives may have area lights")
         }
     }

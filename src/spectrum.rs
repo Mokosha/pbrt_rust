@@ -5,7 +5,6 @@ use std::ops::Mul;
 use std::ops::Neg;
 
 use utils::Lerp;
-use utils::Clamp;
 
 const SAMPLED_LAMBDA_START: usize = 400;
 const SAMPLED_LAMBDA_END: usize = 700;
@@ -487,6 +486,10 @@ impl Spectrum {
             Spectrum::RGB(rgb) => rgb_to_samples_spectrum(rgb, ty)
         }
     }
+
+    pub fn clamp(self, a: f32, b: f32) -> Spectrum {
+        self.transform(|x| x.clamp(a, b))
+    }
 }
 
 impl ::std::convert::From<f32> for Spectrum {
@@ -616,26 +619,20 @@ impl Neg for Spectrum {
     }
 }
 
-impl Clamp<f32> for Spectrum {
-    fn clamp(self, a: f32, b: f32) -> Spectrum {
-        self.transform(|x| x.clamp(a, b))
-    }
-}
-
 impl ::std::ops::Index<usize> for Spectrum {
     type Output = f32;
     fn index(&self, index: usize) -> &f32 {
         match self {
             &Spectrum::Sampled(ref cs) => {
                 match index {
-                    0...29 => cs.get(index).unwrap(),
+                    0..=29 => cs.get(index).unwrap(),
                     _ => panic!("Error - Sampled Spectrum index out of bounds!")
                 }
             },
 
             &Spectrum::RGB(ref cs) => {
                 match index {
-                    0...2 => cs.get(index).unwrap(),
+                    0..=2 => cs.get(index).unwrap(),
                     _ => panic!("Error - RGB Spectrum index out of bounds!")
                 }
             },
@@ -648,14 +645,14 @@ impl ::std::ops::IndexMut<usize> for Spectrum {
         match self {
             &mut Spectrum::Sampled(ref mut cs) => {
                 match index {
-                    0...29 => cs.get_mut(index).unwrap(),
+                    0..=29 => cs.get_mut(index).unwrap(),
                     _ => panic!("Error - Sampled Spectrum index out of bounds!")
                 }
             },
 
             &mut Spectrum::RGB(ref mut cs) => {
                 match index {
-                    0...2 => cs.get_mut(index).unwrap(),
+                    0..=2 => cs.get_mut(index).unwrap(),
                     _ => panic!("Error - RGB Spectrum index out of bounds!")
                 }
             },

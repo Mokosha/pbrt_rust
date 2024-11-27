@@ -22,7 +22,7 @@ impl SpecularReflection {
 
 impl BxDF for SpecularReflection {
     fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
-        (bsdf::BSDF_REFLECTION | bsdf::BSDF_SPECULAR).contains(ty)
+        (bsdf::BxDFType::BSDF_REFLECTION | bsdf::BxDFType::BSDF_SPECULAR).contains(ty)
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
@@ -61,7 +61,7 @@ impl SpecularTransmission {
 
 impl BxDF for SpecularTransmission {
     fn matches_flags(&self, ty: bsdf::BxDFType) -> bool {
-        (bsdf::BSDF_TRANSMISSION | bsdf::BSDF_SPECULAR).contains(ty)
+        (bsdf::BxDFType::BSDF_TRANSMISSION | bsdf::BxDFType::BSDF_SPECULAR).contains(ty)
     }
 
     fn f(&self, wo: &Vector, wi: &Vector) -> Spectrum {
@@ -127,10 +127,10 @@ mod tests {
     fn spec_refl_is_spec_and_refl() {
         let brdf = SpecularReflection::new(Spectrum::from(1f32),
                                            Fresnel::dielectric(1.0, 1.0));
-        assert!(brdf.matches_flags(bsdf::BSDF_SPECULAR));
-        assert!(brdf.matches_flags(bsdf::BSDF_REFLECTION));
-        assert!(!brdf.matches_flags(bsdf::BSDF_TRANSMISSION));
-        assert!(!brdf.matches_flags(bsdf::BSDF_DIFFUSE));
+        assert!(brdf.matches_flags(bsdf::BxDFType::BSDF_SPECULAR));
+        assert!(brdf.matches_flags(bsdf::BxDFType::BSDF_REFLECTION));
+        assert!(!brdf.matches_flags(bsdf::BxDFType::BSDF_TRANSMISSION));
+        assert!(!brdf.matches_flags(bsdf::BxDFType::BSDF_DIFFUSE));
     }
 
     #[test]
@@ -174,10 +174,10 @@ mod tests {
     #[test]
     fn spec_trans_is_spec_and_refl() {
         let brdf = SpecularTransmission::new(Spectrum::from(1f32), 1.0, 1.0);
-        assert!(brdf.matches_flags(bsdf::BSDF_TRANSMISSION));
-        assert!(brdf.matches_flags(bsdf::BSDF_SPECULAR));
-        assert!(!brdf.matches_flags(bsdf::BSDF_REFLECTION));
-        assert!(!brdf.matches_flags(bsdf::BSDF_DIFFUSE));
+        assert!(brdf.matches_flags(bsdf::BxDFType::BSDF_TRANSMISSION));
+        assert!(brdf.matches_flags(bsdf::BxDFType::BSDF_SPECULAR));
+        assert!(!brdf.matches_flags(bsdf::BxDFType::BSDF_REFLECTION));
+        assert!(!brdf.matches_flags(bsdf::BxDFType::BSDF_DIFFUSE));
     }
 
     #[test]

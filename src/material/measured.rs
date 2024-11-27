@@ -18,11 +18,11 @@ pub struct MeasuredMaterial {
     num_theta_h: usize,
     num_theta_d: usize,
     num_phi_d: usize,
-    bump_map: Option<Arc<Texture<f32>>>
+    bump_map: Option<Arc<dyn Texture<f32>>>
 }
 
 impl MeasuredMaterial {
-    pub fn new(filename: String, b: Option<Arc<Texture<f32>>>) -> MeasuredMaterial {
+    pub fn new(filename: String, b: Option<Arc<dyn Texture<f32>>>) -> MeasuredMaterial {
         // If we want to follow the datatype for the measured brdf data
         // used in PBRT-v2, then we need to follow the code given in
         // materials/measured.cpp...

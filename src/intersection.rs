@@ -59,7 +59,7 @@ impl Intersection {
 }
 
 pub trait Intersectable<T = Intersection> {
-    fn intersect(&self, &Ray) -> Option<T>;
+    fn intersect(&self, r: &Ray) -> Option<T>;
     fn intersect_p(&self, r: &Ray) -> bool {
         self.intersect(r).is_some()
     }
